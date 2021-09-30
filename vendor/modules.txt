@@ -1,13 +1,10 @@
 # github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c
 github.com/Azure/go-ntlmssp
-# github.com/GeertJohan/go.rice v0.0.0-20170420135705-c02ca9a983da
-github.com/GeertJohan/go.rice
-github.com/GeertJohan/go.rice/embedded
 # github.com/PuerkitoBio/goquery v1.6.1
 github.com/PuerkitoBio/goquery
 # github.com/Soontao/goHttpDigestClient v0.0.0-20170320082612-6d28bb1415c5
 github.com/Soontao/goHttpDigestClient
-# github.com/andybalholm/brotli v1.0.2
+# github.com/andybalholm/brotli v1.0.3
 github.com/andybalholm/brotli
 # github.com/andybalholm/cascadia v1.1.0
 github.com/andybalholm/cascadia
@@ -61,14 +58,12 @@ github.com/chromedp/cdproto/webaudio
 github.com/chromedp/cdproto/webauthn
 # github.com/chromedp/sysutil v1.0.0
 github.com/chromedp/sysutil
-# github.com/daaku/go.zipexe v0.0.0-20150329023125-a5fe2436ffcb
-github.com/daaku/go.zipexe
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/dop251/goja v0.0.0-20210427212725-462d53687b0d
+# github.com/dop251/goja v0.0.0-20210912140721-ac5354e9a820
 ## explicit
 github.com/dop251/goja
 github.com/dop251/goja/ast
@@ -78,9 +73,7 @@ github.com/dop251/goja/ftoa/internal/fast
 github.com/dop251/goja/parser
 github.com/dop251/goja/token
 github.com/dop251/goja/unistring
-# github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
-github.com/dustin/go-humanize
-# github.com/fatih/color v1.10.0
+# github.com/fatih/color v1.12.0
 ## explicit
 github.com/fatih/color
 # github.com/ghodss/yaml v1.0.0
@@ -90,38 +83,22 @@ github.com/go-sourcemap/sourcemap
 github.com/go-sourcemap/sourcemap/internal/base64vlq
 # github.com/goccy/go-graphviz v0.0.9
 ## explicit
-# github.com/golang/protobuf v1.4.2
-github.com/golang/protobuf/jsonpb
+# github.com/golang/protobuf v1.4.3
 github.com/golang/protobuf/proto
-github.com/golang/protobuf/protoc-gen-go/descriptor
-github.com/golang/protobuf/protoc-gen-go/plugin
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
-github.com/golang/protobuf/ptypes/empty
-github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
-github.com/golang/protobuf/ptypes/wrappers
+# github.com/golang/snappy v0.0.3
+github.com/golang/snappy
 # github.com/gorilla/websocket v1.4.2
 ## explicit
 github.com/gorilla/websocket
-# github.com/jhump/protoreflect v1.8.2
-github.com/jhump/protoreflect/codec
-github.com/jhump/protoreflect/desc
-github.com/jhump/protoreflect/desc/internal
-github.com/jhump/protoreflect/desc/protoparse
-github.com/jhump/protoreflect/desc/protoparse/ast
-github.com/jhump/protoreflect/dynamic
-github.com/jhump/protoreflect/internal
-github.com/jhump/protoreflect/internal/codec
 # github.com/josharian/intern v1.0.0
 github.com/josharian/intern
-# github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
-github.com/kardianos/osext
-# github.com/klauspost/compress v1.11.13
+# github.com/klauspost/compress v1.13.1
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
-github.com/klauspost/compress/snappy
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kubernetes/helm v2.9.0+incompatible
@@ -134,7 +111,7 @@ github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
 # github.com/mattn/go-colorable v0.1.8
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.13
 github.com/mattn/go-isatty
 # github.com/mccutchen/go-httpbin v1.1.2-0.20190116014521-c5cb2f4802fa
 ## explicit
@@ -169,29 +146,20 @@ github.com/spf13/afero/mem
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# github.com/tidwall/gjson v1.7.4
+# github.com/tidwall/gjson v1.8.1
 github.com/tidwall/gjson
 # github.com/tidwall/match v1.0.3
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.1.0
+# github.com/tidwall/pretty v1.2.0
 github.com/tidwall/pretty
-# go.k6.io/k6 v0.32.0
+# go.k6.io/k6 v0.34.1
 ## explicit
 go.k6.io/k6/js/common
 go.k6.io/k6/js/compiler
 go.k6.io/k6/js/modules
-go.k6.io/k6/js/modules/k6
-go.k6.io/k6/js/modules/k6/crypto
-go.k6.io/k6/js/modules/k6/crypto/x509
-go.k6.io/k6/js/modules/k6/data
-go.k6.io/k6/js/modules/k6/encoding
-go.k6.io/k6/js/modules/k6/grpc
 go.k6.io/k6/js/modules/k6/html
 go.k6.io/k6/js/modules/k6/http
-go.k6.io/k6/js/modules/k6/metrics
-go.k6.io/k6/js/modules/k6/ws
 go.k6.io/k6/lib
-go.k6.io/k6/lib/consts
 go.k6.io/k6/lib/fsext
 go.k6.io/k6/lib/metrics
 go.k6.io/k6/lib/netext
@@ -205,10 +173,9 @@ go.k6.io/k6/ui/pb
 # golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 golang.org/x/crypto/md4
 golang.org/x/crypto/ocsp
-golang.org/x/crypto/ripemd160
 # golang.org/x/image v0.0.0-20210504121937-7319ad40d33e
 ## explicit
-# golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+# golang.org/x/net v0.0.0-20210428185458-6f5299370f2b
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/html
@@ -237,17 +204,13 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
+# golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
 golang.org/x/time/rate
 # golang.org/x/tools v0.1.1
 ## explicit
 # google.golang.org/genproto v0.0.0-20200903010400-9bfcb5116336
 google.golang.org/genproto/googleapis/rpc/status
-google.golang.org/genproto/protobuf/api
-google.golang.org/genproto/protobuf/field_mask
-google.golang.org/genproto/protobuf/ptype
-google.golang.org/genproto/protobuf/source_context
-# google.golang.org/grpc v1.36.1
+# google.golang.org/grpc v1.39.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -294,14 +257,12 @@ google.golang.org/grpc/status
 google.golang.org/grpc/tap
 google.golang.org/grpc/test/grpc_testing
 # google.golang.org/protobuf v1.25.1-0.20200805231151-a709e31e5d12
-google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/encoding/defval
-google.golang.org/protobuf/internal/encoding/json
 google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
@@ -317,24 +278,13 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
-google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
-google.golang.org/protobuf/types/descriptorpb
-google.golang.org/protobuf/types/dynamicpb
 google.golang.org/protobuf/types/known/anypb
-google.golang.org/protobuf/types/known/apipb
 google.golang.org/protobuf/types/known/durationpb
-google.golang.org/protobuf/types/known/emptypb
-google.golang.org/protobuf/types/known/fieldmaskpb
-google.golang.org/protobuf/types/known/sourcecontextpb
-google.golang.org/protobuf/types/known/structpb
 google.golang.org/protobuf/types/known/timestamppb
-google.golang.org/protobuf/types/known/typepb
-google.golang.org/protobuf/types/known/wrapperspb
-google.golang.org/protobuf/types/pluginpb
 # gopkg.in/guregu/null.v3 v3.3.0
 ## explicit
 gopkg.in/guregu/null.v3

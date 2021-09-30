@@ -45,16 +45,17 @@ type InitializedVU interface {
 	Activate(*VUActivationParams) ActiveVU
 
 	// GetID returns the unique VU ID
-	GetID() int64
+	GetID() uint64
 }
 
 // VUActivationParams are supplied by each executor when it retrieves a VU from
 // the buffer pool and activates it for use.
 type VUActivationParams struct {
-	RunContext         context.Context
-	DeactivateCallback func(InitializedVU)
-	Env, Tags          map[string]string
-	Exec, Scenario     string
+	RunContext               context.Context
+	DeactivateCallback       func(InitializedVU)
+	Env, Tags                map[string]string
+	Exec, Scenario           string
+	GetNextIterationCounters func() (uint64, uint64)
 }
 
 // A Runner is a factory for VUs. It should precompute as much as possible upon
@@ -73,7 +74,7 @@ type Runner interface {
 	// Spawns a new VU. It's fine to make this function rather heavy, if it means a performance
 	// improvement at runtime. Remember, this is called once per VU and normally only at the start
 	// of a test - RunOnce() may be called hundreds of thousands of times, and must be fast.
-	NewVU(id int64, out chan<- stats.SampleContainer) (InitializedVU, error)
+	NewVU(idLocal, idGlobal uint64, out chan<- stats.SampleContainer) (InitializedVU, error)
 
 	// Runs pre-test setup, if applicable.
 	Setup(ctx context.Context, out chan<- stats.SampleContainer) error
@@ -103,9 +104,18 @@ type Runner interface {
 	HandleSummary(context.Context, *Summary) (map[string]io.Reader, error)
 }
 
+// UIState describes the state of the UI, which might influence what
+// handleSummary() returns.
+type UIState struct {
+	IsStdOutTTY bool
+	IsStdErrTTY bool
+}
+
 // Summary contains all of the data the summary handler gets.
 type Summary struct {
 	Metrics         map[string]*stats.Metric
 	RootGroup       *Group
 	TestRunDuration time.Duration // TODO: use lib.ExecutionState-based interface instead?
+	NoColor         bool          // TODO: drop this when noColor is part of the (runtime) options
+	UIState         UIState
 }

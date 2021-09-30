@@ -52,8 +52,8 @@ var (
 		fn   loaderFunc
 		expr *regexp.Regexp
 	}{
-		{"cdnjs", cdnjs, regexp.MustCompile(`^cdnjs.com/libraries/([^/]+)(?:/([(\d\.)]+-?[^/]*))?(?:/(.*))?$`)},
-		{"github", github, regexp.MustCompile(`^github.com/([^/]+)/([^/]+)/(.*)$`)},
+		{"cdnjs", cdnjs, regexp.MustCompile(`^cdnjs\.com/libraries/([^/]+)(?:/([(\d\.)]+-?[^/]*))?(?:/(.*))?$`)},
+		{"github", github, regexp.MustCompile(`^github\.com/([^/]+)/([^/]+)/(.*)$`)},
 	}
 	httpsSchemeCouldntBeLoadedMsg = `The moduleSpecifier "%s" couldn't be retrieved from` +
 		` the resolved url "%s". Error : "%s"`
@@ -147,7 +147,7 @@ func Resolve(pwd *url.URL, moduleSpecifier string) (*url.URL, error) {
 	if loader == nil {
 		u, err := url.Parse("https://" + moduleSpecifier)
 		if err != nil {
-			return nil, err
+			return nil, noSchemeRemoteModuleResolutionError{err: err, moduleSpecifier: moduleSpecifier}
 		}
 		u.Scheme = ""
 		return u, nil

@@ -22,6 +22,7 @@ package httpext
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -242,6 +243,16 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	tracer := &Tracer{}
 	reqWithTracer := req.WithContext(httptrace.WithClientTrace(ctx, tracer.Trace()))
 	resp, err := t.state.Transport.RoundTrip(reqWithTracer)
+
+	var netError net.Error
+	if errors.As(err, &netError) && netError.Timeout() {
+		var netOpError *net.OpError
+		if errors.As(err, &netOpError) && netOpError.Op == "dial" {
+			err = NewK6Error(tcpDialTimeoutErrorCode, tcpDialTimeoutErrorCodeMsg, netError)
+		} else {
+			err = NewK6Error(requestTimeoutErrorCode, requestTimeoutErrorCodeMsg, netError)
+		}
+	}
 
 	t.saveCurrentRequest(&unfinishedRequest{
 		ctx:      ctx,
