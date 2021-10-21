@@ -252,8 +252,7 @@ func (b *Browser) Close() {
 
 	action := cdpbrowser.Close()
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
-		rt := common.GetRuntime(b.ctx)
-		common.Throw(rt, fmt.Errorf("unable to execute %T: %v", action, err))
+		b.logger.Debugf("browser:close", "unable to execute %T: %v", action, err)
 	}
 }
 
