@@ -576,7 +576,7 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 
 	// Setup viewport or full page screenshot capture based on options
 	if parsedOpts.Clip.Width > 0 && parsedOpts.Clip.Height > 0 {
-		_, _, contentSize, _, _, _, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(p.ctx, p.session))
+		_, _, contentSize, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(p.ctx, p.session))
 		if err != nil {
 			k6common.Throw(rt, fmt.Errorf("unable to get layout metrics: %w", err))
 		}
@@ -594,6 +594,14 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 			Y:      contentSize.Y,
 			Width:  contentSize.Width,
 			Height: contentSize.Height,
+			Scale:  1,
+		}
+	} else if parsedOpts.Clip.Width > 0 && parsedOpts.Clip.Height > 0 {
+		clip = cdppage.Viewport{
+			X:      parsedOpts.Clip.X,
+			Y:      parsedOpts.Clip.Y,
+			Width:  parsedOpts.Clip.Width,
+			Height: parsedOpts.Clip.Height,
 			Scale:  1,
 		}
 	}
