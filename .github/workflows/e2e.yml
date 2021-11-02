@@ -1,4 +1,4 @@
-name: E2E Tests
+name: E2E
 on:
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
@@ -12,7 +12,7 @@ defaults:
     shell: bash
 
 jobs:
-  e2e-tests:
+  test:
     strategy:
       matrix:
         go: [stable, tip]
