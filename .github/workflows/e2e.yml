@@ -68,3 +68,6 @@ jobs:
           for f in examples/*.js; do
             ./k6ext run "$f"
           done
+      - name: Check screenshot
+        # TODO: Do something more sophisticated?
+        run: test -s screenshot.png
