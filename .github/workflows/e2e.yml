@@ -64,6 +64,7 @@ jobs:
       - name: Run E2E tests
         run: |
           set -x
-          for f in .github/tests/*.js; do
+          export XK6_HEADLESS=true
+          for f in examples/*.js; do
             ./k6ext run "$f"
           done
