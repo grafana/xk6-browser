@@ -25,6 +25,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/dop251/goja"
 	k6common "go.k6.io/k6/js/common"
@@ -239,6 +240,11 @@ type SelectOption struct {
 	Index *int64  `json:"index"`
 }
 
+type Size struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 // Viewport represents a page viewport
 type Viewport struct {
 	Width  int64 `json:"width"`
@@ -312,10 +318,6 @@ func (g *Geolocation) Parse(ctx context.Context, opts goja.Value) error {
 	return nil
 }
 
-func NewScreen() *Screen {
-	return &Screen{}
-}
-
 func (s *Screen) Parse(ctx context.Context, screen goja.Value) error {
 	rt := k6common.GetRuntime(ctx)
 	if screen != nil && !goja.IsUndefined(screen) && !goja.IsNull(screen) {
@@ -332,8 +334,27 @@ func (s *Screen) Parse(ctx context.Context, screen goja.Value) error {
 	return nil
 }
 
-func NewViewport() *Viewport {
-	return &Viewport{}
+func (s Size) enclosingIntSize() *Size {
+	return &Size{
+		Width:  math.Floor(s.Width + 1e-3),
+		Height: math.Floor(s.Height + 1e-3),
+	}
+}
+
+func (s *Size) Parse(ctx context.Context, viewport goja.Value) error {
+	rt := k6common.GetRuntime(ctx)
+	if viewport != nil && !goja.IsUndefined(viewport) && !goja.IsNull(viewport) {
+		viewport := viewport.ToObject(rt)
+		for _, k := range viewport.Keys() {
+			switch k {
+			case "width":
+				s.Width = viewport.Get(k).ToFloat()
+			case "height":
+				s.Height = viewport.Get(k).ToFloat()
+			}
+		}
+	}
+	return nil
 }
 
 func (v *Viewport) Parse(ctx context.Context, viewport goja.Value) error {
