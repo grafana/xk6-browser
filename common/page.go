@@ -22,10 +22,6 @@ package common
 
 import (
 	"fmt"
-	"io/ioutil"
-	"math"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -228,6 +224,27 @@ func (p *Page) hasRoutes() bool {
 	return len(p.routes) > 0
 }
 
+func (p *Page) resetViewport() error {
+	action := emulation.SetDeviceMetricsOverride(0, 0, 0, false)
+	return action.Do(cdp.WithExecutor(p.ctx, p.session))
+}
+
+func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
+	return p.mainFrameSession.updateViewport()
+}
+
+func (p *Page) setViewportSize(viewportSize *Size) error {
+	viewport := &Viewport{
+		Width:  int64(viewportSize.Width),
+		Height: int64(viewportSize.Height),
+	}
+	screen := &Screen{
+		Width:  int64(viewportSize.Width),
+		Height: int64(viewportSize.Height),
+	}
+	return p.setEmulatedSize(NewEmulatedSize(viewport, screen))
+}
+
 func (p *Page) updateExtraHTTPHeaders() {
 	for _, fs := range p.frameSessions {
 		fs.updateExtraHTTPHeaders(false)
@@ -255,8 +272,11 @@ func (p *Page) updateHttpCredentials() {
 	}
 }
 
-func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
-	return p.mainFrameSession.updateViewport()
+func (p *Page) viewportSize() Size {
+	return Size{
+		Width:  float64(p.emulatedSize.Viewport.Width),
+		Height: float64(p.emulatedSize.Viewport.Height),
+	}
 }
 
 // AddInitScript adds script to run in all new frames
@@ -560,103 +580,12 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
 	}
 
-	var buf []byte
-	clip := parsedOpts.Clip
-	format := parsedOpts.Format
-
-	// Infer file format by path
-	if parsedOpts.Path != "" && parsedOpts.Format != "png" && parsedOpts.Format != "jpeg" {
-		if strings.HasSuffix(parsedOpts.Path, ".jpg") || strings.HasSuffix(parsedOpts.Path, ".jpeg") {
-			format = "jpeg"
-		}
-	}
-
-	var capture *cdppage.CaptureScreenshotParams
-	capture = cdppage.CaptureScreenshot()
-
-	// Setup viewport or full page screenshot capture based on options
-	if parsedOpts.Clip.Width > 0 && parsedOpts.Clip.Height > 0 {
-		_, _, contentSize, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(p.ctx, p.session))
-		if err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to get layout metrics: %w", err))
-		}
-		width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-		action := emulation.SetDeviceMetricsOverride(width, height, 1, false).
-			WithScreenOrientation(&emulation.ScreenOrientation{
-				Type:  emulation.OrientationTypePortraitPrimary,
-				Angle: 0,
-			})
-		if err = action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to set screen width and height: %w", err))
-		}
-		clip = cdppage.Viewport{
-			X:      contentSize.X,
-			Y:      contentSize.Y,
-			Width:  contentSize.Width,
-			Height: contentSize.Height,
-			Scale:  1,
-		}
-	} else if parsedOpts.Clip.Width > 0 && parsedOpts.Clip.Height > 0 {
-		clip = cdppage.Viewport{
-			X:      parsedOpts.Clip.X,
-			Y:      parsedOpts.Clip.Y,
-			Width:  parsedOpts.Clip.Width,
-			Height: parsedOpts.Clip.Height,
-			Scale:  1,
-		}
-	}
-
-	if clip.Width > 0 && clip.Height > 0 {
-		capture = capture.WithClip(&clip)
-	}
-
-	// Add common options
-	capture.WithQuality(parsedOpts.Quality)
-	switch format {
-	case "jpeg":
-		capture.WithFormat(cdppage.CaptureScreenshotFormatJpeg)
-	default:
-		capture.WithFormat(cdppage.CaptureScreenshotFormatPng)
-	}
-
-	// Make background transparent for PNG captures if requested
-	if parsedOpts.OmitBackground && format == "png" {
-		action := emulation.SetDefaultBackgroundColorOverride().
-			WithColor(&cdp.RGBA{R: 0, G: 0, B: 0, A: 0})
-		if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to set screenshot background transparency: %w", err))
-		}
-	}
-
-	// Capture screenshot
-	buf, err := capture.Do(cdp.WithExecutor(p.ctx, p.session))
+	s := NewScreenshotter(p.ctx)
+	buf, err := s.screenshotPage(p, parsedOpts)
 	if err != nil {
-		k6common.Throw(rt, fmt.Errorf("unable to capture screenshot of page '%s': %w", p.frameManager.MainFrame().URL(), err))
+		k6common.Throw(rt, err)
 	}
-
-	// Reset background
-	if parsedOpts.OmitBackground && format == "png" {
-		action := emulation.SetDefaultBackgroundColorOverride()
-		if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to reset screenshot background color: %w", err))
-		}
-	}
-
-	// TODO: Reset viewport
-
-	// Save screenshot capture to file
-	// TODO: we should not write to disk here but put it on some queue for async disk writes
-	if parsedOpts.Path != "" {
-		dir := filepath.Dir(parsedOpts.Path)
-		if err := os.MkdirAll(dir, 0775); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to create directory for screenshot of page '%s': %w", p.frameManager.MainFrame().URL(), err))
-		}
-		if err := ioutil.WriteFile(parsedOpts.Path, buf, 0664); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to save screenshot of page '%s' to file: %w", p.frameManager.MainFrame().URL(), err))
-		}
-	}
-
-	return rt.NewArrayBuffer(buf)
+	return rt.NewArrayBuffer(*buf)
 }
 
 func (p *Page) SelectOption(selector string, values goja.Value, opts goja.Value) []string {
@@ -692,15 +621,11 @@ func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value)
 // SetViewportSize will update the viewport width and height
 func (p *Page) SetViewportSize(viewportSize goja.Value) {
 	rt := k6common.GetRuntime(p.ctx)
-	viewport := NewViewport()
-	if err := viewport.Parse(p.ctx, viewportSize); err != nil {
-		k6common.Throw(rt, fmt.Errorf("failed parsing viewport: %w", err))
+	s := &Size{}
+	if err := s.Parse(p.ctx, viewportSize); err != nil {
+		k6common.Throw(rt, fmt.Errorf("failed parsing size: %w", err))
 	}
-	screen := NewScreen()
-	if err := viewport.Parse(p.ctx, viewportSize); err != nil {
-		k6common.Throw(rt, fmt.Errorf("failed parsing screen: %w", err))
-	}
-	if err := p.setEmulatedSize(NewEmulatedSize(viewport, screen)); err != nil {
+	if err := p.setViewportSize(s); err != nil {
 		k6common.Throw(rt, err)
 	}
 	applySlowMo(p.ctx)
@@ -749,8 +674,9 @@ func (p *Page) Video() api.Video {
 // ViewportSize will return information on the viewport width and height
 func (p *Page) ViewportSize() map[string]float64 {
 	size := make(map[string]float64, 2)
-	size["width"] = float64(p.emulatedSize.Viewport.Width)
-	size["height"] = float64(p.emulatedSize.Viewport.Height)
+	vps := p.viewportSize()
+	size["width"] = vps.Width
+	size["height"] = vps.Height
 	return size
 }
 
