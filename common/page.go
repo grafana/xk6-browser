@@ -102,6 +102,12 @@ func NewPage(ctx context.Context, session *Session, browserCtx *BrowserContext, 
 		routes:           make([]api.Route, 0),
 	}
 
+	// We need to init viewport and screen size before initializing the main frame session,
+	// as that's where the emulation is activated.
+	if browserCtx.opts.Viewport != nil {
+		p.emulatedSize = NewEmulatedSize(browserCtx.opts.Viewport, browserCtx.opts.Screen)
+	}
+
 	var err error
 	p.frameManager = NewFrameManager(ctx, session, &p, browserCtx.timeoutSettings)
 	p.mainFrameSession, err = NewFrameSession(ctx, session, &p, nil, targetID)
@@ -111,10 +117,6 @@ func NewPage(ctx context.Context, session *Session, browserCtx *BrowserContext, 
 	p.frameSessions[cdp.FrameID(targetID)] = p.mainFrameSession
 	p.Mouse = NewMouse(ctx, session, p.frameManager.MainFrame(), browserCtx.timeoutSettings, p.Keyboard)
 	p.Touchscreen = NewTouchscreen(ctx, session, p.Keyboard)
-
-	if browserCtx.opts.Viewport != nil {
-		p.emulatedSize = NewEmulatedSize(browserCtx.opts.Viewport, browserCtx.opts.Screen)
-	}
 
 	if err := p.initEvents(); err != nil {
 		return nil, err
@@ -230,6 +232,7 @@ func (p *Page) resetViewport() error {
 }
 
 func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
+	p.emulatedSize = emulatedSize
 	return p.mainFrameSession.updateViewport()
 }
 
