@@ -1,7 +1,7 @@
 /*
  *
- * k6 - a next-generation load testing tool
- * Copyright (C) 2020 Load Impact
+ * xk6-browser - a browser automation extension for k6
+ * Copyright (C) 2021 Load Impact
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
