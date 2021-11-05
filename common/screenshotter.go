@@ -228,7 +228,9 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 		fitsViewport := fullPageSize.Width <= viewportSize.Width && fullPageSize.Height <= viewportSize.Height
 		if !fitsViewport {
 			overriddenViewportSize = fullPageSize
-			p.setViewportSize(overriddenViewportSize)
+			if err := p.setViewportSize(overriddenViewportSize); err != nil {
+				return nil, err
+			}
 		}
 		if opts.Clip != nil {
 			documentRect, err = s.trimClipToSize(&api.Rect{
