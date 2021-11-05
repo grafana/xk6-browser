@@ -137,7 +137,7 @@ func (s *Screenshotter) screenshot(session *Session, format string, documentRect
 	}
 
 	// Add clip region
-	_, visualViewport, _, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(s.ctx, session))
+	_, visualViewport, _, _, _, _, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(s.ctx, session))
 	if err != nil {
 		return nil, fmt.Errorf("unable to get layout metrics for screenshot: %w", err)
 	}
