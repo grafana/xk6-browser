@@ -575,11 +575,10 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 	if err := parsedOpts.Parse(p.ctx, opts); err != nil {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
 	}
-
 	s := NewScreenshotter(p.ctx)
 	buf, err := s.screenshotPage(p, parsedOpts)
 	if err != nil {
-		k6common.Throw(rt, err)
+		k6common.Throw(rt, fmt.Errorf("cannot capture screenshot: %w", err))
 	}
 	return rt.NewArrayBuffer(*buf)
 }
@@ -669,11 +668,11 @@ func (p *Page) Video() api.Video {
 
 // ViewportSize will return information on the viewport width and height
 func (p *Page) ViewportSize() map[string]float64 {
-	size := make(map[string]float64, 2)
 	vps := p.viewportSize()
-	size["width"] = vps.Width
-	size["height"] = vps.Height
-	return size
+	return map[string]float64{
+		"width":  vps.Width,
+		"height": vps.Height,
+	}
 }
 
 // WaitForEvent waits for the specified event to trigger
