@@ -21,6 +21,8 @@
 package common
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -32,10 +34,7 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
-	"github.com/grafana/xk6-browser/api"
-	"github.com/pkg/errors"
 	k6common "go.k6.io/k6/js/common"
-	"golang.org/x/net/context"
 )
 
 type Screenshotter struct {
@@ -113,13 +112,15 @@ func (s *Screenshotter) restoreViewport(p *Page, originalViewport *Size) error {
 	return p.resetViewport()
 }
 
-func (s *Screenshotter) screenshot(session *Session, format string, documentRect *api.Rect, viewportRect *api.Rect, opts *PageScreenshotOptions) (*[]byte, error) {
-	var buf []byte
-	var clip *cdppage.Viewport
-	var capture *cdppage.CaptureScreenshotParams
+func (s *Screenshotter) screenshot(session *Session, documentRect *Rect, viewportRect *Rect, format string, omitBackground bool, quality int64, path string) (*[]byte, error) {
+	var (
+		buf     []byte
+		clip    *cdppage.Viewport
+		capture *cdppage.CaptureScreenshotParams
+	)
 	capture = cdppage.CaptureScreenshot()
 
-	shouldSetDefaultBackground := opts.OmitBackground && format == "png"
+	shouldSetDefaultBackground := omitBackground && format == "png"
 	if shouldSetDefaultBackground {
 		action := emulation.SetDefaultBackgroundColorOverride().
 			WithColor(&cdp.RGBA{R: 0, G: 0, B: 0, A: 0})
@@ -129,7 +130,7 @@ func (s *Screenshotter) screenshot(session *Session, format string, documentRect
 	}
 
 	// Add common options
-	capture.WithQuality(opts.Quality)
+	capture.WithQuality(quality)
 	switch format {
 	case "jpeg":
 		capture.WithFormat(cdppage.CaptureScreenshotFormatJpeg)
@@ -148,7 +149,7 @@ func (s *Screenshotter) screenshot(session *Session, format string, documentRect
 			Width:  viewportRect.Width / visualViewport.Scale,
 			Height: viewportRect.Height / visualViewport.Scale,
 		}.enclosingIntSize()
-		documentRect = &api.Rect{
+		documentRect = &Rect{
 			X:      visualViewport.PageX + viewportRect.X,
 			Y:      visualViewport.PageY + viewportRect.Y,
 			Width:  s.Width,
@@ -186,16 +187,94 @@ func (s *Screenshotter) screenshot(session *Session, format string, documentRect
 
 	// Save screenshot capture to file
 	// TODO: we should not write to disk here but put it on some queue for async disk writes
-	if opts.Path != "" {
-		dir := filepath.Dir(opts.Path)
+	if path != "" {
+		dir := filepath.Dir(path)
 		if err := os.MkdirAll(dir, 0775); err != nil {
 			return nil, fmt.Errorf("cannot create directory for screenshot: %w", err)
 		}
-		if err := ioutil.WriteFile(opts.Path, buf, 0664); err != nil {
+		if err := ioutil.WriteFile(path, buf, 0664); err != nil {
 			return nil, fmt.Errorf("cannot save screenshot to file: %w", err)
 		}
 	}
 	return &buf, nil
+}
+
+func (s *Screenshotter) screenshotElement(h *ElementHandle, opts *ElementHandleScreenshotOptions) (*[]byte, error) {
+	format := opts.Format
+
+	// Infer file format by path
+	if opts.Path != "" && opts.Format != "png" && opts.Format != "jpeg" {
+		if strings.HasSuffix(opts.Path, ".jpg") || strings.HasSuffix(opts.Path, ".jpeg") {
+			format = "jpeg"
+		}
+	}
+
+	viewportSize, originalViewportSize, err := s.originalViewportSize(h.frame.page)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get original viewport size: %w", err)
+	}
+
+	err = h.waitAndScrollIntoViewIfNeeded(h.ctx, false, true, opts.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scroll element into view: %w", err)
+	}
+
+	bbox, err := h.boundingBox()
+	if err != nil {
+		return nil, fmt.Errorf("node is either not visible or not an HTMLElement: %w", err)
+	}
+	if bbox.Width <= 0 {
+		return nil, fmt.Errorf("node has 0 width")
+	}
+	if bbox.Height <= 0 {
+		return nil, fmt.Errorf("node has 0 height")
+	}
+
+	var overriddenViewportSize *Size
+	fitsViewport := bbox.Width <= viewportSize.Width && bbox.Height <= viewportSize.Height
+	if !fitsViewport {
+		overriddenViewportSize = Size{
+			Width:  math.Max(viewportSize.Width, bbox.Width),
+			Height: math.Max(viewportSize.Height, bbox.Height),
+		}.enclosingIntSize()
+		if err := h.frame.page.setViewportSize(overriddenViewportSize); err != nil {
+			return nil, fmt.Errorf("cannot set viewport size: %w", err)
+		}
+		err = h.waitAndScrollIntoViewIfNeeded(h.ctx, false, true, opts.Timeout)
+		if err != nil {
+			return nil, fmt.Errorf("cannot scroll element into view: %w", err)
+		}
+		bbox, err = h.boundingBox()
+		if err != nil {
+			return nil, fmt.Errorf("node is either not visible or not an HTMLElement: %w", err)
+		}
+		if bbox.Width <= 0 {
+			return nil, fmt.Errorf("node has 0 width")
+		}
+		if bbox.Height <= 0 {
+			return nil, fmt.Errorf("node has 0 height")
+		}
+	}
+
+	documentRect := bbox
+	rt := k6common.GetRuntime(s.ctx)
+	scrollOffset := h.Evaluate(rt.ToValue(`() => { return {x: window.scrollX, y: window.scrollY};}`))
+	switch s := scrollOffset.(type) {
+	case goja.Value:
+		documentRect.X += s.ToObject(rt).Get("x").ToFloat()
+		documentRect.Y += s.ToObject(rt).Get("y").ToFloat()
+	}
+
+	buf, err := s.screenshot(h.frame.page.session, documentRect.enclosingIntRect(), nil, format, opts.OmitBackground, opts.Quality, opts.Path)
+	if err != nil {
+		return nil, err
+	}
+	if overriddenViewportSize != nil {
+		if err := s.restoreViewport(h.frame.page, originalViewportSize); err != nil {
+			return nil, fmt.Errorf("cannot restore viewport: %w", err)
+		}
+	}
+	return buf, nil
 }
 
 func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[]byte, error) {
@@ -210,7 +289,7 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 
 	viewportSize, originalViewportSize, err := s.originalViewportSize(p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get original viewport size: %w", err)
 	}
 
 	if opts.FullPage {
@@ -218,7 +297,7 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 		if err != nil {
 			return nil, fmt.Errorf("cannot get full page size: %w", err)
 		}
-		documentRect := &api.Rect{
+		documentRect := &Rect{
 			X:      0,
 			Y:      0,
 			Width:  fullPageSize.Width,
@@ -233,7 +312,7 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 			}
 		}
 		if opts.Clip != nil {
-			documentRect, err = s.trimClipToSize(&api.Rect{
+			documentRect, err = s.trimClipToSize(&Rect{
 				X:      opts.Clip.X,
 				Y:      opts.Clip.Y,
 				Width:  opts.Clip.Width,
@@ -244,7 +323,7 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 			}
 		}
 
-		buf, err := s.screenshot(p.session, format, documentRect, nil, opts)
+		buf, err := s.screenshot(p.session, documentRect, nil, format, opts.OmitBackground, opts.Quality, opts.Path)
 		if err != nil {
 			return nil, fmt.Errorf("cannot screenshot: %w", err)
 		}
@@ -256,12 +335,14 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 		return buf, nil
 	}
 
-	viewportRect := &api.Rect{
+	viewportRect := &Rect{
+		X:      0,
+		Y:      0,
 		Width:  viewportSize.Width,
 		Height: viewportSize.Height,
 	}
 	if opts.Clip != nil {
-		viewportRect, err = s.trimClipToSize(&api.Rect{
+		viewportRect, err = s.trimClipToSize(&Rect{
 			X:      opts.Clip.X,
 			Y:      opts.Clip.Y,
 			Width:  opts.Clip.Width,
@@ -271,10 +352,10 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 			return nil, fmt.Errorf("cannot trim clip to size: %w", err)
 		}
 	}
-	return s.screenshot(p.session, format, nil, viewportRect, opts)
+	return s.screenshot(p.session, nil, viewportRect, format, opts.OmitBackground, opts.Quality, opts.Path)
 }
 
-func (s *Screenshotter) trimClipToSize(clip *api.Rect, size *Size) (*api.Rect, error) {
+func (s *Screenshotter) trimClipToSize(clip *Rect, size *Size) (*Rect, error) {
 	p1 := Position{
 		X: math.Max(0, math.Min(clip.X, size.Width)),
 		Y: math.Max(0, math.Min(clip.Y, size.Height)),
@@ -283,7 +364,7 @@ func (s *Screenshotter) trimClipToSize(clip *api.Rect, size *Size) (*api.Rect, e
 		X: math.Max(0, math.Min(clip.X+clip.Width, size.Width)),
 		Y: math.Max(0, math.Min(clip.Y+clip.Height, size.Height)),
 	}
-	result := api.Rect{
+	result := Rect{
 		X:      p1.X,
 		Y:      p1.Y,
 		Width:  p2.X - p1.X,

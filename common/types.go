@@ -28,6 +28,7 @@ import (
 	"math"
 
 	"github.com/dop251/goja"
+	"github.com/grafana/xk6-browser/api"
 	k6common "go.k6.io/k6/js/common"
 )
 
@@ -207,6 +208,13 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
+type Rect struct {
+	X      float64 `js:"x"`
+	Y      float64 `js:"y"`
+	Width  float64 `js:"width"`
+	Height float64 `js:"height"`
+}
+
 // ReducedMotion represents a browser reduce-motion setting
 type ReducedMotion string
 
@@ -316,6 +324,18 @@ func (g *Geolocation) Parse(ctx context.Context, opts goja.Value) error {
 	g.Latitude = latitude
 	g.Longitude = longitude
 	return nil
+}
+
+func (r *Rect) enclosingIntRect() *Rect {
+	x := math.Floor(r.X + 1e-3)
+	y := math.Floor(r.Y + 1e-3)
+	x2 := math.Ceil(r.X + r.Width - 1e-3)
+	y2 := math.Ceil(r.Y + r.Height - 1e-3)
+	return &Rect{X: x, Y: y, Width: x2 - x, Height: y2 - y}
+}
+
+func (r *Rect) toApiRect() *api.Rect {
+	return &api.Rect{X: r.X, Y: r.Y, Width: r.Width, Height: r.Height}
 }
 
 func (s *Screen) Parse(ctx context.Context, screen goja.Value) error {

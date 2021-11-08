@@ -37,24 +37,19 @@
 package common
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
-	"github.com/chromedp/cdproto/emulation"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-browser/api"
-	"github.com/pkg/errors"
 	k6common "go.k6.io/k6/js/common"
-	"golang.org/x/net/context"
 )
 
 // Ensure ElementHandle implements the api.ElementHandle and api.JSHandle interfaces.
@@ -197,7 +192,7 @@ type ElementHandle struct {
 	frame *Frame
 }
 
-func (h *ElementHandle) boundingBox() (*api.Rect, error) {
+func (h *ElementHandle) boundingBox() (*Rect, error) {
 	var box *dom.BoxModel
 	var err error
 	action := dom.GetBoxModel().WithObjectID(h.remoteObject.ObjectID)
@@ -212,7 +207,7 @@ func (h *ElementHandle) boundingBox() (*api.Rect, error) {
 	height := math.Max(quad[1], math.Max(quad[3], math.Max(quad[5], quad[7]))) - y
 	position := h.frame.position()
 
-	return &api.Rect{X: x + position.X, Y: y + position.Y, Width: width, Height: height}, nil
+	return &Rect{X: x + position.X, Y: y + position.Y, Width: width, Height: height}, nil
 }
 
 func (h *ElementHandle) checkHitTargetAt(apiCtx context.Context, p Position) (bool, error) {
@@ -224,7 +219,7 @@ func (h *ElementHandle) checkHitTargetAt(apiCtx context.Context, p Position) (bo
 			return false, err
 		}
 		if box == nil {
-			return false, errors.Errorf(`unable to get bounding box of element`)
+			return false, fmt.Errorf(`unable to get bounding box of element`)
 		}
 
 		// Translate from viewport coordinates to frame coordinates.
@@ -293,7 +288,7 @@ func (h *ElementHandle) checkElementState(apiCtx context.Context, state string) 
 		*returnVal = value.ToBoolean()
 		return returnVal, nil
 	}
-	return nil, errors.Errorf("unable to check state %q of element: %v", state, reflect.TypeOf(result).String())
+	return nil, fmt.Errorf("unable to check state %q of element: %v", state, reflect.TypeOf(result).String())
 }
 
 func (h *ElementHandle) click(p *Position, opts *MouseClickOptions) error {
@@ -794,7 +789,7 @@ func (h *ElementHandle) setChecked(apiCtx context.Context, checked bool, p *Posi
 		return err
 	}
 	if checked != *state {
-		return errors.Errorf("clicking the checkbox did not change its state")
+		return fmt.Errorf("clicking the checkbox did not change its state")
 	}
 
 	return nil
@@ -818,6 +813,23 @@ func (h *ElementHandle) typ(apiCtx context.Context, text string, opts *KeyboardO
 		return err
 	}
 	err = h.frame.page.Keyboard.typ(text, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *ElementHandle) waitAndScrollIntoViewIfNeeded(apiCtx context.Context, force, noWaitAfter bool, timeout time.Duration) error {
+	rt := k6common.GetRuntime(apiCtx)
+	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+		pageFn := rt.ToValue(`(element) => {
+			element.scrollIntoViewIfNeeded(true);
+			return [window.scrollX, window.scrollY];
+		}`)
+		return h.execCtx.evaluate(apiCtx, true, true, pageFn, rt.ToValue(h))
+	}
+	actFn := elementHandleActionFn(h, []string{"visible", "stable"}, fn, force, noWaitAfter, timeout)
+	_, err := callApiWithTimeout(h.ctx, actFn, timeout)
 	if err != nil {
 		return err
 	}
@@ -856,7 +868,7 @@ func (h *ElementHandle) waitForElementState(apiCtx context.Context, states []str
 	case reflect.Bool:
 		return value.ToBoolean(), nil
 	}
-	return false, errors.Errorf("unable to check states %v of element: %v", states, reflect.TypeOf(result).String())
+	return false, fmt.Errorf("unable to check states %v of element: %v", states, reflect.TypeOf(result).String())
 }
 
 func (h *ElementHandle) waitForSelector(apiCtx context.Context, selector string, opts *FrameWaitForSelectorOptions) (*ElementHandle, error) {
@@ -907,7 +919,7 @@ func (h *ElementHandle) BoundingBox() *api.Rect {
 	if err != nil {
 		return nil // Don't throw an exception here, just return nil
 	}
-	return bbox
+	return bbox.toApiRect()
 }
 
 // Check scrolls element into view and clicks in the center of the element
@@ -1301,110 +1313,18 @@ func (h *ElementHandle) QueryAll(selector string) []api.ElementHandle {
 }
 
 func (h *ElementHandle) Screenshot(opts goja.Value) goja.ArrayBuffer {
-	// TODO: https://github.com/microsoft/playwright/blob/master/src/server/screenshotter.ts#L92
 	rt := k6common.GetRuntime(h.ctx)
 	parsedOpts := NewElementHandleScreenshotOptions(h.defaultTimeout())
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %v", err))
 	}
 
-	var buf []byte
-	var clip cdppage.Viewport
-	format := parsedOpts.Format
-
-	bbox, err := h.boundingBox()
+	s := NewScreenshotter(h.ctx)
+	buf, err := s.screenshotElement(h, parsedOpts)
 	if err != nil {
-		k6common.Throw(rt, fmt.Errorf("node is either not visible or not an HTMLElement: %w", err))
+		k6common.Throw(rt, err)
 	}
-	if bbox.Width <= 0 {
-		k6common.Throw(rt, fmt.Errorf("node has 0 width"))
-	}
-	if bbox.Height <= 0 {
-		k6common.Throw(rt, fmt.Errorf("node has 0 height"))
-	}
-
-	// Infer file format by path
-	if parsedOpts.Path != "" && parsedOpts.Format != "png" && parsedOpts.Format != "jpeg" {
-		if strings.HasSuffix(parsedOpts.Path, ".jpg") || strings.HasSuffix(parsedOpts.Path, ".jpeg") {
-			format = "jpeg"
-		}
-	}
-
-	var capture *cdppage.CaptureScreenshotParams
-
-	// Setup viewport or full page screenshot capture based on options
-	_, _, contentSize, _, _, _, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(h.ctx, h.session))
-	if err != nil {
-		k6common.Throw(rt, fmt.Errorf("unable to get layout metrics: %w", err))
-	}
-	width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-	action := emulation.SetDeviceMetricsOverride(width, height, 1, false).
-		WithScreenOrientation(&emulation.ScreenOrientation{
-			Type:  emulation.OrientationTypePortraitPrimary,
-			Angle: 0,
-		})
-	if err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
-		k6common.Throw(rt, fmt.Errorf("unable to set screen width and height: %w", err))
-	}
-	clip = cdppage.Viewport{
-		X:      contentSize.X,
-		Y:      contentSize.Y,
-		Width:  contentSize.Width,
-		Height: contentSize.Height,
-		Scale:  1,
-	}
-
-	if clip.Width > 0 && clip.Height > 0 {
-		capture = capture.WithClip(&clip)
-	}
-
-	// Add common options
-	capture.WithQuality(parsedOpts.Quality)
-	switch format {
-	case "jpeg":
-		capture.WithFormat(cdppage.CaptureScreenshotFormatJpeg)
-	default:
-		capture.WithFormat(cdppage.CaptureScreenshotFormatPng)
-	}
-
-	// Make background transparent for PNG captures if requested
-	if parsedOpts.OmitBackground && format == "png" {
-		action := emulation.SetDefaultBackgroundColorOverride().
-			WithColor(&cdp.RGBA{R: 0, G: 0, B: 0, A: 0})
-		if err := action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to set screenshot background transparency: %w", err))
-		}
-	}
-
-	// Capture screenshot
-	buf, err = capture.Do(cdp.WithExecutor(h.ctx, h.session))
-	if err != nil {
-		k6common.Throw(rt, fmt.Errorf("unable to capture screenshot of page '%s': %w", h.frame.manager.MainFrame().URL(), err))
-	}
-
-	// Reset background
-	if parsedOpts.OmitBackground && format == "png" {
-		action := emulation.SetDefaultBackgroundColorOverride()
-		if err := action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to reset screenshot background color: %w", err))
-		}
-	}
-
-	// TODO: Reset viewport
-
-	// Save screenshot capture to file
-	// TODO: we should not write to disk here but put it on some queue for async disk writes
-	if parsedOpts.Path != "" {
-		dir := filepath.Dir(parsedOpts.Path)
-		if err := os.MkdirAll(dir, 0775); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to create directory for screenshot of page '%s': %w", h.frame.manager.MainFrame().URL(), err))
-		}
-		if err := ioutil.WriteFile(parsedOpts.Path, buf, 0664); err != nil {
-			k6common.Throw(rt, fmt.Errorf("unable to save screenshot of page '%s' to file: %w", h.frame.manager.MainFrame().URL(), err))
-		}
-	}
-
-	return rt.NewArrayBuffer(buf)
+	return rt.NewArrayBuffer(*buf)
 }
 
 func (h *ElementHandle) ScrollIntoViewIfNeeded(opts goja.Value) {
@@ -1413,15 +1333,7 @@ func (h *ElementHandle) ScrollIntoViewIfNeeded(opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %v", err))
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
-		pageFn := rt.ToValue(`(element) => {
-			element.scrollIntoViewIfNeeded(true);
-			return [window.scrollX, window.scrollY];
-		}`)
-		return h.execCtx.evaluate(apiCtx, true, true, pageFn, rt.ToValue(h))
-	}
-	actFn := elementHandleActionFn(h, []string{"visible", "stable"}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
-	_, err := callApiWithTimeout(h.ctx, actFn, actionOpts.Timeout)
+	err := h.waitAndScrollIntoViewIfNeeded(h.ctx, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
 	if err != nil {
 		k6common.Throw(rt, err)
 	}
@@ -1473,7 +1385,7 @@ func (h *ElementHandle) SetChecked(checked bool, opts goja.Value) {
 	parsedOpts := NewElementHandleSetCheckedOptions(h.defaultTimeout())
 	err := parsedOpts.Parse(h.ctx, opts)
 	if err != nil {
-		k6common.Throw(rt, errors.Errorf("failed parsing options: %v", err))
+		k6common.Throw(rt, fmt.Errorf("failed parsing options: %v", err))
 	}
 
 	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
@@ -1490,7 +1402,7 @@ func (h *ElementHandle) SetChecked(checked bool, opts goja.Value) {
 func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
 	// TODO: implement
 	rt := k6common.GetRuntime(h.ctx)
-	k6common.Throw(rt, errors.Errorf("ElementHandle.setInputFiles() has not been implemented yet!"))
+	k6common.Throw(rt, fmt.Errorf("ElementHandle.setInputFiles() has not been implemented yet!"))
 }
 
 func (h *ElementHandle) Tap(opts goja.Value) {
@@ -1498,7 +1410,7 @@ func (h *ElementHandle) Tap(opts goja.Value) {
 	parsedOpts := NewElementHandleTapOptions(h.defaultTimeout())
 	err := parsedOpts.Parse(h.ctx, opts)
 	if err != nil {
-		k6common.Throw(rt, errors.Errorf("failed parsing options: %v", err))
+		k6common.Throw(rt, fmt.Errorf("failed parsing options: %v", err))
 	}
 
 	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
@@ -1553,11 +1465,11 @@ func (h *ElementHandle) WaitForElementState(state string, opts goja.Value) {
 	parsedOpts := NewElementHandleWaitForElementStateOptions(time.Duration(h.frame.manager.timeoutSettings.timeout()) * time.Second)
 	err := parsedOpts.Parse(h.ctx, opts)
 	if err != nil {
-		k6common.Throw(rt, errors.Errorf("failed parsing options: %v", err))
+		k6common.Throw(rt, fmt.Errorf("failed parsing options: %v", err))
 	}
 	_, err = h.waitForElementState(h.ctx, []string{state}, parsedOpts.Timeout)
 	if err != nil {
-		k6common.Throw(rt, errors.Errorf("error while waiting for state: %v", err))
+		k6common.Throw(rt, fmt.Errorf("error while waiting for state: %v", err))
 	}
 }
 
