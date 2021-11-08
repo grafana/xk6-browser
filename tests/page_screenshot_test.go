@@ -54,7 +54,7 @@ func testPageScreenshotFullpage(t *testing.T, bt *browsertest.BrowserTest) {
             document.documentElement.style.margin = '0';
             document.documentElement.style.padding = '0';
             const div = document.createElement('div');
-            div.style.width = '1200px';
+            div.style.width = '1280px';
             div.style.height = '8000px';
             div.style.background = 'linear-gradient(red, blue)';
             document.body.appendChild(div);
