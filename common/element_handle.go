@@ -1303,7 +1303,7 @@ func (h *ElementHandle) Screenshot(opts goja.Value) goja.ArrayBuffer {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
 	}
 
-	s := NewScreenshotter(h.ctx)
+	s := newScreenshotter(h.ctx)
 	buf, err := s.screenshotElement(h, parsedOpts)
 	if err != nil {
 		k6common.Throw(rt, err)

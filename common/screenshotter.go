@@ -37,18 +37,15 @@ import (
 	k6common "go.k6.io/k6/js/common"
 )
 
-type Screenshotter struct {
+type screenshotter struct {
 	ctx context.Context
 }
 
-func NewScreenshotter(ctx context.Context) *Screenshotter {
-	s := Screenshotter{
-		ctx: ctx,
-	}
-	return &s
+func newScreenshotter(ctx context.Context) *screenshotter {
+	return &screenshotter{ctx}
 }
 
-func (s *Screenshotter) fullPageSize(p *Page) (*Size, error) {
+func (s *screenshotter) fullPageSize(p *Page) (*Size, error) {
 	rt := k6common.GetRuntime(s.ctx)
 	result, err := p.frameManager.mainFrame.mainExecutionContext.evaluate(s.ctx, true, true, rt.ToValue(`
         () => {
@@ -82,7 +79,7 @@ func (s *Screenshotter) fullPageSize(p *Page) (*Size, error) {
 	}, nil
 }
 
-func (s *Screenshotter) originalViewportSize(p *Page) (*Size, *Size, error) {
+func (s *screenshotter) originalViewportSize(p *Page) (*Size, *Size, error) {
 	rt := k6common.GetRuntime(s.ctx)
 	originalViewportSize := p.viewportSize()
 	viewportSize := originalViewportSize
@@ -105,20 +102,19 @@ func (s *Screenshotter) originalViewportSize(p *Page) (*Size, *Size, error) {
 	return &viewportSize, &originalViewportSize, nil
 }
 
-func (s *Screenshotter) restoreViewport(p *Page, originalViewport *Size) error {
+func (s *screenshotter) restoreViewport(p *Page, originalViewport *Size) error {
 	if originalViewport != nil {
 		return p.setViewportSize(originalViewport)
 	}
 	return p.resetViewport()
 }
 
-func (s *Screenshotter) screenshot(session *Session, documentRect *Rect, viewportRect *Rect, format string, omitBackground bool, quality int64, path string) (*[]byte, error) {
+func (s *screenshotter) screenshot(session *Session, documentRect *Rect, viewportRect *Rect, format ImageFormat, omitBackground bool, quality int64, path string) (*[]byte, error) {
 	var (
-		buf     []byte
-		clip    *cdppage.Viewport
-		capture *cdppage.CaptureScreenshotParams
+		buf  []byte
+		clip *cdppage.Viewport
 	)
-	capture = cdppage.CaptureScreenshot()
+	capture := cdppage.CaptureScreenshot()
 
 	shouldSetDefaultBackground := omitBackground && format == "png"
 	if shouldSetDefaultBackground {
@@ -132,7 +128,7 @@ func (s *Screenshotter) screenshot(session *Session, documentRect *Rect, viewpor
 	// Add common options
 	capture.WithQuality(quality)
 	switch format {
-	case "jpeg":
+	case ImageFormatJPEG:
 		capture.WithFormat(cdppage.CaptureScreenshotFormatJpeg)
 	default:
 		capture.WithFormat(cdppage.CaptureScreenshotFormatPng)
@@ -199,16 +195,8 @@ func (s *Screenshotter) screenshot(session *Session, documentRect *Rect, viewpor
 	return &buf, nil
 }
 
-func (s *Screenshotter) screenshotElement(h *ElementHandle, opts *ElementHandleScreenshotOptions) (*[]byte, error) {
+func (s *screenshotter) screenshotElement(h *ElementHandle, opts *ElementHandleScreenshotOptions) (*[]byte, error) {
 	format := opts.Format
-
-	// Infer file format by path
-	if opts.Path != "" && opts.Format != "png" && opts.Format != "jpeg" {
-		if strings.HasSuffix(opts.Path, ".jpg") || strings.HasSuffix(opts.Path, ".jpeg") {
-			format = "jpeg"
-		}
-	}
-
 	viewportSize, originalViewportSize, err := s.originalViewportSize(h.frame.page)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get original viewport size: %w", err)
@@ -277,7 +265,7 @@ func (s *Screenshotter) screenshotElement(h *ElementHandle, opts *ElementHandleS
 	return buf, nil
 }
 
-func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[]byte, error) {
+func (s *screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[]byte, error) {
 	format := opts.Format
 
 	// Infer file format by path
@@ -355,7 +343,7 @@ func (s *Screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 	return s.screenshot(p.session, nil, viewportRect, format, opts.OmitBackground, opts.Quality, opts.Path)
 }
 
-func (s *Screenshotter) trimClipToSize(clip *Rect, size *Size) (*Rect, error) {
+func (s *screenshotter) trimClipToSize(clip *Rect, size *Size) (*Rect, error) {
 	p1 := Position{
 		X: math.Max(0, math.Min(clip.X, size.Width)),
 		Y: math.Max(0, math.Min(clip.Y, size.Height)),

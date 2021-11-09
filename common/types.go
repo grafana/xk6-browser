@@ -144,6 +144,49 @@ type Geolocation struct {
 	Accurracy float64 `js:"accurracy"`
 }
 
+// ImageFormat represents an image file format
+type ImageFormat string
+
+// Valid image format options
+const (
+	ImageFormatJPEG ImageFormat = "jpeg"
+	ImageFormatPNG  ImageFormat = "png"
+)
+
+func (f ImageFormat) String() string {
+	return imageFormatToString[f]
+}
+
+var imageFormatToString = map[ImageFormat]string{
+	ImageFormatJPEG: "jpeg",
+	ImageFormatPNG:  "png",
+}
+
+var imageFormatToID = map[string]ImageFormat{
+	"jpeg": ImageFormatJPEG,
+	"png":  ImageFormatPNG,
+}
+
+// MarshalJSON marshals the enum as a quoted JSON string
+func (f ImageFormat) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(imageFormatToString[f])
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON unmarshals a quoted JSON string to the enum value
+func (f *ImageFormat) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	// Note that if the string cannot be found then it will be set to the zero value.
+	*f = imageFormatToID[j]
+	return nil
+}
+
 type LifecycleEvent int
 
 const (

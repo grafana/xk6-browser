@@ -64,9 +64,7 @@ func testElementHandleScreenshot(t *testing.T, bt *browsertest.BrowserTest) {
     `))
 
 	elem := p.Query("div")
-	buf := elem.Screenshot(bt.Runtime.ToValue(struct {
-		Path string `js:"path"`
-	}{Path: "eh-screenshot.png"}))
+	buf := elem.Screenshot(nil)
 
 	reader := bytes.NewReader(buf.Bytes())
 	img, err := png.Decode(reader)

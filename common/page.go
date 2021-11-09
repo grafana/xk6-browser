@@ -575,7 +575,7 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 	if err := parsedOpts.Parse(p.ctx, opts); err != nil {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
 	}
-	s := NewScreenshotter(p.ctx)
+	s := newScreenshotter(p.ctx)
 	buf, err := s.screenshotPage(p, parsedOpts)
 	if err != nil {
 		k6common.Throw(rt, fmt.Errorf("cannot capture screenshot: %w", err))
