@@ -24,14 +24,14 @@
 
 **xk6-browser** is a k6 extension adding support for automation of browsers via the [Chrome Devtools Protocol](https://chromedevtools.github.io/devtools-protocol/) (CDP).
 
-Special acknowledgement to the authors of [Playwright](https://playwright.dev/) and [Puppeteer](https://github.com/puppeteer/puppeteer) for their trailblazing work in this area. This project is heavily influenced and in some regards based on the code of those projects.
+Special acknowledgment to the authors of [Playwright](https://playwright.dev/) and [Puppeteer](https://github.com/puppeteer/puppeteer) for their trailblazing work in this area. This project is heavily influenced and in some regards based on the code of those projects.
 
 ## Goals
 
-- Bring browser automation to the k6 testing platform while supporting core k6 features like VU executors, scenarios, metrics, checks, thresholds, logging, DNS remapping, IP block lists etc.
+- Bring browser automation to the k6 testing platform while supporting core k6 features like VU executors, scenarios, metrics, checks, thresholds, logging, DNS remapping, IP blocklists, etc.
 - Test stability as the top priority by supporting non-flaky [selectors](https://playwright.dev/docs/selectors) combined with [auto-waiting](https://playwright.dev/docs/actionability/) for actions just like Playwright.
-- Aim for rough API compatibility with [Playwright](https://github.com/microsoft/playwright). The reason for this is two-fold; for one we don't want users to have to learn a completley new API just to use xk6-browser, and secondly it opens up for using the [Playwright RPC server](https://github.com/mxschmitt/playwright-go) as an optional backend for xk6-browser should we decide to support that in the future.
-- Support for Chromium compatible browsers first, and eventually Firefox and WebKit based browsers.
+- Aim for rough API compatibility with [Playwright](https://github.com/microsoft/playwright). The reason for this is two-fold; for one we don't want users to have to learn a completely new API just to use xk6-browser, and secondly, it opens up for using the [Playwright RPC server](https://github.com/mxschmitt/playwright-go) as an optional backend for xk6-browser should we decide to support that in the future.
+- Support for Chromium compatible browsers first, and eventually Firefox and WebKit-based browsers.
 
 ## FAQ
 
@@ -42,13 +42,13 @@ Special acknowledgement to the authors of [Playwright](https://playwright.dev/) 
     No, not yet. Once the codebase is deemed production ready we'll add support for browser-based testing in k6 Cloud.
 
 - **It doesn't work with my Chromium/Chrome version, why?**
-    CDP evolves and there are differences between different versions of Chromium, some times quite subtle. The codebase is continuously tested with the two latest major releases of Google Chrome.
+    CDP evolves and there are differences between different versions of Chromium, sometimes quite subtle. The codebase is continuously tested with the two latest major releases of Google Chrome.
 
-- **Are Firefox or WebKit based browsers supported?**
-    Not yet. There are differences in CDP coverage between Chromium, Firefox and WebKit based browsers. xk6-browser is initially only targetting Chromium based browsers.
+- **Are Firefox or WebKit-based browsers supported?**
+    Not yet. There are differences in CDP coverage between Chromium, Firefox, and WebKit-based browsers. xk6-browser is initially only targetting Chromium-based browsers.
 
 - **Are all features of Playwright supported?**
-    No. Playwright's API is pretty big and some of the functionality only makes sense if they're implemented as async operations: event listening, request interception, waiting for events etc. As [k6 doesn't have a VU event-loop](https://github.com/grafana/k6/issues/882) yet, the xk6-browser API is synchronous right now and thus lacking some of the functionality that requires asynchronicity.
+    No. Playwright's API is pretty big and some of the functionality only makes sense if they're implemented as async operations: event listening, request interception, waiting for events, etc. As [k6 doesn't have a VU event-loop](https://github.com/grafana/k6/issues/882) yet, the xk6-browser API is synchronous right now and thus lacks some of the functionality that requires asynchronicity.
 
 ## Install
 
