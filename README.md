@@ -19,7 +19,7 @@
 </p>
 
 <br/>
-<img src="assets/github-hr.png" alt="---" />
+<img src="assets/github-hr.svg" height="32" alt="---" />
 <br/>
 
 **xk6-browser** is a k6 extension adding support for automation of browsers via the [Chrome Devtools Protocol](https://chromedevtools.github.io/devtools-protocol/) (CDP).
