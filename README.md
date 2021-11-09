@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/grafana/xk6-browser/releases"><img src="https://img.shields.io/github/release/grafana/xk6-browser.svg" alt="Github release"></a>
-  <a href="https://github.com/grafana/xk6-browser/actions/workflows/all.yml"><img src="https://github.com/grafana/xk6-browser/actions/workflows/all.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/grafana/xk6-browser/actions/workflows/all.yaml"><img src="https://github.com/grafana/xk6-browser/actions/workflows/all.yaml/badge.svg" alt="Build status"></a>
   <a href="https://goreportcard.com/report/github.com/grafana/xk6-browser"><img src="https://goreportcard.com/badge/github.com/grafana/xk6-browser" alt="Go Report Card"></a>
   <br>
   <a href="https://twitter.com/k6_io"><img src="https://img.shields.io/badge/twitter-@k6_io-55acee.svg" alt="@k6_io on Twitter"></a>
