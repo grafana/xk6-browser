@@ -107,7 +107,7 @@ import launcher from "k6/x/browser";
 export default function() {
     const browser = launcher.launch('chromium');
     const context = browser.newContext({
-        acceptDownloads: false,             // Whether to accepts downloading of files by defaul
+        acceptDownloads: false,             // Whether to accept downloading of files by default
         bypassCSP: false,                   // Whether to bypass content-security-policy rules
         colorScheme: 'light',               // Preferred color scheme of browser ('light', 'dark' or 'no-preference')
         deviceScaleFactor: 1.0,             // Device scaling factor
@@ -119,7 +119,7 @@ export default function() {
         isMobile: false,                    // Simulate mobile device or not
         javaScriptEnabled: true,            // Should JavaScript be enabled or not
         locale: 'en-US',                    // The locale to set
-        offline: false,                     // Whether to put browser in offline or not
+        offline: false,                     // Whether to put browser in offline mode or not
         permissions: ['midi'],              // Permisions to grant by default
         reducedMotion: 'no-preference',     // Indicate to browser whether it should try to reduce motion/animations
         screen: {width: 800, height: 600},  // Set default screen size
@@ -298,7 +298,7 @@ Currently only Chromium is supported, and the [Playwright API](https://playwrigh
 
 | Class | Support | Missing APIs |
 |   :---   | :--- | :--- |
-| [Accessibility](https://playwright.dev/docs/api/class-accessibility) | :warning: | [`snapshot()`](https://playwright.dev/docs/api/class-accessibility#accessibilitysnapshotoptions) | 
+| [Accessibility](https://playwright.dev/docs/api/class-accessibility) | :warning: | [`snapshot()`](https://playwright.dev/docs/api/class-accessibility#accessibilitysnapshotoptions) |
 | [Browser](https://playwright.dev/docs/api/class-browser) | :white_check_mark: | [`on()`](https://playwright.dev/docs/api/class-browser#browser-event-disconnected) (dependent on event-loop support in k6), [`startTracing()`](https://playwright.dev/docs/api/class-browser#browser-start-tracing), [`stopTracing()`](https://playwright.dev/docs/api/class-browser#browser-stop-tracing) |
 | [BrowserContext](https://playwright.dev/docs/api/class-browsercontext) | :white_check_mark: | [`addCookies()`](https://playwright.dev/docs/api/class-browsercontext#browsercontextaddcookiescookies), [`backgroundPages()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-background-pages), [`cookies()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-cookies), [`exposeBinding()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-expose-binding), [`exposeFunction()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-expose-function), [`newCDPSession()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-new-cdp-session), [`on()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-event-background-page) (dependent on event-loop support in k6), [`route()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-route) (dependent on event-loop support in k6), [`serviceWorkers()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-service-workers), [`storageState()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-storage-state), [`unroute()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-unroute) (dependent on event-loop support in k6), [`waitForEvent()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-wait-for-event) (dependent on event-loop support in k6), [`tracing`](https://playwright.dev/docs/api/class-browsercontext#browser-context-tracing) |
 | [BrowserServer](https://playwright.dev/docs/api/class-browserserver) | :warning: | All |
