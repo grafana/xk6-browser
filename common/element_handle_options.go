@@ -342,6 +342,7 @@ func (o *ElementHandleScreenshotOptions) Parse(ctx context.Context, opts goja.Va
 			case "type":
 				if f, ok := imageFormatToID[opts.Get(k).String()]; ok {
 					o.Format = f
+					formatSpecified = true
 				}
 			case "timeout":
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
