@@ -38,6 +38,9 @@ Special acknowledgement to the authors of [Playwright](https://playwright.dev/) 
 - **Is this production ready?**
     No, not yet. We're focused on making the extension stable and reliable, as that's our top priority, before adding more features.
 
+- **Is this extension supported in k6 Cloud?**
+    No, not yet. Once the codebase is deemed production ready we'll add support for browser-based testing in k6 Cloud.
+
 - **It doesn't work with my Chromium/Chrome version, why?**
     CDP evolves and there are differences between different versions of Chromium, some times quite subtle. The codebase is continuously tested with the two latest major releases of Google Chrome.
 
