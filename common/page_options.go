@@ -42,12 +42,12 @@ type PageReloadOptions struct {
 }
 
 type PageScreenshotOptions struct {
-	Clip           page.Viewport `json:"clip"`
-	Path           string        `json:"path"`
-	Format         string        `json:"format"`
-	FullPage       bool          `json:"fullPage"`
-	OmitBackground bool          `json:"omitBackground"`
-	Quality        int64         `json:"quality"`
+	Clip           *page.Viewport `json:"clip"`
+	Path           string         `json:"path"`
+	Format         string         `json:"format"`
+	FullPage       bool           `json:"fullPage"`
+	OmitBackground bool           `json:"omitBackground"`
+	Quality        int64          `json:"quality"`
 }
 
 func NewPageEmulateMediaOptions(defaultMedia MediaType, defaultColorScheme ColorScheme, defaultReducedMotion ReducedMotion) *PageEmulateMediaOptions {
@@ -106,7 +106,7 @@ func (o *PageReloadOptions) Parse(ctx context.Context, opts goja.Value) error {
 
 func NewPageScreenshotOptions() *PageScreenshotOptions {
 	return &PageScreenshotOptions{
-		Clip:           page.Viewport{X: 0, Y: 0, Width: 0, Height: 0, Scale: 1},
+		Clip:           nil,
 		Path:           "",
 		Format:         "png",
 		FullPage:       false,
@@ -124,10 +124,13 @@ func (o *PageScreenshotOptions) Parse(ctx context.Context, opts goja.Value) erro
 			case "clip":
 				var c map[string]float64
 				if rt.ExportTo(opts.Get(k), &c) != nil {
-					o.Clip.X = c["x"]
-					o.Clip.Y = c["y"]
-					o.Clip.Width = c["width"]
-					o.Clip.Height = c["height"]
+					o.Clip = &page.Viewport{
+						X:      c["x"],
+						Y:      c["y"],
+						Width:  c["width"],
+						Height: c["height"],
+						Scale:  1,
+					}
 				}
 			case "fullPage":
 				o.FullPage = opts.Get(k).ToBoolean()
