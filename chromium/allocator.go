@@ -30,7 +30,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -97,7 +96,7 @@ func (a *Allocator) buildCmdArgs(userDataDir *string, removeDir *bool) ([]string
 		args = append(args, "--no-sandbox")
 	}
 	if _, ok := a.initFlags["remote-debugging-port"]; !ok {
-		args = append(args, "--remote-debugging-port=0")
+		args = append(args, "--remote-debugging-port=9222")
 	}
 
 	// Force the first page to be blank, instead of the welcome page;
@@ -108,7 +107,8 @@ func (a *Allocator) buildCmdArgs(userDataDir *string, removeDir *bool) ([]string
 }
 
 func (a *Allocator) findExecPath() {
-	for _, path := range [...]string{
+	a.execPath = "/Users/inanc/Library/Caches/ms-playwright/chromium-930007/chrome-mac/Chromium.app/Contents/MacOS/Chromium"
+	/* for _, path := range [...]string{
 		// Unix-like
 		"headless_shell",
 		"headless-shell",
@@ -137,7 +137,7 @@ func (a *Allocator) findExecPath() {
 			a.execPath = path
 			break
 		}
-	}
+	} */
 }
 
 // readOutput grabs the websocket address from chrome's output, returning as
