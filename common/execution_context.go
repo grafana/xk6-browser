@@ -110,6 +110,12 @@ func (e *ExecutionContext) evaluate(apiCtx context.Context, forceCallable bool, 
 
 		var remoteObject *runtime.RemoteObject
 		var exceptionDetails *runtime.ExceptionDetails
+		fmt.Printf(`
+		SourceURL: %q
+		e.id: %d
+		returnByValue: %v
+		after calling Evaluate: %v
+		`, expressionWithSourceURL, e.id, returnByValue, runtime.Evaluate(expressionWithSourceURL))
 		action := runtime.Evaluate(expressionWithSourceURL).
 			WithContextID(e.id).
 			WithReturnByValue(returnByValue).
