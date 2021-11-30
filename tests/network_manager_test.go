@@ -21,6 +21,7 @@
 package tests
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/grafana/xk6-browser/testutils/browsertest"
@@ -42,7 +43,7 @@ func TestDataURLSkipRequest(t *testing.T) {
 
 	var gotMsg bool
 	for _, evt := range logHook.Drain() {
-		if evt.Message == "skipped request handling of data URL" {
+		if strings.Contains(evt.Message, "skipped request handling of data URL") {
 			gotMsg = true
 		}
 	}

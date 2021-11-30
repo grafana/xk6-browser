@@ -69,14 +69,12 @@ type NetworkManager struct {
 // NewNetworkManager creates a new network manager
 func NewNetworkManager(
 	ctx context.Context, session *Session, manager *FrameManager, parent *NetworkManager,
+	logger *Logger,
 ) (*NetworkManager, error) {
-	state := k6lib.GetState(ctx)
 	m := NetworkManager{
-		BaseEventEmitter: NewBaseEventEmitter(ctx),
-		ctx:              ctx,
-		// TODO: Pass an internal logger instead of basing it on k6's logger?
-		// See https://github.com/grafana/xk6-browser/issues/54
-		logger:                         NewLogger(ctx, state.Logger, false, nil),
+		BaseEventEmitter:               NewBaseEventEmitter(ctx),
+		ctx:                            ctx,
+		logger:                         logger,
 		session:                        session,
 		parent:                         parent,
 		frameManager:                   manager,
@@ -219,7 +217,7 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response) {
 }
 
 func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdp.MonotonicTime) {
-	resp := NewHTTPResponse(m.ctx, req, redirectResponse, timestamp)
+	resp := NewHTTPResponse(m.ctx, req, redirectResponse, timestamp, m.logger)
 	req.response = resp
 	req.redirectChain = append(req.redirectChain, req)
 
@@ -343,16 +341,16 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 		frame = m.frameManager.getFrameByID(event.FrameID)
 	}
 	if frame == nil {
-		m.logger.Debugf("NetworkManager", "frame is nil")
+		m.logger.Debugf("NetworkManager frame is nil")
 	}
 
 	req, err := NewRequest(m.ctx, event, frame, redirectChain, interceptionID, m.userReqInterceptionEnabled)
 	if err != nil {
-		m.logger.Errorf("NetworkManager", "cannot create Request: %s", err)
+		m.logger.Errorf("NetworkManager cannot create Request: %s", err)
 		return
 	}
 	if req.url.Scheme == "data" {
-		m.logger.Debugf("NetworkManager", "skipped request handling of data URL")
+		m.logger.Debugf("NetworkManager skipped request handling of data URL")
 		return
 	}
 	m.reqsMu.Lock()
@@ -400,7 +398,7 @@ func (m *NetworkManager) onResponseReceived(event *network.EventResponseReceived
 	if req == nil {
 		return
 	}
-	resp := NewHTTPResponse(m.ctx, req, event.Response, event.Timestamp)
+	resp := NewHTTPResponse(m.ctx, req, event.Response, event.Timestamp, m.logger)
 	req.response = resp
 	if req.url.Scheme != "data" {
 		m.emitResponseMetrics(resp)

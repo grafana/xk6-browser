@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-browser/api"
@@ -162,9 +161,8 @@ func (b *BrowserType) Name() string {
 // makes an extension wide logger
 func makeLogger(ctx context.Context, launchOpts *common.LaunchOptions) (*common.Logger, error) {
 	var (
-		k6Logger            = k6lib.GetState(ctx).Logger
-		reCategoryFilter, _ = regexp.Compile(launchOpts.LogCategoryFilter)
-		logger              = common.NewLogger(ctx, k6Logger, launchOpts.Debug, reCategoryFilter)
+		k6Logger = k6lib.GetState(ctx).Logger
+		logger   = common.NewLogger(k6Logger)
 	)
 	// set the log level from the launch options (usually from a script's options).
 	if launchOpts.Debug {
@@ -177,8 +175,8 @@ func makeLogger(ctx context.Context, launchOpts *common.LaunchOptions) (*common.
 		}
 		logger.SetLevel(lvl)
 	}
-	// if _, ok := os.LookupEnv("XK6_BROWSER_CALLER"); ok {
-	// 	logger.ReportCaller()
-	// }
+	if c := os.Getenv("XK6_BROWSER_CALLER"); c == "1" || c == "true" {
+		logger.EnableReportCaller()
+	}
 	return logger, nil
 }

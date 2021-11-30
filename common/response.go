@@ -34,7 +34,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-browser/api"
 	k6common "go.k6.io/k6/js/common"
-	k6lib "go.k6.io/k6/lib"
 )
 
 // Ensure Response implements the api.Response interface
@@ -81,13 +80,15 @@ type Response struct {
 }
 
 // NewHTTPResponse creates a new HTTP response
-func NewHTTPResponse(ctx context.Context, req *Request, resp *network.Response, timestamp *cdp.MonotonicTime) *Response {
-	state := k6lib.GetState(ctx)
+func NewHTTPResponse(
+	ctx context.Context,
+	req *Request, resp *network.Response,
+	timestamp *cdp.MonotonicTime,
+	logger *Logger,
+) *Response {
 	r := Response{
-		ctx: ctx,
-		// TODO: Pass an internal logger instead of basing it on k6's logger?
-		// See https://github.com/grafana/xk6-browser/issues/54
-		logger:            NewLogger(ctx, state.Logger, false, nil),
+		ctx:               ctx,
+		logger:            logger,
 		request:           req,
 		remoteAddress:     &RemoteAddress{IPAddress: resp.RemoteIPAddress, Port: resp.RemotePort},
 		securityDetails:   nil,
@@ -201,11 +202,11 @@ func (r *Response) bodySize() int64 {
 		if err == nil {
 			return cl
 		}
-		r.logger.Warnf("cdp", "error parsing content-length header: %s", err)
+		r.logger.Warnf("cdp error parsing content-length header: %s", err)
 	}
 
 	if err := r.fetchBody(); err != nil {
-		r.logger.Warnf("cdp", "error fetching response body for '%s': %s", r.url, err)
+		r.logger.Warnf("cdp error fetching response body for '%s': %s", r.url, err)
 	}
 
 	r.bodyMu.RLock()

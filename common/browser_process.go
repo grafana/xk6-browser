@@ -79,13 +79,13 @@ func (p *BrowserProcess) didLoseConnection() {
 
 // GracefulClose triggers a graceful closing of the browser process
 func (p *BrowserProcess) GracefulClose() {
-	p.logger.Debugf("Browser:GracefulClose", "")
+	p.logger.Debugf("Browser:GracefulClose")
 	close(p.processIsGracefullyClosing)
 }
 
 // Terminate triggers the termination of the browser process
 func (p *BrowserProcess) Terminate() {
-	p.logger.Debugf("Browser:Close", "browserProc terminate")
+	p.logger.Debugf("Browser:Close browserProc terminate")
 	p.cancel()
 }
 

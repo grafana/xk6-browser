@@ -78,7 +78,7 @@ func TestSessionCreateSession(t *testing.T) {
 		ctx := context.Background()
 		url, _ := url.Parse(server.ServerHTTP.URL)
 		wsURL := fmt.Sprintf("ws://%s/cdp", url.Host)
-		conn, err := NewConnection(ctx, wsURL, NewLogger(ctx, NullLogger(), false, nil))
+		conn, err := NewConnection(ctx, wsURL, NewLogger(NullLogger()))
 
 		if assert.NoError(t, err) {
 			session, err := conn.createSession(&target.Info{

@@ -309,7 +309,7 @@ func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 
 	frame := req.getFrame()
 	if frame == nil {
-		m.logger.Debugf("FrameManager:requestFailed", "frame is nil")
+		m.logger.Debugf("FrameManager:requestFailed frame is nil")
 		return
 	}
 	frame.deleteRequest(req.getID())
@@ -320,7 +320,7 @@ func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 	case rc <= 10:
 		for reqID := range frame.inflightRequests {
 			req := frame.requestByID(reqID)
-			m.logger.Debugf("FrameManager:requestFailed", "reqID:%s inflightURL:%s frameID:%s", reqID, req.url, frame.id)
+			m.logger.Debugf("FrameManager:requestFailed reqID:%s inflightURL:%s frameID:%s", reqID, req.url, frame.id)
 		}
 	}
 
