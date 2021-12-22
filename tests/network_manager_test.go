@@ -22,7 +22,6 @@ package tests
 
 import (
 	"testing"
-	"time"
 
 	"github.com/grafana/xk6-browser/common"
 	"github.com/stretchr/testify/assert"
@@ -46,13 +45,9 @@ func TestMetricsEmission(t *testing.T) {
 	tb := newTestBrowser(t, withHTTPServer())
 
 	url := tb.URL("/get")
-	browserLoadedTags := map[string]string{
-		"group": "",
-		"url":   "about:blank",
-	}
 	browserTags := map[string]string{
 		"group": "",
-		"url":   url,
+		"url":   "about:blank",
 	}
 	httpTags := map[string]string{
 		"method":              "GET",
@@ -65,10 +60,8 @@ func TestMetricsEmission(t *testing.T) {
 		"from_service_worker": "false",
 	}
 	expMetricTags := map[string]map[string]string{
-		common.BrowserDOMContentLoaded.Name:     browserLoadedTags,
-		common.BrowserLoaded.Name:               browserLoadedTags,
-		common.BrowserFirstPaint.Name:           browserTags,
-		common.BrowserFirstContentfulPaint.Name: browserTags,
+		common.BrowserDOMContentLoaded.Name: browserTags,
+		common.BrowserLoaded.Name:           browserTags,
 		k6metrics.DataSentName: map[string]string{
 			"group":  "",
 			"method": "GET",
@@ -84,15 +77,11 @@ func TestMetricsEmission(t *testing.T) {
 	}
 
 	p := tb.NewPage(nil)
-	resp := p.Goto(url, tb.rt.ToValue(struct {
-		WaitUntil string `js:"waitUntil"`
-	}{WaitUntil: "networkidle"}))
+	resp := p.Goto(url, nil)
 	require.NotNil(t, resp)
 
-	// TODO: Remove this sleep. It's only needed to wait for all metrics to be
-	// emitted, but this should be synchronized with waitUntil
-	// load/networkidle/domcontentloaded. Without this the test would be flaky.
-	time.Sleep(100 * time.Millisecond)
+	// Wait for all metrics to be emitted
+	p.WaitForLoadState("networkidle", nil)
 
 	bufSamples := k6stats.GetBufferedSamples(tb.samples)
 
