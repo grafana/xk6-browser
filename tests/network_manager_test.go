@@ -31,6 +31,7 @@ import (
 )
 
 func TestDataURLSkipRequest(t *testing.T) {
+	t.Parallel()
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
@@ -42,6 +43,7 @@ func TestDataURLSkipRequest(t *testing.T) {
 }
 
 func TestMetricsEmission(t *testing.T) {
+	t.Parallel()
 	tb := newTestBrowser(t, withHTTPServer())
 
 	url := tb.URL("/get")
