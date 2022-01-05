@@ -185,15 +185,6 @@ func (b *Browser) initEvents() error {
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
 		return fmt.Errorf("unable to execute %T: %w", action, err)
 	}
-
-	// Target.setAutoAttach has a bug where it does not wait for new Targets being attached.
-	// However making a dummy call afterwards fixes this.
-	// This can be removed after https://chromium-review.googlesource.com/c/chromium/src/+/2885888 lands in stable.
-	action2 := target.GetTargetInfo()
-	if _, err := action2.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
-		return fmt.Errorf("unable to execute %T: %w", action, err)
-	}
-
 	return nil
 }
 
