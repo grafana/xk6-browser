@@ -38,21 +38,19 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 				el.Click(nil)
 			})
 
-			done := make(chan struct{})
+			done := make(chan struct{}, 1)
 			go func() {
-				defer close(done)
 				require.NotPanics(t, func() {
 					p.WaitForNavigation(tb.rt.ToValue(&common.FrameWaitForNavigationOptions{
 						Timeout: 1000, // 1s
 					}))
 				})
+				done <- struct{}{}
 			}()
 
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
-				// WaitForNavigation is stuck?
-				close(done)
 				t.Fatal("Test timed out")
 			}
 		})
