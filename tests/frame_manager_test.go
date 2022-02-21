@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"net/http"
 	"testing"
 	"time"
 
@@ -10,29 +9,8 @@ import (
 	"github.com/grafana/xk6-browser/common"
 )
 
-//nolint: funlen
 func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 	t.Parallel()
-
-	navHTML := `
-<html>
-  <head>
-    <title>Navigation test within the same document</title>
-  </head>
-  <body>
-    <a id="nav-history" href="#">Navigate with History API</a>
-    <a id="nav-anchor" href="#anchor">Navigate with anchor link</a>
-    <div id="anchor">Some div...</div>
-    <script>
-      const el = document.querySelector('a#nav-history');
-      el.addEventListener('click', function(evt) {
-        evt.preventDefault();
-        history.pushState({}, 'navigated', '/nav2');
-      });
-    </script>
-  </body>
-</html>
-`
 
 	testCases := []struct {
 		name, selector string
@@ -45,15 +23,10 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tb := newTestBrowser(t, withHTTPServer())
-			tb.withHandler("/nav", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/html")
-				_, err := w.Write([]byte(navHTML))
-				require.NoError(t, err)
-			}))
+			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(nil)
 
-			resp := p.Goto(tb.URL("/nav"), nil)
+			resp := p.Goto(tb.staticURL("/nav_in_doc.html"), nil)
 			require.NotNil(t, resp)
 
 			el := p.Query(tc.selector)
