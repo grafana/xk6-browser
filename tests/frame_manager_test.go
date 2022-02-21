@@ -29,13 +29,11 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 			resp := p.Goto(tb.staticURL("/nav_in_doc.html"), nil)
 			require.NotNil(t, resp)
 
-			el := p.Query(tc.selector)
-			require.NotNil(t, el)
 			// A click right away could possibly trigger navigation before we
 			// had a chance to call WaitForNavigation below, so give it some
 			// time to simulate the JS overhead, waiting for XHR response, etc.
 			time.AfterFunc(200*time.Millisecond, func() {
-				el.Click(nil)
+				p.Click(tc.selector, nil)
 			})
 
 			done := make(chan struct{}, 1)
