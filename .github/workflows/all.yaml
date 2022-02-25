@@ -15,6 +15,7 @@ defaults:
 
 env:
   APP_NAME: "xk6-browser"
+  XK6_BROWSER_LOG: "trace"
 
 jobs:
   deps:
