@@ -30,17 +30,10 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/grafana/xk6-browser/api"
-	"github.com/grafana/xk6-browser/keyboardlayout"
+	"github.com/grafana/xk6-browser/keyboard"
 )
 
 var _ api.Keyboard = &Keyboard{}
-
-const (
-	ModifierKeyAlt int64 = 1 << iota
-	ModifierKeyControl
-	ModifierKeyMeta
-	ModifierKeyShift
-)
 
 // Keyboard represents a keyboard input device.
 // Each Page has a publicly accessible Keyboard.
@@ -48,10 +41,9 @@ type Keyboard struct {
 	ctx     context.Context
 	session *Session
 
-	modifiers   int64          // like shift, alt, ctrl, ...
-	pressedKeys map[int64]bool // tracks keys through down() and up()
-	layoutName  string         // us by default
-	layout      keyboardlayout.KeyboardLayout
+	layout      keyboard.Layout
+	modifiers   keyboard.ModifierKey // like shift, alt, ctrl, ...
+	pressedKeys map[int64]bool       // tracks keys through down() and up()
 }
 
 // NewKeyboard returns a new keyboard with a "us" layout.
@@ -60,8 +52,7 @@ func NewKeyboard(ctx context.Context, session *Session) *Keyboard {
 		ctx:         ctx,
 		session:     session,
 		pressedKeys: make(map[int64]bool),
-		layoutName:  "us",
-		layout:      keyboardlayout.GetKeyboardLayout("us"),
+		layout:      keyboard.LayoutFor("us"),
 	}
 }
 
@@ -115,13 +106,13 @@ func (k *Keyboard) Type(text string, opts goja.Value) {
 }
 
 func (k *Keyboard) down(key string) error {
-	keyInput := keyboardlayout.KeyInput(key)
-	if _, ok := k.layout.ValidKeys[keyInput]; !ok {
-		return fmt.Errorf("%q is not a valid key for layout %q", key, k.layoutName)
+	keyInput := keyboard.Key(key)
+	if !k.layout.IsValidKey(keyInput) {
+		return fmt.Errorf("%q is not a valid key for layout %q", key, k.layout.Name)
 	}
 
-	keyDef := k.keyDefinitionFromKey(keyInput)
-	k.modifiers &= ^k.modifierBitFromKeyName(keyDef.Key)
+	keyDef := k.layout.ModifiedKeyDefinition(keyInput, k.modifiers)
+	k.modifiers &= ^k.layout.ModifierBitFromKey(keyDef.Key)
 	text := keyDef.Text
 	_, autoRepeat := k.pressedKeys[keyDef.KeyCode]
 	k.pressedKeys[keyDef.KeyCode] = true
@@ -149,13 +140,14 @@ func (k *Keyboard) down(key string) error {
 }
 
 func (k *Keyboard) up(key string) error {
-	keyInput := keyboardlayout.KeyInput(key)
-	if _, ok := k.layout.ValidKeys[keyInput]; !ok {
-		return fmt.Errorf("'%s' is not a valid key for layout '%s'", key, k.layoutName)
+	keyInput := keyboard.Key(key)
+
+	if !k.layout.IsValidKey(keyInput) {
+		return fmt.Errorf("'%s' is not a valid key for layout '%s'", key, k.layout.Name)
 	}
 
-	keyDef := k.keyDefinitionFromKey(keyInput)
-	k.modifiers &= ^k.modifierBitFromKeyName(keyDef.Key)
+	keyDef := k.layout.ModifiedKeyDefinition(keyInput, k.modifiers)
+	k.modifiers &= ^k.layout.ModifierBitFromKey(keyDef.Key)
 	delete(k.pressedKeys, keyDef.KeyCode)
 
 	action := input.DispatchKeyEvent(input.KeyUp).
@@ -179,66 +171,6 @@ func (k *Keyboard) insertText(text string) error {
 	return nil
 }
 
-func (k *Keyboard) keyDefinitionFromKey(key keyboardlayout.KeyInput) keyboardlayout.KeyDefinition {
-	shift := k.modifiers & ModifierKeyShift
-
-	// Find directly from the keyboard layout
-	srcKeyDef, ok := k.layout.Keys[key]
-	// Try to find based on key value instead of code
-	if !ok {
-		srcKeyDef, ok = k.layout.KeyDefinition(key)
-	}
-	// Try to find with the shift key value
-	if !ok {
-		srcKeyDef = k.layout.ShiftKeyDefinition(key)
-		shift = k.modifiers | ModifierKeyShift
-	}
-
-	var keyDef keyboardlayout.KeyDefinition
-	if srcKeyDef.Key != "" {
-		keyDef.Key = srcKeyDef.Key
-		keyDef.Text = srcKeyDef.Key
-	}
-	if shift != 0 && srcKeyDef.ShiftKeyCode != 0 {
-		keyDef.KeyCode = srcKeyDef.ShiftKeyCode
-	}
-	if srcKeyDef.KeyCode != 0 {
-		keyDef.KeyCode = srcKeyDef.KeyCode
-	}
-	if key != "" {
-		keyDef.Code = string(key)
-	}
-	if srcKeyDef.Location != 0 {
-		keyDef.Location = srcKeyDef.Location
-	}
-	if srcKeyDef.Text != "" {
-		keyDef.Text = srcKeyDef.Text
-	}
-	if shift != 0 && srcKeyDef.ShiftKey != "" {
-		keyDef.Key = srcKeyDef.ShiftKey
-		keyDef.Text = srcKeyDef.ShiftKey
-	}
-	// If any modifiers besides shift are pressed, no text should be sent
-	if k.modifiers & ^ModifierKeyShift != 0 {
-		keyDef.Text = ""
-	}
-	return keyDef
-}
-
-func (k *Keyboard) modifierBitFromKeyName(key string) int64 {
-	switch key {
-	case "Alt":
-		return ModifierKeyAlt
-	case "Control":
-		return ModifierKeyControl
-	case "Meta":
-		return ModifierKeyMeta
-	case "Shift":
-		return ModifierKeyShift
-	}
-	return 0
-}
-
 func (k *Keyboard) press(key string, opts *KeyboardOptions) error {
 	if opts.Delay != 0 {
 		t := time.NewTimer(time.Duration(opts.Delay) * time.Millisecond)
@@ -251,11 +183,11 @@ func (k *Keyboard) press(key string, opts *KeyboardOptions) error {
 	if err := k.down(key); err != nil {
 		return fmt.Errorf("cannot do key down: %w", err)
 	}
+
 	return k.up(key)
 }
 
 func (k *Keyboard) typ(text string, opts *KeyboardOptions) error {
-	layout := keyboardlayout.GetKeyboardLayout(k.layoutName)
 	for _, c := range text {
 		if opts.Delay != 0 {
 			t := time.NewTimer(time.Duration(opts.Delay) * time.Millisecond)
@@ -265,8 +197,8 @@ func (k *Keyboard) typ(text string, opts *KeyboardOptions) error {
 			case <-t.C:
 			}
 		}
-		keyInput := keyboardlayout.KeyInput(c)
-		if _, ok := layout.ValidKeys[keyInput]; ok {
+		keyInput := keyboard.Key(c)
+		if !k.layout.IsValidKey(keyInput) {
 			if err := k.press(string(c), opts); err != nil {
 				return fmt.Errorf("cannot press key: %w", err)
 			}
@@ -276,5 +208,6 @@ func (k *Keyboard) typ(text string, opts *KeyboardOptions) error {
 			return fmt.Errorf("cannot insert text: %w", err)
 		}
 	}
+
 	return nil
 }
