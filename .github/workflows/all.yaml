@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/272-testnavindoc-timeout
     tags:
       - v*
   pull_request:
@@ -17,44 +18,44 @@ env:
   APP_NAME: "xk6-browser"
 
 jobs:
-  deps:
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.x
-      - name: Check code generation
-        run: |
-          go install github.com/alvaroloes/enumer@v1.1.2
-          go install github.com/mailru/easyjson/easyjson@v0.7.7
-          test -z "$(go generate ./... && git status --porcelain)"
+  # deps:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Install Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: 1.17.x
+  #     - name: Check code generation
+  #       run: |
+  #         go install github.com/alvaroloes/enumer@v1.1.2
+  #         go install github.com/mailru/easyjson/easyjson@v0.7.7
+  #         test -z "$(go generate ./... && git status --porcelain)"
 
-  lint:
-    runs-on: ubuntu-20.04
-    env:
-      GO111MODULE: 'on'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.x
-      - name: Install golangci-lint
-        working-directory: /tmp
-        run: |
-          GOLANGCI_LINT_VERSION=$(head -n 1 "${GITHUB_WORKSPACE}/.golangci.yml" | tr -d '# ')
-          go install "github.com/golangci/golangci-lint/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
-      - name: Run linters
-        run: |
-          BASEREV=$(git merge-base HEAD origin/main)
-          echo "Base revision: $BASEREV"
-          golangci-lint run --timeout=3m --out-format=tab --new-from-rev "$BASEREV" ./...
+  # lint:
+  #   runs-on: ubuntu-20.04
+  #   env:
+  #     GO111MODULE: 'on'
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Install Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: 1.17.x
+  #     - name: Install golangci-lint
+  #       working-directory: /tmp
+  #       run: |
+  #         GOLANGCI_LINT_VERSION=$(head -n 1 "${GITHUB_WORKSPACE}/.golangci.yml" | tr -d '# ')
+  #         go install "github.com/golangci/golangci-lint/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+  #     - name: Run linters
+  #       run: |
+  #         BASEREV=$(git merge-base HEAD origin/main)
+  #         echo "Base revision: $BASEREV"
+  #         golangci-lint run --timeout=3m --out-format=tab --new-from-rev "$BASEREV" ./...
 
   test-prev:
     strategy:
@@ -64,6 +65,7 @@ jobs:
         #platform: [ubuntu-20.04, macos-11, windows-2019]
         platform: [ubuntu-20.04]
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -92,11 +94,16 @@ jobs:
           set -x
           go version
           export GOMAXPROCS=2
-          go test -v -p 2 -race -timeout 300s ./...
+          export XK6_BROWSER_LOG=trace
+          # go test -v -p 2 -race -timeout 300s ./...
+          # cd tests
+          # ../gostresst -test.failfast -test.v -test.run='TestWaitForFrameNavigationWithinDocument'
+          go test -v -p 2 -race -failfast -count=1000 -run 'TestPageGoto$' ./tests
 
   test-tip:
     runs-on: ubuntu-20.04
-    continue-on-error: true
+    # continue-on-error: true
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -134,61 +141,65 @@ jobs:
           which go
           go version
           export GOMAXPROCS=2
-          go test -v -p 2 -race -timeout 300s ./...
+          export XK6_BROWSER_LOG=trace
+          # go test -v -p 2 -race -timeout 300s ./...
+          # cd tests
+          # ../gostresst -test.failfast -test.v -test.run='TestWaitForFrameNavigationWithinDocument'
+          go test -v -p 2 -race -failfast -count=1000 -run 'TestPageGoto$' ./tests
 
-  test-current-cov:
-    strategy:
-      fail-fast: false
-      matrix:
-        go-version: [1.17.x]
-        #platform: [ubuntu-20.04, macos-latest, windows-2019]
-        platform: [ubuntu-20.04]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Install chrome dependencies
-        if: runner.os == 'Linux'
-        run: "${GITHUB_WORKSPACE}/.github/bin/install_chrome_deps_linux.sh"
-      - name: Setup chrome
-        uses: browser-actions/setup-chrome@latest
-        with:
-          chrome-version: stable
-      - name: Chrome version
-        if: runner.os != 'Windows'
-        run: chrome --version
-      - name: Chrome version
-        if: runner.os == 'Windows'
-        shell: pwsh
-        # chrome --version doesn't work on Windows :-/
-        # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
-        run: (get-command chrome.exe).Version
-      - name: Run tests with code coverage
-        run: |
-          go version
-          export GOMAXPROCS=2
-          echo "mode: set" > coverage.txt
-          for pkg in $(go list ./... | grep -v vendor); do
-              list=$(go list -test -f  '{{ join .Deps  "\n"}}' $pkg | grep github.com/grafana/xk6-browser | grep -v vendor || true)
-              if [ -n "$list" ]; then
-                  list=$(echo "$list" | cut -f1 -d ' ' | sort -u | paste -sd, -)
-              fi
+  # test-current-cov:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       go-version: [1.17.x]
+  #       #platform: [ubuntu-20.04, macos-latest, windows-2019]
+  #       platform: [ubuntu-20.04]
+  #   runs-on: ${{ matrix.platform }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Install Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: ${{ matrix.go-version }}
+  #     - name: Install chrome dependencies
+  #       if: runner.os == 'Linux'
+  #       run: "${GITHUB_WORKSPACE}/.github/bin/install_chrome_deps_linux.sh"
+  #     - name: Setup chrome
+  #       uses: browser-actions/setup-chrome@latest
+  #       with:
+  #         chrome-version: stable
+  #     - name: Chrome version
+  #       if: runner.os != 'Windows'
+  #       run: chrome --version
+  #     - name: Chrome version
+  #       if: runner.os == 'Windows'
+  #       shell: pwsh
+  #       # chrome --version doesn't work on Windows :-/
+  #       # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
+  #       run: (get-command chrome.exe).Version
+  #     - name: Run tests with code coverage
+  #       run: |
+  #         go version
+  #         export GOMAXPROCS=2
+  #         echo "mode: set" > coverage.txt
+  #         for pkg in $(go list ./... | grep -v vendor); do
+  #             list=$(go list -test -f  '{{ join .Deps  "\n"}}' $pkg | grep github.com/grafana/xk6-browser | grep -v vendor || true)
+  #             if [ -n "$list" ]; then
+  #                 list=$(echo "$list" | cut -f1 -d ' ' | sort -u | paste -sd, -)
+  #             fi
 
-              go test -v -p 2 -race -timeout 300s --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
-          done
-          grep -h -v "^mode:" *.coverage >> coverage.txt
-          rm -f *.coverage
-      - name: Generate coverage HTML report
-        run: go tool cover -html=coverage.txt -o coverage.html
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v2
-        with:
-          name: test-coverage-report-${{ matrix.platform }}
-          path: coverage.html
+  #             go test -v -p 2 -race -timeout 300s --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
+  #         done
+  #         grep -h -v "^mode:" *.coverage >> coverage.txt
+  #         rm -f *.coverage
+  #     - name: Generate coverage HTML report
+  #       run: go tool cover -html=coverage.txt -o coverage.html
+  #     - name: Upload coverage report
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: test-coverage-report-${{ matrix.platform }}
+  #         path: coverage.html
 
   configure:
     runs-on: ubuntu-20.04
@@ -204,7 +215,7 @@ jobs:
 
   build:
     runs-on: ubuntu-20.04
-    needs: [configure, deps, lint, test-current-cov]
+    # needs: [configure, deps, lint, test-current-cov]
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       VERSION: ${{ needs.configure.outputs.version }}
@@ -270,7 +281,7 @@ jobs:
     defaults:
       run:
         shell: pwsh
-    needs: [deps, lint, test-current-cov, configure, build]
+    # needs: [deps, lint, test-current-cov, configure, build]
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       VERSION: ${{ needs.configure.outputs.version }}
@@ -328,7 +339,7 @@ jobs:
 
   publish-github:
     runs-on: ubuntu-20.04
-    needs: [configure, deps, lint, test-current-cov, build, package-windows]
+    # needs: [configure, deps, lint, test-current-cov, build, package-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       VERSION: ${{ needs.configure.outputs.version }}

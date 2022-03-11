@@ -619,6 +619,11 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 			fmid, fid, furl, url, newDocumentID)
 
 		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
+			// We already navigated to this URL and missed the event.
+			if frame.URL() == url {
+				return true
+			}
+
 			ev := data.(*NavigationEvent)
 
 			// We are interested either in this specific document, or any other document that
