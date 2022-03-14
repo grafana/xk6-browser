@@ -493,16 +493,18 @@ func (fs *FrameSession) handleFrameTree(frameTree *cdppage.FrameTree) {
 	}
 }
 
-func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) error {
+func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) (string, error) {
 	fs.logger.Debugf("FrameSession:navigateFrame",
 		"sid:%v tid:%v url:%q referrer:%q",
 		fs.session.ID(), fs.targetID, url, referrer)
 
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frame.ID()))
-	if _, _, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
-		return fmt.Errorf("%s at %q: %w", errorText, url, err)
+	_, loaderID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
+	if err != nil {
+		err = fmt.Errorf("%s at %q: %w", errorText, url, err)
 	}
-	return nil
+
+	return loaderID.String(), err
 }
 
 func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICalled) {
