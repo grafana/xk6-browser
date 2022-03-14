@@ -586,15 +586,17 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(m.ctx, parsedOpts.Timeout)
 	defer timeoutCancelFn()
 
-	chSameDoc, evCancelFn := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-		return data.(*NavigationEvent).newDocument == nil
-	})
-	defer evCancelFn() // Remove event handler
+	waitNavCh, waitNavCancel := createWaitForEventHandler(
+		timeoutCtx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
+			return true
+		})
+	defer waitNavCancel() // Remove event handler
 
-	chWaitUntilCh, evCancelFn2 := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-		return data.(LifecycleEvent) == parsedOpts.WaitUntil
-	})
-	defer evCancelFn2() // Remove event handler
+	waitAddLifeCh, waitAddLifeCancel := createWaitForEventHandler(
+		timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+			return data.(LifecycleEvent) == parsedOpts.WaitUntil
+		})
+	defer waitAddLifeCancel() // Remove event handler
 
 	fs := frame.page.getFrameSession(cdp.FrameID(frame.ID()))
 	if fs == nil {
@@ -607,60 +609,33 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		// main frame's session.
 		fs = frame.page.mainFrameSession
 	}
-	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
-	if err != nil {
+	if err := fs.navigateFrame(frame, url, parsedOpts.Referer); err != nil {
 		k6common.Throw(rt, err)
 	}
 
 	var event *NavigationEvent
-	if newDocumentID != "" {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:%s",
-			fmid, fid, furl, url, newDocumentID)
+	m.logger.Debugf("FrameManager:NavigateFrame",
+		"fmid:%d fid:%v furl:%s url:%s",
+		fmid, fid, furl, url)
 
-		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-			// We already navigated to this URL and missed the event.
-			if frame.URL() == url {
-				return true
-			}
-
-			ev := data.(*NavigationEvent)
-
-			// We are interested either in this specific document, or any other document that
-			// did commit and replaced the expected document.
-			if ev.newDocument != nil && (ev.newDocument.documentID == newDocumentID || ev.err == nil) {
-				return true
-			}
-			return false
-		}, parsedOpts.Timeout)
-		if err != nil {
-			k6common.Throw(rt, err)
+	select {
+	case <-timeoutCtx.Done():
+		if timeoutCtx.Err() == context.DeadlineExceeded {
+			k6common.Throw(rt, ErrTimedOut)
 		}
-
+	case data := <-waitNavCh:
 		event = data.(*NavigationEvent)
-		if event.newDocument.documentID != newDocumentID {
-			m.logger.Debugf("FrameManager:NavigateFrame:interrupted",
-				"fmid:%d fid:%v furl:%s url:%s docID:%s newDocID:%s",
-				fmid, fid, furl, url, event.newDocument.documentID, newDocumentID)
-		} else if event.err != nil &&
-			// TODO: A more graceful way of avoiding Throw()?
-			!(netMgr.userReqInterceptionEnabled &&
-				strings.Contains(event.err.Error(), "ERR_BLOCKED_BY_CLIENT")) {
+	}
+
+	if event.err != nil {
+		if !(netMgr.userReqInterceptionEnabled &&
+			strings.Contains(event.err.Error(), "ERR_BLOCKED_BY_CLIENT")) {
 			k6common.Throw(rt, event.err)
 		}
-	} else {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:0",
-			fmid, fid, furl, url)
 
-		select {
-		case <-timeoutCtx.Done():
-			if timeoutCtx.Err() == context.DeadlineExceeded {
-				k6common.Throw(rt, ErrTimedOut)
-			}
-		case data := <-chSameDoc:
-			event = data.(*NavigationEvent)
-		}
+		m.logger.Debugf("FrameManager:NavigateFrame:interrupted",
+			"fmid:%d fid:%v furl:%s url:%s docID:%s",
+			fmid, fid, furl, url, event.newDocument.documentID)
 	}
 
 	if !frame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
@@ -673,7 +648,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 			if timeoutCtx.Err() == context.DeadlineExceeded {
 				k6common.Throw(rt, ErrTimedOut)
 			}
-		case <-chWaitUntilCh:
+		case <-waitAddLifeCh:
 		}
 	}
 
