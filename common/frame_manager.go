@@ -294,6 +294,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		if pendingDocument.documentID == documentID {
 			// Committing a pending document.
 			frame.currentDocument = pendingDocument
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=pendingDoc",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		} else {
 			// Sometimes, we already have a new pending when the old one commits.
 			// An example would be Chromium error page followed by a new navigation request,
@@ -305,6 +308,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 				documentID: documentID,
 				request:    nil,
 			}
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,keepPending",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		}
 		frame.pendingDocument = nil
 	} else {
@@ -313,6 +319,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 			documentID: documentID,
 			request:    nil,
 		}
+		m.logger.Debugf("FrameManager:frameNavigated",
+			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,noPending",
+			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 	}
 
 	m.logger.Debugf("FrameManager:frameNavigated",
@@ -526,10 +535,11 @@ func (m *FrameManager) requestStarted(req *Request) {
 	if frame.inflightRequestsLen() == 1 {
 		frame.stopNetworkIdleTimer()
 	}
+	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rid:%s docID:%s", m.id, req.getID(), req.documentID)
 	if req.documentID != "" {
 		frame.pendingDocument = &DocumentInfo{documentID: req.documentID, request: req}
 	}
-	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:nil", m.ID(), req.URL())
+	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:%#v", m.ID(), req.URL(), frame.pendingDocument)
 }
 
 // Frames returns a list of frames on the page.
