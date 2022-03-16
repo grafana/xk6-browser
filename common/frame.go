@@ -224,7 +224,8 @@ func (f *Frame) recalculateLifecycle() {
 			cf.recalculateLifecycle()
 			for k := range events {
 				if !cf.hasSubtreeLifecycleEventFired(k) {
-					f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s cfid:%v furl:%q deletingEvent:%s", f.ID(), cf.ID(), f.URL(), k)
+					f.logger.Debugf("Frame:recalculateLifecycle",
+						"fid:%s cfid:%v furl:%q deletingEvent:%s", f.ID(), cf.ID(), f.URL(), k)
 					delete(events, k)
 				}
 			}
@@ -239,19 +240,23 @@ func (f *Frame) recalculateLifecycle() {
 			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q skippingEvent:%s", f.ID(), f.URL(), k)
 			continue
 		}
-		f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q emitting FrameAddLifecycle for event %q", f.ID(), f.URL(), k)
+		f.logger.Debugf("Frame:recalculateLifecycle",
+			"fid:%s furl:%q emitting FrameAddLifecycle for event %q", f.ID(), f.URL(), k)
 		f.emit(EventFrameAddLifecycle, k)
 
 		if f != mainFrame {
-			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q f is not mainFrame for event %q", f.ID(), f.URL(), k)
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q f is not mainFrame for event %q", f.ID(), f.URL(), k)
 			continue
 		}
 		switch k {
 		case LifecycleEventLoad:
-			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q emitting PageLoad for event %q", f.ID(), f.URL(), k)
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q emitting PageLoad for event %q", f.ID(), f.URL(), k)
 			f.page.emit(EventPageLoad, nil)
 		case LifecycleEventDOMContentLoad:
-			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q emitting PageDOMContentLoaded for event %q", f.ID(), f.URL(), k)
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q emitting PageDOMContentLoaded for event %q", f.ID(), f.URL(), k)
 			f.page.emit(EventPageDOMContentLoaded, nil)
 		}
 	}
@@ -261,7 +266,8 @@ func (f *Frame) recalculateLifecycle() {
 	{
 		for k := range f.subtreeLifecycleEvents {
 			if ok := events[k]; !ok {
-				f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q emitting FrameRemoveLifecycle for event %q", f.ID(), f.URL(), k)
+				f.logger.Debugf("Frame:recalculateLifecycle",
+					"fid:%s furl:%q emitting FrameRemoveLifecycle for event %q", f.ID(), f.URL(), k)
 				f.emit(EventFrameRemoveLifecycle, k)
 			}
 		}
@@ -272,7 +278,8 @@ func (f *Frame) recalculateLifecycle() {
 	{
 		f.subtreeLifecycleEvents = make(map[LifecycleEvent]bool)
 		for k, v := range events {
-			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q setting subtreeLifecycleEvent %q=%v", f.ID(), f.URL(), k, v)
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q setting subtreeLifecycleEvent %q=%v", f.ID(), f.URL(), k, v)
 			f.subtreeLifecycleEvents[k] = v
 		}
 	}
@@ -1622,6 +1629,7 @@ func waitForNavHandler(data interface{}, navCh <-chan string) bool {
 	return true
 }
 
+//nolint: cyclop,funlen
 func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-chan string) api.Response {
 	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
 	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
@@ -1633,9 +1641,11 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 		func(data interface{}) bool { return waitForNavHandler(data, navCh) })
 	defer waitForNavCancel() // Remove event handler
 
-	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-		return data.(LifecycleEvent) == opts.WaitUntil
-	})
+	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx,
+		f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+			ev, _ := data.(LifecycleEvent)
+			return ev == opts.WaitUntil
+		})
 	defer waitForLifecycleCancel() // Remove event handler
 
 	var event *NavigationEvent
@@ -1651,46 +1661,41 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 		event, _ = data.(*NavigationEvent)
 	}
 
-	var (
-		req   = event.newDocument.request
-		reqID string
-	)
-	if req != nil {
-		reqID = string(req.requestID)
-	}
-
 	if event.newDocument == nil {
 		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s reqID:%s event.newDocument is nil", f.URL(), reqID)
+			"furl:%s - event.newDocument is nil", f.URL())
 		// In case of navigation within the same document (e.g. via an anchor
 		// link or the History API), there is no new document and a
 		// LifecycleEvent will not be fired, so we don't need to wait for it.
 		return nil
 	}
 
-	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
-		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s fid:%s hasSubtreeLifecycleEventFired:true",
-			f.URL(), f.ID())
-
-		select {
-		case <-timeoutCtx.Done():
-			if timeoutCtx.Err() == context.DeadlineExceeded {
-				k6Throw(f.ctx, "wait for navigation timed out waiting for EventFrameAddLifecycle after %s", opts.WaitUntil)
-			}
-		case <-waitForLifecycleCh:
-		}
-	}
-
-	// return event.newDocument.request.response
-	var resp *Response
-	// req := event.newDocument.request
-	if req != nil && req.response != nil {
-		resp = req.response
+	var (
+		req   = event.newDocument.request
+		reqID string
+		resp  api.Response
+	)
+	if req != nil {
+		reqID = string(req.requestID)
+		resp = req.Response()
 	}
 	if resp == nil {
 		f.logger.Debugf("Frame:waitForNavigation",
 			"furl:%s reqID:%s resp is nil", f.URL(), reqID)
+	}
+
+	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
+		f.logger.Debugf("Frame:waitForNavigation",
+			"furl:%s fid:%s rid:%s hasSubtreeLifecycleEventFired:true",
+			f.URL(), f.ID(), reqID)
+
+		select {
+		case <-timeoutCtx.Done():
+			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+				k6Throw(f.ctx, "wait for navigation timed out waiting for EventFrameAddLifecycle after %s", opts.WaitUntil)
+			}
+		case <-waitForLifecycleCh:
+		}
 	}
 
 	return resp

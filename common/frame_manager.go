@@ -326,7 +326,8 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 
 	frame.clearLifecycle()
 	frame.emit(EventFrameNavigation, &NavigationEvent{
-		url: url, name: name, newDocument: frame.currentDocument})
+		url: url, name: name, newDocument: frame.currentDocument,
+	})
 
 	// TODO: when we add API support for storage we need to track origins
 	// if !initial {

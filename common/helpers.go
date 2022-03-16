@@ -159,6 +159,7 @@ func createWaitForEventHandler(
 				// We wait for one matching event only,
 				// then remove event handler by cancelling context and stopping goroutine.
 				evCancelFn()
+
 				return
 			}
 		}
