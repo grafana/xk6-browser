@@ -248,6 +248,7 @@ func (r *Request) setResponse(resp *Response) {
 	r.responseMu.Lock()
 	defer r.responseMu.Unlock()
 	r.response = resp
+	resp.request = r
 }
 
 func (r *Request) Size() api.HTTPMessageSize {
