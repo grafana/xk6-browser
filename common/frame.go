@@ -182,6 +182,7 @@ func (f *Frame) clearLifecycle() {
 
 		inflightRequests := make(map[network.RequestID]bool)
 		for req := range f.inflightRequests {
+			fmt.Printf(">>> clearLifecyle: req:%s, cdr.requestID:%s\n", string(req), string(cdr.requestID))
 			if cdr != nil && req != cdr.requestID {
 				continue
 			}
@@ -1681,7 +1682,11 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 	}
 	if resp == nil {
 		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s reqID:%s resp is nil", f.URL(), reqID)
+			"furl:%s reqID:%s resp is nil", f.URL(), string(reqID))
+	} else {
+		resptmp, _ := resp.(*Response)
+		f.logger.Debugf("Frame:waitForNavigation",
+			"furl:%s reqID:%s", f.URL(), string(resptmp.request.requestID))
 	}
 
 	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {

@@ -79,6 +79,8 @@ func NewRequest(
 		return nil, fmt.Errorf("cannot parse URL: %w", err)
 	}
 
+	fmt.Printf(">>> NewRequest: documentID: %s, requestID: %s\n", documentID.String(), string(event.RequestID))
+
 	r := Request{
 		ctx:                 ctx,
 		frame:               f,

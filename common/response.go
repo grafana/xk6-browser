@@ -145,6 +145,8 @@ func (r *Response) fetchBody() error {
 	if cached() {
 		return nil
 	}
+	r.logger.Debugf("Response:fetchBody",
+		"url:%s method:%s rid:%s", r.url, r.request.method, string(r.request.requestID))
 	action := network.GetResponseBody(r.request.requestID)
 	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
 	if err != nil {
