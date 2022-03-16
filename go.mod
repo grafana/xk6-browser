@@ -1,9 +1,9 @@
 module github.com/grafana/xk6-browser
 
-go 1.17
+go 1.18
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20220304215434-892afa710589
+	github.com/chromedp/cdproto v0.0.0-20220310232215-0e2f46551646
 	github.com/dop251/goja v0.0.0-20220214123719-b09a6bfa842f
 	github.com/fatih/color v1.13.0
 	github.com/gorilla/websocket v1.5.0
@@ -13,7 +13,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
-	go.k6.io/k6 v0.36.1-0.20220309155151-55c7ccd53d6c
+	go.k6.io/k6 v0.37.0
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	gopkg.in/guregu/null.v3 v3.5.0
 )
@@ -38,12 +38,12 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
-	github.com/spf13/afero v1.8.1 // indirect
+	github.com/spf13/afero v1.8.2 // indirect
 	github.com/tidwall/gjson v1.14.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70 // indirect
-	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
+	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
+	golang.org/x/sys v0.0.0-20220315194320-039c03cc5b86 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	google.golang.org/genproto v0.0.0-20220308174144-ae0e22291548 // indirect
