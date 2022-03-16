@@ -24,13 +24,13 @@ var _ api.ElementHandle = &ElementHandle{}
 var _ api.JSHandle = &ElementHandle{}
 
 type (
-	elementHandleActionFunc        func(context.Context, *ElementHandle) (interface{}, error)
-	elementHandlePointerActionFunc func(context.Context, *ElementHandle, *Position) (interface{}, error)
-	retryablePointerActionFunc     func(context.Context, *ScrollIntoViewOptions) (interface{}, error)
+	elementHandleActionFunc        func(context.Context, *ElementHandle) (any, error)
+	elementHandlePointerActionFunc func(context.Context, *ElementHandle, *Position) (any, error)
+	retryablePointerActionFunc     func(context.Context, *ScrollIntoViewOptions) (any, error)
 
 	// evalFunc is a common interface for both evalWithScript and eval.
 	// It helps abstracting these methods to aid with testing.
-	evalFunc func(ctx context.Context, opts evalOptions, js string, args ...interface{}) (interface{}, error)
+	evalFunc func(ctx context.Context, opts evalOptions, js string, args ...any) (any, error)
 )
 
 // ElementHandle represents a HTML element JS object inside an execution context.
@@ -232,7 +232,7 @@ func (h *ElementHandle) defaultTimeout() time.Duration {
 	return time.Duration(h.frame.manager.timeoutSettings.timeout()) * time.Second
 }
 
-func (h *ElementHandle) dispatchEvent(apiCtx context.Context, typ string, eventInit goja.Value) (interface{}, error) {
+func (h *ElementHandle) dispatchEvent(apiCtx context.Context, typ string, eventInit goja.Value) (any, error) {
 	fn := `
 		(node, injected, type, eventInit) => {
 			injected.dispatchEvent(node, type, eventInit);
@@ -246,7 +246,7 @@ func (h *ElementHandle) dispatchEvent(apiCtx context.Context, typ string, eventI
 	return nil, err
 }
 
-func (h *ElementHandle) fill(apiCtx context.Context, value string) (interface{}, error) {
+func (h *ElementHandle) fill(apiCtx context.Context, value string) (any, error) {
 	fn := `
 		(node, injected, value) => {
 			return injected.fill(node, value);
@@ -292,7 +292,7 @@ func (h *ElementHandle) focus(apiCtx context.Context, resetSelectionIfNotFocused
 	return nil
 }
 
-func (h *ElementHandle) getAttribute(apiCtx context.Context, name string) (interface{}, error) {
+func (h *ElementHandle) getAttribute(apiCtx context.Context, name string) (any, error) {
 	js := `
 		(element) => {
 			return element.getAttribute('` + name + `');
@@ -309,7 +309,7 @@ func (h *ElementHandle) hover(apiCtx context.Context, p *Position) error {
 	return h.frame.page.Mouse.move(p.X, p.Y, NewMouseMoveOptions())
 }
 
-func (h *ElementHandle) innerHTML(apiCtx context.Context) (interface{}, error) {
+func (h *ElementHandle) innerHTML(apiCtx context.Context) (any, error) {
 	js := `
 		(element) => {
 			return element.innerHTML;
@@ -322,7 +322,7 @@ func (h *ElementHandle) innerHTML(apiCtx context.Context) (interface{}, error) {
 	return h.eval(apiCtx, opts, js)
 }
 
-func (h *ElementHandle) innerText(apiCtx context.Context) (interface{}, error) {
+func (h *ElementHandle) innerText(apiCtx context.Context) (any, error) {
 	js := `
 		(element) => {
 			return element.innerText;
@@ -335,7 +335,7 @@ func (h *ElementHandle) innerText(apiCtx context.Context) (interface{}, error) {
 	return h.eval(apiCtx, opts, js)
 }
 
-func (h *ElementHandle) inputValue(apiCtx context.Context) (interface{}, error) {
+func (h *ElementHandle) inputValue(apiCtx context.Context) (any, error) {
 	js := `
 		(element) => {
 			if (element.nodeType !== Node.ELEMENT_NODE || (element.nodeName !== 'INPUT' && element.nodeName !== 'TEXTAREA' && element.nodeName !== 'SELECT')) {
@@ -464,14 +464,14 @@ func (h *ElementHandle) press(apiCtx context.Context, key string, opts *Keyboard
 	return nil
 }
 
-func (h *ElementHandle) selectOption(apiCtx context.Context, values goja.Value) (interface{}, error) {
-	convertSelectOptionValues := func(values goja.Value) ([]interface{}, error) {
+func (h *ElementHandle) selectOption(apiCtx context.Context, values goja.Value) (any, error) {
+	convertSelectOptionValues := func(values goja.Value) ([]any, error) {
 		if goja.IsNull(values) || goja.IsUndefined(values) {
 			return nil, nil
 		}
 
 		var (
-			opts []interface{}
+			opts []any
 			t    = values.Export()
 			rt   = k6common.GetRuntime(h.ctx)
 		)
@@ -614,7 +614,7 @@ func (h *ElementHandle) tap(apiCtx context.Context, p *Position) error {
 	return h.frame.page.Touchscreen.tap(p.X, p.X)
 }
 
-func (h *ElementHandle) textContent(apiCtx context.Context) (interface{}, error) {
+func (h *ElementHandle) textContent(apiCtx context.Context) (any, error) {
 	js := `
 		(element) => {
 			return element.textContent;
@@ -640,7 +640,7 @@ func (h *ElementHandle) typ(apiCtx context.Context, text string, opts *KeyboardO
 }
 
 func (h *ElementHandle) waitAndScrollIntoViewIfNeeded(apiCtx context.Context, force, noWaitAfter bool, timeout time.Duration) error {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		fn := `
 			(element) => {
 				element.scrollIntoViewIfNeeded(true);
@@ -745,7 +745,7 @@ func (h *ElementHandle) Click(opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element click options: %v", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.click(p, actionOpts.ToMouseClickOptions())
 	}
 	pointerFn := h.newPointerAction(fn, &actionOpts.ElementHandleBasePointerOptions)
@@ -777,7 +777,7 @@ func (h *ElementHandle) Dblclick(opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element double click options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.dblClick(p, actionOpts.ToMouseClickOptions())
 	}
 	pointerFn := h.newPointerAction(fn, &actionOpts.ElementHandleBasePointerOptions)
@@ -789,7 +789,7 @@ func (h *ElementHandle) Dblclick(opts goja.Value) {
 }
 
 func (h *ElementHandle) DispatchEvent(typ string, eventInit goja.Value) {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.dispatchEvent(apiCtx, typ, eventInit)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -806,7 +806,7 @@ func (h *ElementHandle) Fill(value string, opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element fill options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.fill(apiCtx, value)
 	}
 	actFn := h.newAction([]string{"visible", "enabled", "editable"},
@@ -820,7 +820,7 @@ func (h *ElementHandle) Fill(value string, opts goja.Value) {
 
 // Focus scrolls element into view and focuses the element.
 func (h *ElementHandle) Focus() {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.focus(apiCtx, false)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -834,7 +834,7 @@ func (h *ElementHandle) Focus() {
 
 // GetAttribute retrieves the value of specified element attribute.
 func (h *ElementHandle) GetAttribute(name string) goja.Value {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.getAttribute(apiCtx, name)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -853,7 +853,7 @@ func (h *ElementHandle) Hover(opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element hover options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.hover(apiCtx, p)
 	}
 	pointerFn := h.newPointerAction(fn, &actionOpts.ElementHandleBasePointerOptions)
@@ -866,7 +866,7 @@ func (h *ElementHandle) Hover(opts goja.Value) {
 
 // InnerHTML returns the inner HTML of the element.
 func (h *ElementHandle) InnerHTML() string {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.innerHTML(apiCtx)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -881,7 +881,7 @@ func (h *ElementHandle) InnerHTML() string {
 
 // InnerText returns the inner text of the element.
 func (h *ElementHandle) InnerText() string {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.innerText(apiCtx)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -899,7 +899,7 @@ func (h *ElementHandle) InputValue(opts goja.Value) string {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element input value options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.inputValue(apiCtx)
 	}
 	actFn := h.newAction([]string{}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
@@ -1007,7 +1007,7 @@ func (h *ElementHandle) Press(key string, opts goja.Value) {
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse press options: %v", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.press(apiCtx, key, NewKeyboardOptions())
 	}
 	actFn := h.newAction([]string{}, fn, false, parsedOpts.NoWaitAfter, parsedOpts.Timeout)
@@ -1139,7 +1139,7 @@ func (h *ElementHandle) SelectOption(values goja.Value, opts goja.Value) []strin
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element selection options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.selectOption(apiCtx, values)
 	}
 	actFn := h.newAction([]string{}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
@@ -1160,7 +1160,7 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element select text options: %w", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.selectText(apiCtx)
 	}
 	actFn := h.newAction([]string{}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
@@ -1179,7 +1179,7 @@ func (h *ElementHandle) SetChecked(checked bool, opts goja.Value) {
 		k6Throw(h.ctx, "cannot parse element set checked options: %w", err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.setChecked(apiCtx, checked, p)
 	}
 	pointerFn := h.newPointerAction(fn, &parsedOpts.ElementHandleBasePointerOptions)
@@ -1202,7 +1202,7 @@ func (h *ElementHandle) Tap(opts goja.Value) {
 		k6Throw(h.ctx, "cannot parse element tap options: %w", err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.tap(apiCtx, p)
 	}
 	pointerFn := h.newPointerAction(fn, &parsedOpts.ElementHandleBasePointerOptions)
@@ -1214,7 +1214,7 @@ func (h *ElementHandle) Tap(opts goja.Value) {
 }
 
 func (h *ElementHandle) TextContent() string {
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.textContent(apiCtx)
 	}
 	opts := NewElementHandleBaseOptions(h.defaultTimeout())
@@ -1233,7 +1233,7 @@ func (h *ElementHandle) Type(text string, opts goja.Value) {
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6Throw(h.ctx, "cannot parse element handle type options: %v", err)
 	}
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.typ(apiCtx, text, NewKeyboardOptions())
 	}
 	actFn := h.newAction([]string{}, fn, false, parsedOpts.NoWaitAfter, parsedOpts.Timeout)
@@ -1279,23 +1279,23 @@ func (h *ElementHandle) WaitForSelector(selector string, opts goja.Value) api.El
 // The js code can call helper functions from injected_script.js.
 func (h *ElementHandle) evalWithScript(
 	ctx context.Context,
-	opts evalOptions, js string, args ...interface{},
-) (interface{}, error) {
+	opts evalOptions, js string, args ...any,
+) (any, error) {
 	script, err := h.execCtx.getInjectedScript(h.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get injected script: %w", err)
 	}
-	args = append([]interface{}{script}, args...)
+	args = append([]any{script}, args...)
 	return h.eval(ctx, opts, js, args...)
 }
 
 // eval evaluates the given js code in the scope of this ElementHandle and returns the result.
 func (h *ElementHandle) eval(
 	ctx context.Context,
-	opts evalOptions, js string, args ...interface{},
-) (interface{}, error) {
+	opts evalOptions, js string, args ...any,
+) (any, error) {
 	// passing `h` makes it evaluate js code in the element handle's scope.
-	args = append([]interface{}{h}, args...)
+	args = append([]any{h}, args...)
 	rt := k6common.GetRuntime(ctx)
 	gargs := make([]goja.Value, len(args))
 	for i, arg := range args {
@@ -1310,13 +1310,13 @@ func (h *ElementHandle) eval(
 
 func (h *ElementHandle) newAction(
 	states []string, fn elementHandleActionFunc, force, noWaitAfter bool, timeout time.Duration,
-) func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+) func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 	// All or a subset of the following actionability checks are made before performing the actual action:
 	// 1. Attached to DOM
 	// 2. Visible
 	// 3. Stable
 	// 4. Enabled
-	actionFn := func(apiCtx context.Context) (interface{}, error) {
+	actionFn := func(apiCtx context.Context) (any, error) {
 		// Check if we should run actionability checks
 		if !force {
 			if _, err := h.waitForElementState(apiCtx, states, timeout); err != nil {
@@ -1342,7 +1342,7 @@ func (h *ElementHandle) newAction(
 		return res, nil
 	}
 
-	return func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+	return func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 		if res, err := actionFn(apiCtx); err != nil {
 			errCh <- err
 		} else {
@@ -1354,14 +1354,14 @@ func (h *ElementHandle) newAction(
 //nolint:funlen,gocognit,cyclop
 func (h *ElementHandle) newPointerAction(
 	fn elementHandlePointerActionFunc, opts *ElementHandleBasePointerOptions,
-) func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+) func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 	// All or a subset of the following actionability checks are made before performing the actual action:
 	// 1. Attached to DOM
 	// 2. Visible
 	// 3. Stable
 	// 4. Enabled
 	// 5. Receives events
-	pointerFn := func(apiCtx context.Context, sopts *ScrollIntoViewOptions) (res interface{}, err error) {
+	pointerFn := func(apiCtx context.Context, sopts *ScrollIntoViewOptions) (res any, err error) {
 		// Check if we should run actionability checks
 		if !opts.Force {
 			states := []string{"visible", "stable", "enabled"}
@@ -1430,7 +1430,7 @@ func (h *ElementHandle) newPointerAction(
 		return res, nil
 	}
 
-	return func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+	return func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 		if res, err := retryPointerAction(apiCtx, pointerFn, opts); err != nil {
 			errCh <- err
 		} else {
@@ -1441,7 +1441,7 @@ func (h *ElementHandle) newPointerAction(
 
 func retryPointerAction(
 	apiCtx context.Context, fn retryablePointerActionFunc, opts *ElementHandleBasePointerOptions,
-) (res interface{}, err error) {
+) (res any, err error) {
 	// try the default scrolling
 	if res, err = fn(apiCtx, nil); opts.Force || err == nil {
 		return res, err

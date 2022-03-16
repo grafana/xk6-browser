@@ -94,11 +94,11 @@ func convertArgument(ctx context.Context, execCtx *ExecutionContext, arg goja.Va
 	return &cdpruntime.CallArgument{Value: b}, err
 }
 
-func callApiWithTimeout(ctx context.Context, fn func(context.Context, chan interface{}, chan error), timeout time.Duration) (interface{}, error) {
-	var result interface{}
+func callApiWithTimeout(ctx context.Context, fn func(context.Context, chan any, chan error), timeout time.Duration) (any, error) {
+	var result any
 	var err error
 	var cancelFn context.CancelFunc
-	resultCh := make(chan interface{})
+	resultCh := make(chan any)
 	errCh := make(chan error)
 
 	apiCtx := ctx
@@ -133,13 +133,13 @@ func stringSliceContains(s []string, e string) bool {
 func createWaitForEventHandler(
 	ctx context.Context,
 	emitter EventEmitter, events []string,
-	predicateFn func(data interface{}) bool,
+	predicateFn func(data any) bool,
 ) (
-	chan interface{}, context.CancelFunc,
+	chan any, context.CancelFunc,
 ) {
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
 	chEvHandler := make(chan Event)
-	ch := make(chan interface{})
+	ch := make(chan any)
 
 	go func() {
 		for {
@@ -170,7 +170,7 @@ func createWaitForEventHandler(
 	return ch, evCancelFn
 }
 
-func waitForEvent(ctx context.Context, emitter EventEmitter, events []string, predicateFn func(data interface{}) bool, timeout time.Duration) (interface{}, error) {
+func waitForEvent(ctx context.Context, emitter EventEmitter, events []string, predicateFn func(data any) bool, timeout time.Duration) (any, error) {
 	ch, evCancelFn := createWaitForEventHandler(ctx, emitter, events, predicateFn)
 	defer evCancelFn() // Remove event handler
 
@@ -188,7 +188,7 @@ func waitForEvent(ctx context.Context, emitter EventEmitter, events []string, pr
 // k6Throw throws a k6 error, and before throwing the error, it finds the
 // browser process from the context and kills it if it still exists.
 // TODO: test.
-func k6Throw(ctx context.Context, format string, a ...interface{}) {
+func k6Throw(ctx context.Context, format string, a ...any) {
 	rt := k6common.GetRuntime(ctx)
 	if rt == nil {
 		// this should never happen unless a programmer error

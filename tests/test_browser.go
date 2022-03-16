@@ -62,7 +62,7 @@ type testBrowser struct {
 // opts provides a way to customize the newTestBrowser.
 // see: withLaunchOptions for an example.
 //nolint:funlen,cyclop
-func newTestBrowser(tb testing.TB, opts ...interface{}) *testBrowser {
+func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 	tb.Helper()
 
 	ctx := context.Background()

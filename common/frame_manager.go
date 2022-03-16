@@ -586,12 +586,12 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(m.ctx, parsedOpts.Timeout)
 	defer timeoutCancelFn()
 
-	chSameDoc, evCancelFn := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
+	chSameDoc, evCancelFn := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameNavigation}, func(data any) bool {
 		return data.(*NavigationEvent).newDocument == nil
 	})
 	defer evCancelFn() // Remove event handler
 
-	chWaitUntilCh, evCancelFn2 := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+	chWaitUntilCh, evCancelFn2 := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data any) bool {
 		return data.(LifecycleEvent) == parsedOpts.WaitUntil
 	})
 	defer evCancelFn2() // Remove event handler
@@ -618,7 +618,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 			"fmid:%d fid:%v furl:%s url:%s newDocID:%s",
 			fmid, fid, furl, url, newDocumentID)
 
-		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
+		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data any) bool {
 			ev := data.(*NavigationEvent)
 
 			// We are interested either in this specific document, or any other document that
@@ -705,7 +705,7 @@ func (m *FrameManager) WaitForFrameNavigation(frame *Frame, opts goja.Value) api
 	}
 
 	ch, evCancelFn := createWaitForEventHandler(m.ctx, frame, []string{EventFrameNavigation},
-		func(data interface{}) bool {
+		func(data any) bool {
 			return true // Both successful and failed navigations are considered
 		})
 	defer evCancelFn() // Remove event handler
@@ -736,7 +736,7 @@ func (m *FrameManager) WaitForFrameNavigation(frame *Frame, opts goja.Value) api
 			"fmid:%d furl:%s hasSubtreeLifecycleEventFired:true",
 			m.ID(), frame.URL())
 
-		_, err := waitForEvent(m.ctx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+		_, err := waitForEvent(m.ctx, frame, []string{EventFrameAddLifecycle}, func(data any) bool {
 			return data.(LifecycleEvent) == parsedOpts.WaitUntil
 		}, parsedOpts.Timeout)
 		if err != nil {

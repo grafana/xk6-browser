@@ -78,7 +78,7 @@ type Response struct {
 	responseTime      time.Time
 	timing            *network.ResourceTiming
 
-	cachedJSON interface{}
+	cachedJSON any
 }
 
 // NewHTTPResponse creates a new HTTP response.
@@ -278,7 +278,7 @@ func (r *Response) JSON() goja.Value {
 			k6common.Throw(rt, err)
 		}
 
-		var v interface{}
+		var v any
 		r.bodyMu.RLock()
 		defer r.bodyMu.RUnlock()
 		if err := json.Unmarshal(r.body, &v); err != nil {

@@ -20,7 +20,7 @@ type DataStore struct {
 // Make creates a new temporary directory in tmpDir, and stores the path to
 // the directory in the Dir field.
 // When the Dir argument is not empty, no directory will be created.
-func (d *DataStore) Make(tmpDir string, dir interface{}) error {
+func (d *DataStore) Make(tmpDir string, dir any) error {
 	// use the provided dir.
 	if ud, ok := dir.(string); ok && ud != "" {
 		d.Dir = ud

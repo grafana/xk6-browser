@@ -346,7 +346,7 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 		ctx,
 		browserCtx, // browser context will emit the following event:
 		[]string{EventBrowserContextPage},
-		func(e interface{}) bool {
+		func(e any) bool {
 			tid := <-targetID
 
 			b.logger.Debugf("Browser:newPageInContext:createWaitForEventHandler",

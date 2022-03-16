@@ -38,7 +38,7 @@ type Page interface {
 	DragAndDrop(source string, target string, opts goja.Value)
 	EmulateMedia(opts goja.Value)
 	EmulateVisionDeficiency(typ string)
-	Evaluate(pageFunc goja.Value, arg ...goja.Value) interface{}
+	Evaluate(pageFunc goja.Value, arg ...goja.Value) any
 	EvaluateHandle(pageFunc goja.Value, arg ...goja.Value) JSHandle
 	ExposeBinding(name string, callback goja.Callable, opts goja.Value)
 	ExposeFunction(name string, callback goja.Callable)
@@ -87,7 +87,7 @@ type Page interface {
 	URL() string
 	Video() Video
 	ViewportSize() map[string]float64
-	WaitForEvent(event string, optsOrPredicate goja.Value) interface{}
+	WaitForEvent(event string, optsOrPredicate goja.Value) any
 	WaitForFunction(pageFunc goja.Value, arg goja.Value, opts goja.Value) JSHandle
 	WaitForLoadState(state string, opts goja.Value)
 	WaitForNavigation(opts goja.Value) Response

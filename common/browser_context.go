@@ -324,7 +324,7 @@ func (b *BrowserContext) Unroute(url goja.Value, handler goja.Callable) {
 	k6Throw(b.ctx, "BrowserContext.unroute(url, handler) has not been implemented yet")
 }
 
-func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) interface{} {
+func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) any {
 	// TODO: This public API needs Promise support (as return value) to be useful in JS!
 	b.logger.Debugf("BrowserContext:WaitForEvent", "bctxid:%v event:%q", b.id, event)
 
@@ -359,7 +359,7 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 
 	evCancelCtx, evCancelFn := context.WithCancel(b.ctx)
 	chEvHandler := make(chan Event)
-	ch := make(chan interface{})
+	ch := make(chan any)
 
 	go func() {
 		b.logger.Debugf("BrowserContext:WaitForEvent:go():starts", "bctxid:%v", b.id)

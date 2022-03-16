@@ -488,7 +488,7 @@ func (p *Page) EmulateVisionDeficiency(typ string) {
 }
 
 // Evaluate runs JS code within the execution context of the main frame of the page.
-func (p *Page) Evaluate(pageFunc goja.Value, args ...goja.Value) interface{} {
+func (p *Page) Evaluate(pageFunc goja.Value, args ...goja.Value) any {
 	p.logger.Debugf("Page:Evaluate", "sid:%v", p.sessionID())
 
 	return p.MainFrame().Evaluate(pageFunc, args...)
@@ -685,7 +685,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
 	}
 
-	ch, evCancelFn := createWaitForEventHandler(p.ctx, p.frameManager.MainFrame(), []string{EventFrameNavigation}, func(data interface{}) bool {
+	ch, evCancelFn := createWaitForEventHandler(p.ctx, p.frameManager.MainFrame(), []string{EventFrameNavigation}, func(data any) bool {
 		return true // Both successful and failed navigations are considered
 	})
 	defer evCancelFn() // Remove event handler
@@ -705,7 +705,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 	}
 
 	if p.frameManager.mainFrame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
-		_, _ = waitForEvent(p.ctx, p.frameManager.MainFrame(), []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+		_, _ = waitForEvent(p.ctx, p.frameManager.MainFrame(), []string{EventFrameAddLifecycle}, func(data any) bool {
 			return data.(LifecycleEvent) == parsedOpts.WaitUntil
 		}, parsedOpts.Timeout)
 	}
@@ -858,7 +858,7 @@ func (p *Page) ViewportSize() map[string]float64 {
 }
 
 // WaitForEvent waits for the specified event to trigger.
-func (p *Page) WaitForEvent(event string, optsOrPredicate goja.Value) interface{} {
+func (p *Page) WaitForEvent(event string, optsOrPredicate goja.Value) any {
 	rt := k6common.GetRuntime(p.ctx)
 	k6common.Throw(rt, errors.New("Page.waitForEvent(event, optsOrPredicate) has not been implemented yet"))
 	return nil

@@ -167,7 +167,7 @@ func (e *ExecutionContext) adoptElementHandle(eh *ElementHandle) (*ElementHandle
 func (e *ExecutionContext) eval(
 	apiCtx context.Context,
 	opts evalOptions, pageFunc goja.Value, args ...goja.Value,
-) (res interface{}, err error) {
+) (res any, err error) {
 	e.logger.Debugf(
 		"ExecutionContext:evaluate",
 		"sid:%s stid:%s fid:%s ectxid:%d furl:%q %s",
@@ -322,7 +322,7 @@ func (e *ExecutionContext) getInjectedScript(apiCtx context.Context) (api.JSHand
 func (e *ExecutionContext) Eval(
 	apiCtx context.Context,
 	pageFunc goja.Value, args ...goja.Value,
-) (interface{}, error) {
+) (any, error) {
 	opts := evalOptions{
 		forceCallable: true,
 		returnByValue: true,

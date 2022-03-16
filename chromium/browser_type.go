@@ -167,7 +167,7 @@ func (b *BrowserType) Name() string {
 // allocate starts a new Chromium browser process and returns it.
 func (b *BrowserType) allocate(
 	opts *common.LaunchOptions,
-	flags map[string]interface{},
+	flags map[string]any,
 	env []string,
 ) (_ *common.BrowserProcess, rerr error) {
 	// use the provided directory or create a temporary one.
@@ -208,7 +208,7 @@ func (b *BrowserType) allocate(
 }
 
 // parseArgs parses command-line arguments and returns them.
-func parseArgs(flags map[string]interface{}) ([]string, error) {
+func parseArgs(flags map[string]any) ([]string, error) {
 	// Build command line args list
 	var args []string
 	for name, value := range flags {
@@ -240,9 +240,9 @@ func parseArgs(flags map[string]interface{}) ([]string, error) {
 	return args, nil
 }
 
-func prepareFlags(lopts *common.LaunchOptions, k6opts *k6lib.Options) map[string]interface{} {
+func prepareFlags(lopts *common.LaunchOptions, k6opts *k6lib.Options) map[string]any {
 	// After Puppeteer's and Playwright's default behavior.
-	f := map[string]interface{}{
+	f := map[string]any{
 		"disable-background-networking":                      true,
 		"enable-features":                                    "NetworkService,NetworkServiceInProcess",
 		"disable-background-timer-throttling":                true,
@@ -295,7 +295,7 @@ func prepareFlags(lopts *common.LaunchOptions, k6opts *k6lib.Options) map[string
 // setFlagsFromArgs fills flags by parsing the args slice.
 // This is used for passing the "arg=value" arguments along with other launch options
 // when launching a new Chrome browser.
-func setFlagsFromArgs(flags map[string]interface{}, args []string) {
+func setFlagsFromArgs(flags map[string]any, args []string) {
 	var argname, argval string
 	for _, arg := range args {
 		pair := strings.SplitN(arg, "=", 2)
@@ -309,7 +309,7 @@ func setFlagsFromArgs(flags map[string]interface{}, args []string) {
 
 // setFlagsFromK6Options adds additional data to flags considering the k6 options.
 // Such as: "host-resolver-rules" for blocking requests.
-func setFlagsFromK6Options(flags map[string]interface{}, k6opts *k6lib.Options) {
+func setFlagsFromK6Options(flags map[string]any, k6opts *k6lib.Options) {
 	if k6opts == nil {
 		return
 	}

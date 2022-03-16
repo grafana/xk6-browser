@@ -26,7 +26,7 @@ import "github.com/dop251/goja"
 type JSHandle interface {
 	AsElement() ElementHandle
 	Dispose()
-	Evaluate(pageFunc goja.Value, args ...goja.Value) interface{}
+	Evaluate(pageFunc goja.Value, args ...goja.Value) any
 	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) JSHandle
 	GetProperties() map[string]JSHandle
 	GetProperty(propertyName string) JSHandle

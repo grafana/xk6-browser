@@ -41,7 +41,7 @@ func TestRequest(t *testing.T) {
 	ctx := k6common.WithRuntime(context.Background(), rt)
 	ts := cdp.MonotonicTime(time.Now())
 	wt := cdp.TimeSinceEpoch(time.Now())
-	headers := map[string]interface{}{"key": "value"}
+	headers := map[string]any{"key": "value"}
 	evt := &network.EventRequestWillBeSent{
 		RequestID: network.RequestID("1234"),
 		Request: &network.Request{

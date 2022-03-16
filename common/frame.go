@@ -535,7 +535,7 @@ func (f *Frame) waitForFunction(
 	world executionWorld, predicateFn goja.Value,
 	polling PollingType, interval int64, timeout time.Duration,
 	args ...goja.Value,
-) (interface{}, error) {
+) (any, error) {
 	f.log.Debugf(
 		"Frame:waitForFunction",
 		"fid:%s furl:%q world:%s pt:%s timeout:%s",
@@ -655,7 +655,7 @@ func (f *Frame) Check(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.setChecked(apiCtx, true, p)
 	}
 	actFn := f.newPointerAction(
@@ -692,7 +692,7 @@ func (f *Frame) Click(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.click(p, parsedOpts.ToMouseClickOptions())
 	}
 	actFn := f.newPointerAction(
@@ -733,7 +733,7 @@ func (f *Frame) Dblclick(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.dblClick(p, parsedOpts.ToMouseClickOptions())
 	}
 	actFn := f.newPointerAction(
@@ -756,7 +756,7 @@ func (f *Frame) DispatchEvent(selector string, typ string, eventInit goja.Value,
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.dispatchEvent(apiCtx, typ, eventInit)
 	}
 	actFn := f.newAction(
@@ -772,7 +772,7 @@ func (f *Frame) DispatchEvent(selector string, typ string, eventInit goja.Value,
 }
 
 // Evaluate will evaluate provided page function within an execution context.
-func (f *Frame) Evaluate(pageFunc goja.Value, args ...goja.Value) interface{} {
+func (f *Frame) Evaluate(pageFunc goja.Value, args ...goja.Value) any {
 	f.log.Debugf("Frame:Evaluate", "fid:%s furl:%q", f.ID(), f.URL())
 
 	rt := k6common.GetRuntime(f.ctx)
@@ -828,7 +828,7 @@ func (f *Frame) Fill(selector string, value string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.fill(apiCtx, value)
 	}
 	actFn := f.newAction(
@@ -853,7 +853,7 @@ func (f *Frame) Focus(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.focus(apiCtx, true)
 	}
 	actFn := f.newAction(
@@ -887,7 +887,7 @@ func (f *Frame) GetAttribute(selector string, name string, opts goja.Value) goja
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.getAttribute(apiCtx, name)
 	}
 	actFn := f.newAction(
@@ -920,7 +920,7 @@ func (f *Frame) Hover(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.hover(apiCtx, p)
 	}
 	actFn := f.newPointerAction(
@@ -943,7 +943,7 @@ func (f *Frame) InnerHTML(selector string, opts goja.Value) string {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.innerHTML(apiCtx)
 	}
 	actFn := f.newAction(
@@ -967,7 +967,7 @@ func (f *Frame) InnerText(selector string, opts goja.Value) string {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.innerText(apiCtx)
 	}
 	actFn := f.newAction(
@@ -991,7 +991,7 @@ func (f *Frame) InputValue(selector string, opts goja.Value) string {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.inputValue(apiCtx)
 	}
 	actFn := f.newAction(
@@ -1015,7 +1015,7 @@ func (f *Frame) IsChecked(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isChecked(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                   // We don't care about timeout errors here!
 			return value, nil
@@ -1059,7 +1059,7 @@ func (f *Frame) IsDisabled(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isDisabled(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                    // We don't care about timeout errors here!
 			return value, nil
@@ -1087,7 +1087,7 @@ func (f *Frame) IsEditable(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isEditable(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                    // We don't care about timeout errors here!
 			return value, nil
@@ -1115,7 +1115,7 @@ func (f *Frame) IsEnabled(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isEnabled(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                   // We don't care about timeout errors here!
 			return value, nil
@@ -1143,7 +1143,7 @@ func (f *Frame) IsHidden(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isHidden(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                  // We don't care about timeout errors here!
 			return value, nil
@@ -1171,7 +1171,7 @@ func (f *Frame) IsVisible(selector string, opts goja.Value) bool {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		value, err := handle.isVisible(apiCtx, 0) // Zero timeout when checking state
 		if err == ErrTimedOut {                   // We don't care about timeout errors here!
 			return value, nil
@@ -1265,7 +1265,7 @@ func (f *Frame) Press(selector string, key string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.press(apiCtx, key, parsedOpts.ToKeyboardOptions())
 	}
 	actFn := f.newAction(
@@ -1289,7 +1289,7 @@ func (f *Frame) SelectOption(selector string, values goja.Value, opts goja.Value
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.selectOption(apiCtx, values)
 	}
 	actFn := f.newAction(
@@ -1363,7 +1363,7 @@ func (f *Frame) Tap(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.tap(apiCtx, p)
 	}
 	actFn := f.newPointerAction(
@@ -1386,7 +1386,7 @@ func (f *Frame) TextContent(selector string, opts goja.Value) string {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.textContent(apiCtx)
 	}
 	actFn := f.newAction(
@@ -1417,7 +1417,7 @@ func (f *Frame) Type(selector string, text string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return nil, handle.typ(apiCtx, text, parsedOpts.ToKeyboardOptions())
 	}
 	actFn := f.newAction(
@@ -1442,7 +1442,7 @@ func (f *Frame) Uncheck(selector string, opts goja.Value) {
 		k6common.Throw(rt, err)
 	}
 
-	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+	fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.setChecked(apiCtx, false, p)
 	}
 	actFn := f.newPointerAction(
@@ -1521,7 +1521,7 @@ func (f *Frame) WaitForLoadState(state string, opts goja.Value) {
 		return
 	}
 
-	_, err = waitForEvent(f.ctx, f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+	_, err = waitForEvent(f.ctx, f, []string{EventFrameAddLifecycle}, func(data any) bool {
 		return data.(LifecycleEvent) == waitUntil
 	}, parsedOpts.Timeout)
 	if err != nil {
@@ -1578,7 +1578,7 @@ func (f *Frame) evaluate(
 	apiCtx context.Context,
 	world executionWorld,
 	opts evalOptions, pageFunc goja.Value, args ...goja.Value,
-) (interface{}, error) {
+) (any, error) {
 	f.log.Debugf("Frame:evaluate", "fid:%s furl:%q world:%s opts:%s", f.ID(), f.URL(), world, opts)
 
 	f.executionContextMu.RLock()
@@ -1611,7 +1611,7 @@ type frameExecutionContext interface {
 		apiCtx context.Context,
 		opts evalOptions,
 		pageFunc goja.Value, args ...goja.Value,
-	) (res interface{}, err error)
+	) (res any, err error)
 
 	// getInjectedScript returns a JS handle to the injected script of helper
 	// functions.
@@ -1622,7 +1622,7 @@ type frameExecutionContext interface {
 	Eval(
 		apiCtx context.Context,
 		pageFunc goja.Value, args ...goja.Value,
-	) (interface{}, error)
+	) (any, error)
 
 	// EvalHandle will evaluate provided page function within this
 	// execution context.
@@ -1642,12 +1642,12 @@ type frameExecutionContext interface {
 func (f *Frame) newAction(
 	selector string, state DOMElementState, strict bool, fn elementHandleActionFunc, states []string,
 	force, noWaitAfter bool, timeout time.Duration,
-) func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+) func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 	// We execute a frame action in the following steps:
 	// 1. Find element matching specified selector
 	// 2. Wait for it to reach specified DOM state
 	// 3. Run element handle action (incl. actionability checks)
-	return func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+	return func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 		waitOpts := NewFrameWaitForSelectorOptions(f.defaultTimeout())
 		waitOpts.State = state
 		waitOpts.Strict = strict
@@ -1669,12 +1669,12 @@ func (f *Frame) newAction(
 func (f *Frame) newPointerAction(
 	selector string, state DOMElementState, strict bool, fn elementHandlePointerActionFunc,
 	opts *ElementHandleBasePointerOptions,
-) func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+) func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 	// We execute a frame pointer action in the following steps:
 	// 1. Find element matching specified selector
 	// 2. Wait for it to reach specified DOM state
 	// 3. Run element handle action (incl. actionability checks)
-	return func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
+	return func(apiCtx context.Context, resultCh chan any, errCh chan error) {
 		waitOpts := NewFrameWaitForSelectorOptions(f.defaultTimeout())
 		waitOpts.State = state
 		waitOpts.Strict = strict
