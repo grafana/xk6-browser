@@ -25,7 +25,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.x
+          go-version: 1.18.x
       - name: Check code generation
         run: |
           go install github.com/alvaroloes/enumer@v1.1.2
@@ -44,7 +44,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.x
+          go-version: 1.18.x
       - name: Install golangci-lint
         working-directory: /tmp
         run: |
@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.17.x]
+        go-version: [1.18.x]
         #platform: [ubuntu-20.04, macos-latest, windows-2019]
         platform: [ubuntu-20.04]
     runs-on: ${{ matrix.platform }}
@@ -214,7 +214,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.x
+          go-version: 1.18.x
       - name: Install package builders
         env:
           GO111MODULE: 'off'
