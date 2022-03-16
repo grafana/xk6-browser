@@ -1626,9 +1626,17 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
 	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
 
-	ch, evCancelFn := createWaitForEventHandler(f.ctx, f, []string{EventFrameNavigation},
+	timeoutCtx, timeoutCancelFn := context.WithTimeout(f.ctx, opts.Timeout)
+	defer timeoutCancelFn()
+
+	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
 		func(data interface{}) bool { return waitForNavHandler(data, navCh) })
-	defer evCancelFn() // Remove event handler
+	defer waitForNavCancel() // Remove event handler
+
+	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+		return data.(LifecycleEvent) == opts.WaitUntil
+	})
+	defer waitForLifecycleCancel() // Remove event handler
 
 	var event *NavigationEvent
 	select {
@@ -1639,7 +1647,7 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 		return nil
 	case <-time.After(opts.Timeout):
 		k6Throw(f.ctx, "waitForFrameNavigation timed out after %s", opts.Timeout)
-	case data := <-ch:
+	case data := <-waitForNavCh:
 		event, _ = data.(*NavigationEvent)
 	}
 
@@ -1662,15 +1670,15 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 
 	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
 		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s hasSubtreeLifecycleEventFired:true",
-			f.URL())
+			"furl:%s fid:%s hasSubtreeLifecycleEventFired:true",
+			f.URL(), f.ID())
 
-		_, err := waitForEvent(f.ctx, f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-			ev, _ := data.(LifecycleEvent)
-			return ev == opts.WaitUntil
-		}, opts.Timeout)
-		if err != nil {
-			k6Throw(f.ctx, "waitForFrameNavigation cannot wait for event (EventFrameAddLifecycle): %v", err)
+		select {
+		case <-timeoutCtx.Done():
+			if timeoutCtx.Err() == context.DeadlineExceeded {
+				k6Throw(f.ctx, "wait for navigation timed out waiting for EventFrameAddLifecycle after %s", opts.WaitUntil)
+			}
+		case <-waitForLifecycleCh:
 		}
 	}
 
