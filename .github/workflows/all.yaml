@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/272-navigate-timeout
     tags:
       - v*
   pull_request:
