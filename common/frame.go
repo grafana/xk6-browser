@@ -957,20 +957,38 @@ func (f *Frame) navigate(url string, opts *FrameGotoOptions) api.Response {
 		fs = f.page.mainFrameSession
 	}
 
-	navCh := make(chan string)
+	var (
+		navCh                = make(chan string)
+		navCtx, navCtxCancel = context.WithCancel(f.ctx)
+		resp                 api.Response
+		wg                   sync.WaitGroup
+	)
+	defer navCtxCancel()
+
+	wg.Add(1)
+	// Setup waiters first, to avoid a race condition where we receive
+	// Page.frameNavigated / Network.loadingFinished before we have a chance to
+	// listen to them, leading to timeouts.
 	go func() {
-		if docID, err := fs.navigateFrame(f, url, opts.Referer); err != nil {
-			k6Throw(f.ctx, "error navigating frame: %s", err)
-		} else {
-			navCh <- docID
-		}
+		defer wg.Done()
+		// TODO: Maybe decouple waiting for frameNavigated and waiting for
+		// loadingFinished?
+		resp = f.waitForNavigation(navCtx, &FrameWaitForNavigationOptions{
+			URL:       url,
+			WaitUntil: opts.WaitUntil,
+			Timeout:   opts.Timeout,
+		}, navCh)
 	}()
 
-	return f.waitForNavigation(&FrameWaitForNavigationOptions{
-		URL:       url,
-		WaitUntil: opts.WaitUntil,
-		Timeout:   opts.Timeout,
-	}, navCh)
+	docID, err := fs.navigateFrame(f, url, opts.Referer)
+	if err != nil {
+		k6Throw(f.ctx, "error navigating frame: %s", err)
+	}
+
+	navCh <- docID
+	wg.Wait()
+
+	return resp
 }
 
 // Hover hovers an element identified by provided selector.
@@ -1603,7 +1621,7 @@ func (f *Frame) WaitForNavigation(opts goja.Value) api.Response {
 		k6Throw(f.ctx, "error parsing waitForNavigation options: %v", err)
 	}
 
-	return f.waitForNavigation(parsedOpts, nil)
+	return f.waitForNavigation(f.ctx, parsedOpts, nil)
 }
 
 // waitForNavHandler determines whether a received NavigationEvent
@@ -1615,6 +1633,7 @@ func waitForNavHandler(data interface{}, navCh <-chan string) bool {
 	// There was a Page.navigate command issued, so wait for the returned document ID.
 	if navCh != nil {
 		docID := <-navCh
+		fmt.Printf(">>> received document ID in waitForNavCh: %s\n", docID)
 		if docID != "" {
 			// We are interested either in this specific document, or any other document that
 			// did commit and replaced the expected document.
@@ -1631,15 +1650,19 @@ func waitForNavHandler(data interface{}, navCh <-chan string) bool {
 }
 
 //nolint: cyclop,funlen
-func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-chan string) api.Response {
+func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigationOptions, navCh <-chan string) api.Response {
 	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
 	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
 
-	timeoutCtx, timeoutCancelFn := context.WithTimeout(f.ctx, opts.Timeout)
+	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
 	defer timeoutCancelFn()
 
+	var (
+		docNavCh = make(chan string)
+		docReqCh = make(chan string)
+	)
 	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
-		func(data interface{}) bool { return waitForNavHandler(data, navCh) })
+		func(data interface{}) bool { return waitForNavHandler(data, docNavCh) })
 	defer waitForNavCancel() // Remove event handler
 
 	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx,
@@ -1647,14 +1670,32 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 			ev, _ := data.(LifecycleEvent)
 			return ev == opts.WaitUntil
 		})
-	defer waitForLifecycleCancel() // Remove event handler
+	defer waitForLifecycleCancel()
+
+	waitForReqFin, waitForReqFinCancel := createWaitForEventHandler(
+		timeoutCtx, f.manager.page, []string{EventPageRequestFinished},
+		func(data interface{}) bool {
+			req, _ := data.(*Request)
+			docID := <-docReqCh
+			fmt.Printf(">>> received document ID in waitForReqFin: %s\n", docID)
+			if req.documentID == docID {
+				return true
+			}
+			return false
+		})
+	defer waitForReqFinCancel()
+
+	docID := <-navCh
+	fmt.Printf(">>> got document ID: %s\n", docID)
+	docNavCh <- docID
+	docReqCh <- docID
 
 	var event *NavigationEvent
 	select {
-	case <-f.ctx.Done():
+	case <-ctx.Done():
 		// ignore: the extension is shutting down
 		f.logger.Warnf("Frame:waitForNavigation:<-ctx.Done",
-			"furl:%s err:%v", f.URL(), f.ctx.Err())
+			"furl:%s err:%v", f.URL(), ctx.Err())
 		return nil
 	case <-time.After(opts.Timeout):
 		k6Throw(f.ctx, "waitForFrameNavigation timed out after %s", opts.Timeout)
@@ -1701,6 +1742,16 @@ func (f *Frame) waitForNavigation(opts *FrameWaitForNavigationOptions, navCh <-c
 			}
 		case <-waitForLifecycleCh:
 		}
+	}
+
+	f.logger.Debugf("Frame:waitForNavigation",
+		"furl:%s reqID:%s waiting for the request to finish", f.URL(), reqID)
+	select {
+	case <-timeoutCtx.Done():
+		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+			k6Throw(f.ctx, "wait for navigation timed out waiting for EventPageRequestFinished after %s", opts.WaitUntil)
+		}
+	case <-waitForReqFin:
 	}
 
 	return resp

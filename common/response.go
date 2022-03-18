@@ -91,18 +91,15 @@ func NewHTTPResponse(ctx context.Context, req *Request, resp *network.Response, 
 		logger:            NewLogger(ctx, state.Logger, false, nil),
 		request:           req,
 		remoteAddress:     &RemoteAddress{IPAddress: resp.RemoteIPAddress, Port: resp.RemotePort},
-		securityDetails:   nil,
 		protocol:          resp.Protocol,
 		url:               resp.URL,
 		status:            resp.Status,
 		statusText:        resp.StatusText,
-		body:              nil,
 		headers:           make(map[string][]string),
 		fromDiskCache:     resp.FromDiskCache,
 		fromServiceWorker: resp.FromServiceWorker,
 		fromPrefetchCache: resp.FromPrefetchCache,
 		timestamp:         timestamp.Time(),
-		responseTime:      time.Time{},
 		timing:            resp.Timing,
 	}
 
@@ -147,6 +144,7 @@ func (r *Response) fetchBody() error {
 	}
 	r.logger.Debugf("Response:fetchBody",
 		"url:%s method:%s rid:%s", r.url, r.request.method, string(r.request.requestID))
+
 	action := network.GetResponseBody(r.request.requestID)
 	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
 	if err != nil {
