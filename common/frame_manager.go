@@ -243,11 +243,10 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		return errors.New("we either navigate top level or have old version of the navigated frame")
 	}
 
-	m.logger.Debugf("FrameManager:frameNavigated:removeFrames",
-		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t",
-		m.ID(), frameID, parentFrameID, documentID, name, url, initial)
-
 	if frame != nil {
+		m.logger.Debugf("FrameManager:frameNavigated:removeFrames",
+			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t",
+			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		for _, child := range frame.ChildFrames() {
 			m.removeFramesRecursively(child.(*Frame))
 		}
@@ -278,6 +277,12 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 	}
 
 	frame.navigated(name, url, documentID)
+
+	frame.inflightRequestsMu.RLock()
+	m.logger.Debugf("FrameManager:frameNavigated",
+		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s inFlightReqs:%#+v",
+		m.ID(), frameID, parentFrameID, documentID, name, url, frame.inflightRequests)
+	frame.inflightRequestsMu.RUnlock()
 
 	var (
 		keepPending     *DocumentInfo
