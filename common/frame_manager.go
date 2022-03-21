@@ -517,7 +517,6 @@ func (m *FrameManager) requestReceivedResponse(res *Response) {
 	m.logger.Debugf("FrameManager:requestReceivedResponse",
 		"fmid:%d rurl:%s rid:%s", m.ID(), res.URL(), string(res.request.requestID))
 
-	// TODO: This event is not listened by anything.
 	m.page.emit(EventPageResponse, res)
 }
 
