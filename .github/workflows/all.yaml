@@ -98,7 +98,7 @@ jobs:
           # go test -v -p 2 -race -timeout 300s ./...
           # cd tests
           # ../gostresst -test.failfast -test.v -test.run='TestWaitForFrameNavigationWithinDocument'
-          go test -v -p 2 -race -failfast -count=10 -run 'TestBrowserContextOptionsExtraHTTPHeaders$' ./tests
+          go test -v -p 2 -race -failfast -count=100 -run 'TestPageGoto$' ./tests
 
   test-tip:
     runs-on: ubuntu-20.04
@@ -145,7 +145,7 @@ jobs:
           # go test -v -p 2 -race -timeout 300s ./...
           # cd tests
           # ../gostresst -test.failfast -test.v -test.run='TestWaitForFrameNavigationWithinDocument'
-          go test -v -p 2 -race -failfast -count=10 -run 'TestBrowserContextOptionsExtraHTTPHeaders$' ./tests
+          go test -v -p 2 -race -failfast -count=100 -run 'TestPageGoto$' ./tests
 
   # test-current-cov:
   #   strategy:
