@@ -284,46 +284,46 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		m.ID(), frameID, parentFrameID, documentID, name, url, frame.inflightRequests)
 	frame.inflightRequestsMu.RUnlock()
 
-	// var (
-	// 	keepPending     *DocumentInfo
-	// 	pendingDocument = frame.pendingDocument
-	// )
-	// if pendingDocument != nil {
-	// 	if pendingDocument.documentID == "" {
-	// 		pendingDocument.documentID = documentID
-	// 	}
-	// 	if pendingDocument.documentID == documentID {
-	// 		// Committing a pending document.
-	// 		frame.currentDocument = pendingDocument
-	// 		m.logger.Debugf("FrameManager:frameNavigated",
-	// 			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=pendingDoc",
-	// 			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
-	// 	} else {
-	// 		// Sometimes, we already have a new pending when the old one commits.
-	// 		// An example would be Chromium error page followed by a new navigation request,
-	// 		// where the error page commit arrives after Network.requestWillBeSent for the
-	// 		// new navigation.
-	// 		// We commit, but keep the pending request since it's not done yet.
-	// 		keepPending = pendingDocument
-	// 		frame.currentDocument = &DocumentInfo{
-	// 			documentID: documentID,
-	// 			request:    nil,
-	// 		}
-	// 		m.logger.Debugf("FrameManager:frameNavigated",
-	// 			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,keepPending",
-	// 			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
-	// 	}
-	// 	frame.pendingDocument = nil
-	// } else {
-	// 	// No pending, just commit a new document.
-	// 	frame.currentDocument = &DocumentInfo{
-	// 		documentID: documentID,
-	// 		request:    nil,
-	// 	}
-	// 	m.logger.Debugf("FrameManager:frameNavigated",
-	// 		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,noPending",
-	// 		m.ID(), frameID, parentFrameID, documentID, name, url, initial)
-	// }
+	var (
+		keepPending     *DocumentInfo
+		pendingDocument = frame.pendingDocument
+	)
+	if pendingDocument != nil {
+		if pendingDocument.documentID == "" {
+			pendingDocument.documentID = documentID
+		}
+		if pendingDocument.documentID == documentID {
+			// Committing a pending document.
+			frame.currentDocument = pendingDocument
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=pendingDoc",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
+		} else {
+			// Sometimes, we already have a new pending when the old one commits.
+			// An example would be Chromium error page followed by a new navigation request,
+			// where the error page commit arrives after Network.requestWillBeSent for the
+			// new navigation.
+			// We commit, but keep the pending request since it's not done yet.
+			keepPending = pendingDocument
+			frame.currentDocument = &DocumentInfo{
+				documentID: documentID,
+				request:    nil,
+			}
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,keepPending",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
+		}
+		frame.pendingDocument = nil
+	} else {
+		// No pending, just commit a new document.
+		frame.currentDocument = &DocumentInfo{
+			documentID: documentID,
+			request:    nil,
+		}
+		m.logger.Debugf("FrameManager:frameNavigated",
+			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,noPending",
+			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
+	}
 
 	m.logger.Debugf("FrameManager:frameNavigated",
 		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil",
@@ -334,13 +334,13 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		url: url, name: name, newDocument: frame.currentDocument,
 	})
 
-	// // TODO: when we add API support for storage we need to track origins
-	// // if !initial {
-	// // 	//f.page.frameNavigatedToNewDocument(f)
-	// // }
+	// TODO: when we add API support for storage we need to track origins
+	// if !initial {
+	// 	//f.page.frameNavigatedToNewDocument(f)
+	// }
 
-	// // Restore pending if any (see comments above about keepPending).
-	// frame.pendingDocument = keepPending
+	// Restore pending if any (see comments above about keepPending).
+	frame.pendingDocument = keepPending
 
 	return nil
 }
@@ -518,65 +518,6 @@ func (m *FrameManager) requestReceivedResponse(res *Response) {
 		"fmid:%d rurl:%s rid:%s", m.ID(), res.URL(), string(res.request.requestID))
 
 	m.page.emit(EventPageResponse, res)
-
-	m.framesMu.Lock()
-	defer m.framesMu.Unlock()
-	frame := res.request.getFrame()
-	if frame == nil {
-		m.logger.Debugf("FrameManager:requestReceivedResponse:return",
-			"fmid:%d rid:%s frame:nil", m.ID(), string(res.request.requestID))
-		return
-	}
-
-	var (
-		keepPending     *DocumentInfo
-		pendingDocument = frame.pendingDocument
-		docID           = res.request.documentID
-		frameID         = frame.ID()
-	)
-	if pendingDocument != nil {
-		if pendingDocument.documentID == "" {
-			pendingDocument.documentID = docID
-		}
-		if pendingDocument.documentID == docID {
-			// Committing a pending document.
-			frame.currentDocument = pendingDocument
-			m.logger.Debugf("FrameManager:requestReceivedResponse",
-				"fmid:%d fid:%v docid:%s - currDoc=pendingDoc",
-				m.ID(), frameID, docID)
-		} else {
-			// Sometimes, we already have a new pending when the old one commits.
-			// An example would be Chromium error page followed by a new navigation request,
-			// where the error page commit arrives after Network.requestWillBeSent for the
-			// new navigation.
-			// We commit, but keep the pending request since it's not done yet.
-			keepPending = pendingDocument
-			frame.currentDocument = &DocumentInfo{
-				documentID: docID,
-				request:    nil,
-			}
-			m.logger.Debugf("FrameManager:requestReceivedResponse",
-				"fmid:%d fid:%v docid:%s - currDoc=newDoc,keepPending",
-				m.ID(), frameID, docID)
-		}
-		frame.pendingDocument = nil
-	} else {
-		// No pending, just commit a new document.
-		frame.currentDocument = &DocumentInfo{
-			documentID: docID,
-			request:    nil,
-		}
-		m.logger.Debugf("FrameManager:requestReceivedResponse",
-			"fmid:%d fid:%v docid:%s - currDoc=newDoc,keepPending",
-			m.ID(), frameID, docID)
-	}
-
-	m.logger.Debugf("FrameManager:requestReceivedResponse",
-		"fmid:%d fid:%v docid:%s - currDoc=newDoc,keepPending",
-		m.ID(), frameID, docID)
-
-	// Restore pending if any (see comments above about keepPending).
-	frame.pendingDocument = keepPending
 }
 
 func (m *FrameManager) requestStarted(req *Request) {

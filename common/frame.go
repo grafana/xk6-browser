@@ -1660,12 +1660,12 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
 	defer timeoutCancelFn()
 
-	// var (
-	// 	docNavCh = make(chan string)
-	// 	docReqCh = make(chan string)
-	// )
+	var (
+		docNavCh = make(chan string)
+		docReqCh = make(chan string)
+	)
 	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
-		func(data interface{}) bool { return waitForNavHandler(data, navCh) })
+		func(data interface{}) bool { return waitForNavHandler(data, docNavCh) })
 	defer waitForNavCancel() // Remove event handler
 
 	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx,
@@ -1675,20 +1675,20 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 		})
 	defer waitForLifecycleCancel()
 
-	// waitForResp, waitForRespCancel := createWaitForEventHandler(
-	// 	timeoutCtx, f.manager.page, []string{EventPageResponse},
-	// 	func(data interface{}) bool {
-	// 		resp, _ := data.(*Response)
-	// 		docID := <-docReqCh
-	// 		fmt.Printf(">>> received document ID in waitForResp: %s\n", docID)
-	// 		return resp.request.documentID == docID
-	// 	})
-	// defer waitForRespCancel()
+	waitForResp, waitForRespCancel := createWaitForEventHandler(
+		timeoutCtx, f.manager.page, []string{EventPageResponse},
+		func(data interface{}) bool {
+			resp, _ := data.(*Response)
+			docID := <-docReqCh
+			fmt.Printf(">>> received document ID in waitForResp: %s\n", docID)
+			return resp.request.documentID == docID
+		})
+	defer waitForRespCancel()
 
-	// docID := <-navCh
-	// fmt.Printf(">>> got document ID: %s\n", docID)
-	// docNavCh <- docID
-	// docReqCh <- docID
+	docID := <-navCh
+	fmt.Printf(">>> got document ID: %s\n", docID)
+	docNavCh <- docID
+	docReqCh <- docID
 
 	var event *NavigationEvent
 	select {
@@ -1712,41 +1712,40 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 		return nil
 	}
 
-	var (
-		req   = event.newDocument.request
-		reqID string
-		resp  api.Response
-	)
-	if req != nil {
-		reqID = string(req.requestID)
-		resp = req.Response()
-	}
-	if resp == nil {
-		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s reqID:%s resp is nil", f.URL(), string(reqID))
-	} else {
-		resptmp, _ := resp.(*Response)
-		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s reqID:%s", f.URL(), string(resptmp.request.requestID))
-	}
-
-	// f.logger.Debugf("Frame:waitForNavigation",
-	// 	"furl:%s reqID:%s waiting for response", f.URL(), reqID)
-	// select {
-	// case <-timeoutCtx.Done():
-	// 	if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-	// 		k6Throw(f.ctx, "wait for navigation timed out waiting for EventPageResponse after %s", opts.WaitUntil)
-	// 	}
-	// case data := <-waitForResp:
-	// 	resp, _ = data.(*Response)
+	// var (
+	// 	req   = event.newDocument.request
+	// 	reqID string
+	// 	resp  api.Response
+	// )
+	// if req != nil {
+	// 	reqID = string(req.requestID)
+	// 	resp = req.Response()
+	// }
+	// if resp == nil {
+	// 	f.logger.Debugf("Frame:waitForNavigation",
+	// 		"furl:%s reqID:%s resp is nil", f.URL(), string(reqID))
+	// } else {
+	// 	resptmp, _ := resp.(*Response)
+	// 	f.logger.Debugf("Frame:waitForNavigation",
+	// 		"furl:%s reqID:%s", f.URL(), string(resptmp.request.requestID))
 	// }
 
-	// var resp *Response
+	var resp *Response
+	f.logger.Debugf("Frame:waitForNavigation",
+		"furl:%s reqID:%s waiting for response", f.URL())
+	select {
+	case <-timeoutCtx.Done():
+		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+			k6Throw(f.ctx, "wait for navigation timed out waiting for EventPageResponse after %s", opts.WaitUntil)
+		}
+	case data := <-waitForResp:
+		resp, _ = data.(*Response)
+	}
 
 	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
 		f.logger.Debugf("Frame:waitForNavigation",
-			"furl:%s fid:%s reqID:%s hasSubtreeLifecycleEventFired:true",
-			f.URL(), f.ID(), reqID)
+			"furl:%s fid:%s rid:%s hasSubtreeLifecycleEventFired:true",
+			f.URL(), f.ID(), resp.request.requestID)
 
 		select {
 		case <-timeoutCtx.Done():
