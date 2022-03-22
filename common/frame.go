@@ -966,13 +966,11 @@ func (f *Frame) navigate(url string, opts *FrameGotoOptions) api.Response {
 	defer navCtxCancel()
 
 	wg.Add(1)
-	// Setup waiters first, to avoid a race condition where we receive
-	// Page.frameNavigated / Network.loadingFinished before we have a chance to
-	// listen to them, leading to timeouts.
+	// Try to setup waiters first, to minimize the chances of a race condition
+	// where we receive Page.frameNavigated / Network.responseReceived before we
+	// have a chance to listen to them, leading to timeouts.
 	go func() {
 		defer wg.Done()
-		// TODO: Maybe decouple waiting for frameNavigated and waiting for
-		// loadingFinished?
 		resp = f.waitForNavigation(navCtx, &FrameWaitForNavigationOptions{
 			URL:       url,
 			WaitUntil: opts.WaitUntil,
@@ -1633,7 +1631,6 @@ func waitForNavHandler(data interface{}, getDocID func() string) bool {
 	// There was a Page.navigate command issued, so wait for the returned document ID.
 	if getDocID != nil {
 		docID := getDocID()
-		fmt.Printf(">>> received document ID in waitForNavHandler: %s\n", docID)
 		if docID != "" {
 			// We are interested either in this specific document, or any other document that
 			// did commit and replaced the expected document.
@@ -1654,25 +1651,20 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
 	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
 
-	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
-	defer timeoutCancelFn()
-
 	var getDocID func() string
 	if navCh != nil {
-		var (
-			docIDMu sync.Mutex
-			docID   string
-		)
+		var docID string
 		getDocID = func() string {
-			docIDMu.Lock()
-			defer docIDMu.Unlock()
 			if docID == "" {
 				docID = <-navCh
-				fmt.Printf(">>> got document ID: %s\n", docID)
 			}
 			return docID
 		}
 	}
+
+	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
+	defer timeoutCancelFn()
+
 	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
 		func(data interface{}) bool { return waitForNavHandler(data, getDocID) })
 	defer waitForNavCancel() // Remove event handler
@@ -1684,28 +1676,29 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 		})
 	defer waitForLifecycleCancel()
 
-	waitForResp, waitForRespCancel := createWaitForEventHandler(
-		timeoutCtx, f.manager.page, []string{EventPageResponse},
-		func(data interface{}) bool {
-			if getDocID == nil {
-				return false
-			}
-			resp, _ := data.(*Response)
-			docID := getDocID()
-			fmt.Printf(">>> received document ID in waitForResp: %s\n", docID)
-			return resp.request.documentID == docID
-		})
-	defer waitForRespCancel()
+	// waitForResp, waitForRespCancel := createWaitForEventHandler(
+	// 	timeoutCtx, f.manager.page, []string{EventPageResponse},
+	// 	func(data interface{}) bool {
+	// 		if getDocID == nil {
+	// 			return false
+	// 		}
+	// 		resp, _ := data.(*Response)
+	// 		docID := getDocID()
+	// 		fmt.Printf(">>> received document ID in waitForResp: %s\n", docID)
+	// 		return resp.request.documentID == docID
+	// 	})
+	// defer waitForRespCancel()
 
 	var event *NavigationEvent
 	select {
-	case <-ctx.Done():
+	case <-timeoutCtx.Done():
+		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+			k6Throw(f.ctx, "waitForNavigation timed out after %s", opts.Timeout)
+		}
 		// ignore: the extension is shutting down
-		f.logger.Warnf("Frame:waitForNavigation:<-ctx.Done",
+		f.logger.Warnf("Frame:waitForNavigation:waitForNav<-timeoutCtx.Done",
 			"furl:%s err:%v", f.URL(), ctx.Err())
 		return nil
-	case <-timeoutCtx.Done():
-		k6Throw(f.ctx, "waitForNavigation timed out after %s", opts.Timeout)
 	case data := <-waitForNavCh:
 		event, _ = data.(*NavigationEvent)
 	}
@@ -1715,62 +1708,46 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 			"furl:%s - event.newDocument is nil", f.URL())
 		// In case of navigation within the same document (e.g. via an anchor
 		// link or the History API), there is no new document and a
-		// LifecycleEvent will not be fired, so we don't need to wait for it.
+		// LifecycleEvent will not be emitted nor will we receive a response,
+		// so we don't need to wait for them.
 		return nil
 	}
 
-	// var (
-	// 	req   = event.newDocument.request
-	// 	reqID string
-	// 	resp  api.Response
-	// )
-	// if req != nil {
-	// 	reqID = string(req.requestID)
-	// 	resp = req.Response()
-	// }
-	// if resp == nil {
-	// 	f.logger.Debugf("Frame:waitForNavigation",
-	// 		"furl:%s reqID:%s resp is nil", f.URL(), string(reqID))
-	// } else {
-	// 	resptmp, _ := resp.(*Response)
-	// 	f.logger.Debugf("Frame:waitForNavigation",
-	// 		"furl:%s reqID:%s", f.URL(), string(resptmp.request.requestID))
-	// }
-
-	var resp *Response
-	f.logger.Debugf("Frame:waitForNavigation",
-		"furl:%s reqID:%s waiting for response", f.URL())
-	select {
-	case <-timeoutCtx.Done():
-		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-			k6Throw(f.ctx, "wait for navigation timed out waiting for EventPageResponse after %s", opts.WaitUntil)
-		}
-	case data := <-waitForResp:
-		resp, _ = data.(*Response)
+	var (
+		req   = event.newDocument.request
+		resp  *Response
+		reqID string
+	)
+	if req != nil {
+		resp = req.response
+		reqID = req.documentID
 	}
 
 	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
 		f.logger.Debugf("Frame:waitForNavigation",
 			"furl:%s fid:%s rid:%s hasSubtreeLifecycleEventFired:true",
-			f.URL(), f.ID(), resp.request.requestID)
+			f.URL(), f.ID(), reqID)
 
 		select {
 		case <-timeoutCtx.Done():
 			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-				k6Throw(f.ctx, "wait for navigation timed out waiting for EventFrameAddLifecycle after %s", opts.WaitUntil)
+				k6Throw(f.ctx, "wait for navigation timed out waiting for %q after %s",
+					opts.WaitUntil, opts.Timeout)
 			}
 		case <-waitForLifecycleCh:
 		}
 	}
 
+	// var resp *Response
 	// f.logger.Debugf("Frame:waitForNavigation",
-	// 	"furl:%s reqID:%s waiting for the request to finish", f.URL(), reqID)
+	// 	"furl:%s waiting for response", f.URL())
 	// select {
 	// case <-timeoutCtx.Done():
 	// 	if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-	// 		k6Throw(f.ctx, "wait for navigation timed out waiting for EventPageRequestFinished after %s", opts.WaitUntil)
+	// 		k6Throw(f.ctx, "waitForNavigation timed out waiting for response after %s", opts.Timeout)
 	// 	}
-	// case <-waitForReqFin:
+	// case data := <-waitForResp:
+	// 	resp, _ = data.(*Response)
 	// }
 
 	return resp
