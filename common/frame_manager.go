@@ -24,15 +24,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
-	"github.com/dop251/goja"
-	k6common "go.k6.io/k6/js/common"
 
 	"github.com/grafana/xk6-browser/api"
 )
@@ -575,188 +571,12 @@ func (m *FrameManager) setMainFrame(f *Frame) {
 	m.mainFrame = f
 }
 
-// NavigateFrame will navigate specified frame to specified URL.
-func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) api.Response {
-	var (
-		fmid = m.ID()
-		fid  = frame.ID()
-		furl = frame.URL()
-	)
-	m.logger.Debugf("FrameManager:NavigateFrame",
-		"fmid:%d fid:%v furl:%s url:%s", fmid, fid, furl, url)
-	defer m.logger.Debugf("FrameManager:NavigateFrame:return",
-		"fmid:%d fid:%v furl:%s url:%s", fmid, fid, furl, url)
-
-	rt := k6common.GetRuntime(m.ctx)
-	netMgr := m.page.mainFrameSession.getNetworkManager()
-	defaultReferer := netMgr.extraHTTPHeaders["referer"]
-	parsedOpts := NewFrameGotoOptions(defaultReferer, time.Duration(m.timeoutSettings.navigationTimeout())*time.Second)
-	if err := parsedOpts.Parse(m.ctx, opts); err != nil {
-		k6common.Throw(rt, fmt.Errorf("failed parsing options: %w", err))
-	}
-
-	timeoutCtx, timeoutCancelFn := context.WithTimeout(m.ctx, parsedOpts.Timeout)
-	defer timeoutCancelFn()
-
-	chSameDoc, evCancelFn := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-		return data.(*NavigationEvent).newDocument == nil
-	})
-	defer evCancelFn() // Remove event handler
-
-	chWaitUntilCh, evCancelFn2 := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-		return data.(LifecycleEvent) == parsedOpts.WaitUntil
-	})
-	defer evCancelFn2() // Remove event handler
-
-	fs := frame.page.getFrameSession(cdp.FrameID(frame.ID()))
-	if fs == nil {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s fs:nil",
-			fmid, fid, furl, url)
-
-		// Attaching an iframe to an existing page doesn't seem to trigger a "Target.attachedToTarget" event
-		// from the browser even when "Target.setAutoAttach" is true. If this is the case fallback to the
-		// main frame's session.
-		fs = frame.page.mainFrameSession
-	}
-	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
-	if err != nil {
-		k6common.Throw(rt, err)
-	}
-
-	var event *NavigationEvent
-	if newDocumentID != "" {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:%s",
-			fmid, fid, furl, url, newDocumentID)
-
-		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-			ev := data.(*NavigationEvent)
-
-			// We are interested either in this specific document, or any other document that
-			// did commit and replaced the expected document.
-			if ev.newDocument != nil && (ev.newDocument.documentID == newDocumentID || ev.err == nil) {
-				return true
-			}
-			return false
-		}, parsedOpts.Timeout)
-		if err != nil {
-			k6common.Throw(rt, err)
-		}
-
-		event = data.(*NavigationEvent)
-		if event.newDocument.documentID != newDocumentID {
-			m.logger.Debugf("FrameManager:NavigateFrame:interrupted",
-				"fmid:%d fid:%v furl:%s url:%s docID:%s newDocID:%s",
-				fmid, fid, furl, url, event.newDocument.documentID, newDocumentID)
-		} else if event.err != nil &&
-			// TODO: A more graceful way of avoiding Throw()?
-			!(netMgr.userReqInterceptionEnabled &&
-				strings.Contains(event.err.Error(), "ERR_BLOCKED_BY_CLIENT")) {
-			k6common.Throw(rt, event.err)
-		}
-	} else {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:0",
-			fmid, fid, furl, url)
-
-		select {
-		case <-timeoutCtx.Done():
-			if timeoutCtx.Err() == context.DeadlineExceeded {
-				k6common.Throw(rt, ErrTimedOut)
-			}
-		case data := <-chSameDoc:
-			event = data.(*NavigationEvent)
-		}
-	}
-
-	if !frame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s hasSubtreeLifecycleEventFired:false",
-			fmid, fid, furl, url)
-
-		select {
-		case <-timeoutCtx.Done():
-			if timeoutCtx.Err() == context.DeadlineExceeded {
-				k6common.Throw(rt, ErrTimedOut)
-			}
-		case <-chWaitUntilCh:
-		}
-	}
-
-	var resp *Response
-	if event.newDocument != nil {
-		req := event.newDocument.request
-		if req != nil && req.response != nil {
-			resp = req.response
-		}
-	}
-	return resp
-}
-
 // Page returns the page that this frame manager belongs to.
 func (m *FrameManager) Page() api.Page {
 	if m.page != nil {
 		return m.page
 	}
 	return nil
-}
-
-// WaitForFrameNavigation waits for the given navigation lifecycle event to happen.
-func (m *FrameManager) WaitForFrameNavigation(frame *Frame, opts goja.Value) api.Response {
-	m.logger.Debugf("FrameManager:WaitForFrameNavigation",
-		"fmid:%d fid:%s furl:%s",
-		m.ID(), frame.ID(), frame.URL())
-	defer m.logger.Debugf("FrameManager:WaitForFrameNavigation:return",
-		"fmid:%d fid:%s furl:%s",
-		m.ID(), frame.ID(), frame.URL())
-
-	parsedOpts := NewFrameWaitForNavigationOptions(time.Duration(m.timeoutSettings.timeout()) * time.Second)
-	if err := parsedOpts.Parse(m.ctx, opts); err != nil {
-		k6Throw(m.ctx, "cannot parse waitForNavigation options: %v", err)
-	}
-
-	ch, evCancelFn := createWaitForEventHandler(m.ctx, frame, []string{EventFrameNavigation},
-		func(data interface{}) bool {
-			return true // Both successful and failed navigations are considered
-		})
-	defer evCancelFn() // Remove event handler
-
-	var event *NavigationEvent
-	select {
-	case <-m.ctx.Done():
-		// ignore: the extension is shutting down
-		m.logger.Warnf("FrameManager:WaitForFrameNavigation:<-ctx.Done",
-			"fmid:%d furl:%s err:%v",
-			m.ID(), frame.URL(), m.ctx.Err())
-		return nil
-	case <-time.After(parsedOpts.Timeout):
-		k6Throw(m.ctx, "waitForFrameNavigation timed out after %s", parsedOpts.Timeout)
-	case data := <-ch:
-		event = data.(*NavigationEvent)
-	}
-
-	if event.newDocument == nil {
-		// In case of navigation within the same document (e.g. via an anchor
-		// link or the History API), there is no new document and a
-		// LifecycleEvent will not be fired, so we don't need to wait for it.
-		return nil
-	}
-
-	if frame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
-		m.logger.Debugf("FrameManager:WaitForFrameNavigation",
-			"fmid:%d furl:%s hasSubtreeLifecycleEventFired:true",
-			m.ID(), frame.URL())
-
-		_, err := waitForEvent(m.ctx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-			return data.(LifecycleEvent) == parsedOpts.WaitUntil
-		}, parsedOpts.Timeout)
-		if err != nil {
-			k6Throw(m.ctx, "waitForFrameNavigation cannot wait for event (EventFrameAddLifecycle): %v", err)
-		}
-	}
-
-	return event.newDocument.request.response
 }
 
 // ID returns the unique ID of a FrameManager value.

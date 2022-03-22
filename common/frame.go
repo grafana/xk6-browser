@@ -921,8 +921,70 @@ func (f *Frame) GetAttribute(selector string, name string, opts goja.Value) goja
 
 // Goto will navigate the frame to the specified URL and return a HTTP response object.
 func (f *Frame) Goto(url string, opts goja.Value) api.Response {
-	resp := f.manager.NavigateFrame(f, url, opts)
+	netMgr := f.page.mainFrameSession.getNetworkManager()
+	defaultReferer := netMgr.extraHTTPHeaders["referer"]
+	parsedOpts := NewFrameGotoOptions(defaultReferer,
+		time.Duration(f.manager.timeoutSettings.navigationTimeout())*time.Second)
+	if err := parsedOpts.Parse(f.ctx, opts); err != nil {
+		k6Throw(f.ctx, "failed parsing goto options: %w", err)
+	}
+
+	resp := f.navigate(url, parsedOpts)
 	applySlowMo(f.ctx)
+
+	return resp
+}
+
+func (f *Frame) navigate(url string, opts *FrameGotoOptions) api.Response {
+	var (
+		fid  = f.ID()
+		furl = f.URL()
+	)
+	f.logger.Debugf("Frame:navigate",
+		"fid:%v furl:%s url:%s", fid, furl, url)
+	defer f.logger.Debugf("Frame:navigate:return",
+		"fid:%v furl:%s url:%s", fid, furl, url)
+
+	fs := f.page.getFrameSession(cdp.FrameID(fid))
+	if fs == nil {
+		f.logger.Debugf("Frame:navigate",
+			"fid:%v furl:%s url:%s fs:nil", fid, furl, url)
+
+		// Attaching an iframe to an existing page doesn't seem to trigger a "Target.attachedToTarget" event
+		// from the browser even when "Target.setAutoAttach" is true. If this is the case fallback to the
+		// main frame's session.
+		fs = f.page.mainFrameSession
+	}
+
+	var (
+		navCh                = make(chan string)
+		navCtx, navCtxCancel = context.WithCancel(f.ctx)
+		resp                 api.Response
+		wg                   sync.WaitGroup
+	)
+	defer navCtxCancel()
+
+	wg.Add(1)
+	// Try to setup waiters first, to minimize the chances of a race condition
+	// where we receive Page.frameNavigated / Network.responseReceived before we
+	// have a chance to listen to them, leading to timeouts.
+	go func() {
+		defer wg.Done()
+		resp = f.waitForNavigation(navCtx, &FrameWaitForNavigationOptions{
+			URL:       url,
+			WaitUntil: opts.WaitUntil,
+			Timeout:   opts.Timeout,
+		}, navCh)
+	}()
+
+	docID, err := fs.navigateFrame(f, url, opts.Referer)
+	if err != nil {
+		k6Throw(f.ctx, "error navigating frame: %s", err)
+	}
+
+	navCh <- docID
+	wg.Wait()
+
 	return resp
 }
 
@@ -1546,9 +1608,120 @@ func (f *Frame) WaitForLoadState(state string, opts goja.Value) {
 	}
 }
 
-// WaitForNavigation waits for the given navigation lifecycle event to happen.
+// WaitForNavigation waits for NavigationEvent to be emitted, and in case of
+// cross-document navigations (i.e. not for navigations within the same document
+// done via an anchor link or the history API) it also waits for a LifecycleEvent.
 func (f *Frame) WaitForNavigation(opts goja.Value) api.Response {
-	return f.manager.WaitForFrameNavigation(f, opts)
+	parsedOpts := NewFrameWaitForNavigationOptions(time.Duration(f.manager.timeoutSettings.timeout()) * time.Second)
+	if err := parsedOpts.Parse(f.ctx, opts); err != nil {
+		k6Throw(f.ctx, "error parsing waitForNavigation options: %v", err)
+	}
+
+	return f.waitForNavigation(f.ctx, parsedOpts, nil)
+}
+
+// waitForNavHandler determines whether a received NavigationEvent
+// matches the specific document navigation happened for, otherwise
+// it assumes it was a navigation for the same document.
+func waitForNavHandler(data interface{}, getDocID func() string) bool {
+	ev, _ := data.(*NavigationEvent)
+
+	// There was a Page.navigate command issued, so wait for the returned document ID.
+	if getDocID != nil {
+		docID := getDocID()
+		if docID != "" {
+			// We are interested either in this specific document, or any other document that
+			// did commit and replaced the expected document.
+			if ev.newDocument != nil &&
+				(ev.newDocument.documentID == docID || ev.err == nil) {
+				return true
+			}
+			return false
+		}
+	}
+
+	// Both successful and failed navigations are considered
+	return true
+}
+
+//nolint: cyclop,funlen
+func (f *Frame) waitForNavigation(
+	ctx context.Context, opts *FrameWaitForNavigationOptions, navCh <-chan string,
+) api.Response {
+	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
+	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
+
+	var getDocID func() string
+	if navCh != nil {
+		var docID string
+		getDocID = func() string {
+			if docID == "" {
+				docID = <-navCh
+			}
+			return docID
+		}
+	}
+
+	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
+	defer timeoutCancelFn()
+
+	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
+		func(data interface{}) bool { return waitForNavHandler(data, getDocID) })
+	defer waitForNavCancel() // Remove event handler
+
+	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx,
+		f, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+			ev, _ := data.(LifecycleEvent)
+			return ev == opts.WaitUntil
+		})
+	defer waitForLifecycleCancel()
+
+	var event *NavigationEvent
+	select {
+	case <-timeoutCtx.Done():
+		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+			k6Throw(f.ctx, "waitForNavigation timed out after %s", opts.Timeout)
+		}
+		// ignore: the extension is shutting down
+		f.logger.Warnf("Frame:waitForNavigation:waitForNav<-timeoutCtx.Done",
+			"furl:%s err:%v", f.URL(), ctx.Err())
+		return nil
+	case data := <-waitForNavCh:
+		event, _ = data.(*NavigationEvent)
+	}
+
+	if event.newDocument == nil {
+		f.logger.Debugf("Frame:waitForNavigation",
+			"furl:%s - event.newDocument is nil", f.URL())
+		// In case of navigation within the same document (e.g. via an anchor
+		// link or the History API), there is no new document and a
+		// LifecycleEvent will not be emitted, so we don't need to wait for it.
+		return nil
+	}
+
+	if f.hasSubtreeLifecycleEventFired(opts.WaitUntil) {
+		f.logger.Debugf("Frame:waitForNavigation",
+			"furl:%s fid:%s hasSubtreeLifecycleEventFired:true", f.URL(), f.ID())
+
+		select {
+		case <-timeoutCtx.Done():
+			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+				k6Throw(f.ctx, "wait for navigation timed out waiting for %q after %s",
+					opts.WaitUntil, opts.Timeout)
+			}
+		case <-waitForLifecycleCh:
+		}
+	}
+
+	var (
+		req  = event.newDocument.request
+		resp api.Response
+	)
+	if req != nil {
+		resp = req.Response()
+	}
+
+	return resp
 }
 
 // WaitForSelector waits for the given selector to match the waiting criteria.
