@@ -247,11 +247,10 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		return errors.New("we either navigate top level or have old version of the navigated frame")
 	}
 
-	m.logger.Debugf("FrameManager:frameNavigated:removeFrames",
-		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t",
-		m.ID(), frameID, parentFrameID, documentID, name, url, initial)
-
 	if frame != nil {
+		m.logger.Debugf("FrameManager:frameNavigated:removeFrames",
+			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t",
+			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		for _, child := range frame.ChildFrames() {
 			m.removeFramesRecursively(child.(*Frame))
 		}
@@ -294,6 +293,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		if pendingDocument.documentID == documentID {
 			// Committing a pending document.
 			frame.currentDocument = pendingDocument
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=pendingDoc",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		} else {
 			// Sometimes, we already have a new pending when the old one commits.
 			// An example would be Chromium error page followed by a new navigation request,
@@ -305,6 +307,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 				documentID: documentID,
 				request:    nil,
 			}
+			m.logger.Debugf("FrameManager:frameNavigated",
+				"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,keepPending",
+				m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 		}
 		frame.pendingDocument = nil
 	} else {
@@ -313,14 +318,19 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 			documentID: documentID,
 			request:    nil,
 		}
+		m.logger.Debugf("FrameManager:frameNavigated",
+			"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - currDoc=newDoc,noPending",
+			m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 	}
 
 	m.logger.Debugf("FrameManager:frameNavigated",
-		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil - fcurdoc:%v",
-		m.ID(), frameID, parentFrameID, documentID, name, url, initial, documentID)
+		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t pdoc:nil",
+		m.ID(), frameID, parentFrameID, documentID, name, url, initial)
 
 	frame.clearLifecycle()
-	frame.emit(EventFrameNavigation, &NavigationEvent{url: url, name: name, newDocument: frame.currentDocument})
+	frame.emit(EventFrameNavigation, &NavigationEvent{
+		url: url, name: name, newDocument: frame.currentDocument,
+	})
 
 	// TODO: when we add API support for storage we need to track origins
 	// if !initial {
@@ -502,7 +512,8 @@ func (m *FrameManager) requestFinished(req *Request) {
 }
 
 func (m *FrameManager) requestReceivedResponse(res *Response) {
-	m.logger.Debugf("FrameManager:requestReceivedResponse", "fmid:%d rurl:%s", m.ID(), res.URL())
+	m.logger.Debugf("FrameManager:requestReceivedResponse",
+		"fmid:%d rurl:%s rid:%s", m.ID(), res.URL(), string(res.request.requestID))
 
 	m.page.emit(EventPageResponse, res)
 }
@@ -526,10 +537,11 @@ func (m *FrameManager) requestStarted(req *Request) {
 	if frame.inflightRequestsLen() == 1 {
 		frame.stopNetworkIdleTimer()
 	}
+	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rid:%s docID:%s", m.id, req.getID(), req.documentID)
 	if req.documentID != "" {
 		frame.pendingDocument = &DocumentInfo{documentID: req.documentID, request: req}
 	}
-	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:nil", m.ID(), req.URL())
+	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:%#v", m.ID(), req.URL(), frame.pendingDocument)
 }
 
 // Frames returns a list of frames on the page.

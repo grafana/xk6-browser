@@ -209,12 +209,14 @@ func (f *Frame) recalculateLifecycle() {
 		}
 	}
 	f.lifecycleEventsMu.RUnlock()
+	f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q events:%v", f.ID(), f.URL(), events)
 
 	// Only consider a life cycle event as fired if it has triggered for all of subtree.
 	f.childFramesMu.RLock()
 	{
 		for child := range f.childFrames {
 			cf := child.(*Frame)
+			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s cfid:%v furl:%q", f.ID(), cf.ID(), f.URL())
 			// a precaution for preventing a deadlock in *Frame.childFramesMu
 			if cf == f {
 				continue
@@ -222,6 +224,8 @@ func (f *Frame) recalculateLifecycle() {
 			cf.recalculateLifecycle()
 			for k := range events {
 				if !cf.hasSubtreeLifecycleEventFired(k) {
+					f.logger.Debugf("Frame:recalculateLifecycle",
+						"fid:%s cfid:%v furl:%q deletingEvent:%s", f.ID(), cf.ID(), f.URL(), k)
 					delete(events, k)
 				}
 			}
@@ -233,17 +237,26 @@ func (f *Frame) recalculateLifecycle() {
 	mainFrame := f.manager.MainFrame()
 	for k := range events {
 		if f.hasSubtreeLifecycleEventFired(k) {
+			f.logger.Debugf("Frame:recalculateLifecycle", "fid:%s furl:%q skippingEvent:%s", f.ID(), f.URL(), k)
 			continue
 		}
+		f.logger.Debugf("Frame:recalculateLifecycle",
+			"fid:%s furl:%q emitting FrameAddLifecycle for event %q", f.ID(), f.URL(), k)
 		f.emit(EventFrameAddLifecycle, k)
 
 		if f != mainFrame {
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q f is not mainFrame for event %q", f.ID(), f.URL(), k)
 			continue
 		}
 		switch k {
 		case LifecycleEventLoad:
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q emitting PageLoad for event %q", f.ID(), f.URL(), k)
 			f.page.emit(EventPageLoad, nil)
 		case LifecycleEventDOMContentLoad:
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q emitting PageDOMContentLoaded for event %q", f.ID(), f.URL(), k)
 			f.page.emit(EventPageDOMContentLoaded, nil)
 		}
 	}
@@ -253,6 +266,8 @@ func (f *Frame) recalculateLifecycle() {
 	{
 		for k := range f.subtreeLifecycleEvents {
 			if ok := events[k]; !ok {
+				f.logger.Debugf("Frame:recalculateLifecycle",
+					"fid:%s furl:%q emitting FrameRemoveLifecycle for event %q", f.ID(), f.URL(), k)
 				f.emit(EventFrameRemoveLifecycle, k)
 			}
 		}
@@ -263,6 +278,8 @@ func (f *Frame) recalculateLifecycle() {
 	{
 		f.subtreeLifecycleEvents = make(map[LifecycleEvent]bool)
 		for k, v := range events {
+			f.logger.Debugf("Frame:recalculateLifecycle",
+				"fid:%s furl:%q setting subtreeLifecycleEvent %q=%v", f.ID(), f.URL(), k, v)
 			f.subtreeLifecycleEvents[k] = v
 		}
 	}
