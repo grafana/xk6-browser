@@ -1627,13 +1627,13 @@ func (f *Frame) WaitForNavigation(opts goja.Value) api.Response {
 // waitForNavHandler determines whether a received NavigationEvent
 // matches the specific document navigation happened for, otherwise
 // it assumes it was a navigation for the same document.
-func waitForNavHandler(data interface{}, navCh <-chan string) bool {
+func waitForNavHandler(data interface{}, getDocID func() string) bool {
 	ev, _ := data.(*NavigationEvent)
 
 	// There was a Page.navigate command issued, so wait for the returned document ID.
-	if navCh != nil {
-		docID := <-navCh
-		fmt.Printf(">>> received document ID in waitForNavCh: %s\n", docID)
+	if getDocID != nil {
+		docID := getDocID()
+		fmt.Printf(">>> received document ID in waitForNavHandler: %s\n", docID)
 		if docID != "" {
 			// We are interested either in this specific document, or any other document that
 			// did commit and replaced the expected document.
@@ -1657,12 +1657,24 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(ctx, opts.Timeout)
 	defer timeoutCancelFn()
 
-	var (
-		docNavCh = make(chan string)
-		docReqCh = make(chan string)
-	)
+	var getDocID func() string
+	if navCh != nil {
+		var (
+			docIDMu sync.Mutex
+			docID   string
+		)
+		getDocID = func() string {
+			docIDMu.Lock()
+			defer docIDMu.Unlock()
+			if docID == "" {
+				docID = <-navCh
+				fmt.Printf(">>> got document ID: %s\n", docID)
+			}
+			return docID
+		}
+	}
 	waitForNavCh, waitForNavCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
-		func(data interface{}) bool { return waitForNavHandler(data, docNavCh) })
+		func(data interface{}) bool { return waitForNavHandler(data, getDocID) })
 	defer waitForNavCancel() // Remove event handler
 
 	waitForLifecycleCh, waitForLifecycleCancel := createWaitForEventHandler(timeoutCtx,
@@ -1675,17 +1687,15 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 	waitForResp, waitForRespCancel := createWaitForEventHandler(
 		timeoutCtx, f.manager.page, []string{EventPageResponse},
 		func(data interface{}) bool {
+			if getDocID == nil {
+				return false
+			}
 			resp, _ := data.(*Response)
-			docID := <-docReqCh
+			docID := getDocID()
 			fmt.Printf(">>> received document ID in waitForResp: %s\n", docID)
 			return resp.request.documentID == docID
 		})
 	defer waitForRespCancel()
-
-	docID := <-navCh
-	fmt.Printf(">>> got document ID: %s\n", docID)
-	docNavCh <- docID
-	docReqCh <- docID
 
 	var event *NavigationEvent
 	select {
@@ -1694,8 +1704,8 @@ func (f *Frame) waitForNavigation(ctx context.Context, opts *FrameWaitForNavigat
 		f.logger.Warnf("Frame:waitForNavigation:<-ctx.Done",
 			"furl:%s err:%v", f.URL(), ctx.Err())
 		return nil
-	case <-time.After(opts.Timeout):
-		k6Throw(f.ctx, "waitForFrameNavigation timed out after %s", opts.Timeout)
+	case <-timeoutCtx.Done():
+		k6Throw(f.ctx, "waitForNavigation timed out after %s", opts.Timeout)
 	case data := <-waitForNavCh:
 		event, _ = data.(*NavigationEvent)
 	}
