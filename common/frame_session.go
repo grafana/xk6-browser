@@ -499,11 +499,12 @@ func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) (strin
 		fs.session.ID(), fs.targetID, url, referrer)
 
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frame.ID()))
-	_, documentID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
+	_, loaderID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
 	if err != nil {
 		err = fmt.Errorf("%s at %q: %w", errorText, url, err)
 	}
-	return documentID.String(), err
+
+	return loaderID.String(), err
 }
 
 func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICalled) {
