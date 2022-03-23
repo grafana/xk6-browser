@@ -94,12 +94,15 @@ func TestBrowserContextOptionsExtraHTTPHeaders(t *testing.T) {
 	t.Cleanup(bctx.Close)
 
 	p := bctx.NewPage()
-	resp := p.Goto(tb.URL("/get"), nil)
-
+	resp := p.Goto(tb.URL("/get"), tb.rt.ToValue(struct {
+		WaitUntil string `js:"waitUntil"`
+	}{WaitUntil: "load"}))
 	require.NotNil(t, resp)
+
 	var body struct{ Headers map[string][]string }
 	err := json.Unmarshal(resp.Body().Bytes(), &body)
 	require.NoError(t, err)
+
 	h := body.Headers["Some-Header"]
 	require.NotEmpty(t, h)
 	assert.Equal(t, "Some-Value", h[0])
