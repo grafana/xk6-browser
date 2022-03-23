@@ -1651,10 +1651,15 @@ func (f *Frame) waitForNavigation(
 	f.logger.Debugf("Frame:waitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
 	defer f.logger.Debugf("Frame:waitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
 
-	var getDocID func() string
+	var (
+		docIDMu  sync.Mutex
+		getDocID func() string
+	)
 	if navCh != nil {
 		var docID string
 		getDocID = func() string {
+			docIDMu.Lock()
+			defer docIDMu.Unlock()
 			if docID == "" {
 				docID = <-navCh
 			}
@@ -1676,7 +1681,22 @@ func (f *Frame) waitForNavigation(
 		})
 	defer waitForLifecycleCancel()
 
-	var event *NavigationEvent
+	waitForRespCh, waitForRespCancel := createWaitForEventHandler(
+		timeoutCtx, f.manager.page, []string{EventPageResponse},
+		func(data interface{}) bool {
+			if getDocID == nil {
+				return false
+			}
+			resp, _ := data.(*Response)
+			return resp.request.documentID == getDocID()
+		})
+	defer waitForRespCancel()
+
+	var (
+		event *NavigationEvent
+		resp  api.Response
+	)
+outer:
 	select {
 	case <-timeoutCtx.Done():
 		if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
@@ -1686,6 +1706,13 @@ func (f *Frame) waitForNavigation(
 		f.logger.Warnf("Frame:waitForNavigation:waitForNav<-timeoutCtx.Done",
 			"furl:%s err:%v", f.URL(), ctx.Err())
 		return nil
+	case data := <-waitForRespCh:
+		r, _ := data.(api.Response)
+		if resp == nil && r != nil {
+			resp = r
+			waitForRespCh = nil
+		}
+		goto outer // wait for NavigationEvent
 	case data := <-waitForNavCh:
 		event, _ = data.(*NavigationEvent)
 	}
@@ -1711,14 +1738,6 @@ func (f *Frame) waitForNavigation(
 			}
 		case <-waitForLifecycleCh:
 		}
-	}
-
-	var (
-		req  = event.newDocument.request
-		resp api.Response
-	)
-	if req != nil {
-		resp = req.Response()
 	}
 
 	return resp
