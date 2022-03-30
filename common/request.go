@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -43,6 +44,7 @@ var _ api.Request = &Request{}
 type Request struct {
 	ctx                 context.Context
 	frame               *Frame
+	responseMu          sync.RWMutex
 	response            *Response
 	redirectChain       []*Request
 	requestID           network.RequestID
@@ -237,7 +239,15 @@ func (r *Request) ResourceType() string {
 
 // Response returns the response for the request, if received.
 func (r *Request) Response() api.Response {
+	r.responseMu.RLock()
+	defer r.responseMu.RUnlock()
 	return r.response
+}
+
+func (r *Request) setResponse(resp *Response) {
+	r.responseMu.Lock()
+	defer r.responseMu.Unlock()
+	r.response = resp
 }
 
 func (r *Request) Size() api.HTTPMessageSize {

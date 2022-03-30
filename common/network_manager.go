@@ -595,7 +595,7 @@ func (m *NetworkManager) onResponseReceived(event *network.EventResponseReceived
 		return
 	}
 	resp := NewHTTPResponse(m.ctx, req, event.Response, event.Timestamp)
-	req.response = resp
+	req.setResponse(resp)
 	m.frameManager.requestReceivedResponse(resp)
 }
 
