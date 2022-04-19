@@ -251,6 +251,44 @@ func TestPageWaitForFunction(t *testing.T) {
 		assert.Equal(t, arg, gotArg)
 	})
 
+	t.Run("ok_func_raf_default_args", func(t *testing.T) {
+		t.Parallel()
+
+		tb := newTestBrowser(t)
+		p := tb.NewPage(nil)
+		require.NoError(t, tb.rt.Set("page", p))
+		var log []string
+		require.NoError(t, tb.rt.Set("log", func(s string) { log = append(log, s) }))
+
+		_, err := tb.rt.RunString(`fn = (...args) => {
+			window._args = args;
+			return true;
+		}`)
+		require.NoError(t, err)
+
+		args := []int{1, 2, 3}
+		argsJS, err := json.Marshal(args)
+		require.NoError(t, err)
+
+		err = tb.vu.loop.Start(func() error {
+			if _, err := tb.rt.RunString(
+				fmt.Sprintf(script, "fn", "{}", fmt.Sprintf("...%s", string(argsJS))),
+			); err != nil {
+				return fmt.Errorf("%w", err)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		assert.Contains(t, log, "ok: null")
+
+		argEvalJS := p.Evaluate(tb.rt.ToValue("() => window._args"))
+		argEval, ok := argEvalJS.(goja.Value)
+		require.True(t, ok)
+		var gotArgs []int
+		_ = tb.rt.ExportTo(argEval, &gotArgs)
+		assert.Equal(t, args, gotArgs)
+	})
+
 	t.Run("err_expr_raf_timeout", func(t *testing.T) {
 		t.Parallel()
 
@@ -271,6 +309,27 @@ func TestPageWaitForFunction(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, log, 1)
 		assert.Contains(t, log[0], "timed out after 500ms")
+	})
+
+	t.Run("err_wrong_polling", func(t *testing.T) {
+		t.Parallel()
+
+		tb := newTestBrowser(t)
+		p := tb.NewPage(nil)
+		rt := tb.vu.Runtime()
+		require.NoError(t, rt.Set("page", p))
+
+		err := tb.vu.loop.Start(func() error {
+			if _, err := rt.RunString(fmt.Sprintf(script, "false",
+				"{ polling: 'blah' }", "null")); err != nil {
+				return fmt.Errorf("%w", err)
+			}
+			return nil
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(),
+			`error parsing waitForFunction options: wrong polling option value:`,
+			`"blah"; possible values: "raf", "mutation" or number`)
 	})
 
 	t.Run("ok_expr_poll_interval", func(t *testing.T) {
