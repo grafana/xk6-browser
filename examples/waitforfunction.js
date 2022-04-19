@@ -1,4 +1,4 @@
-import { check, fail } from 'k6';
+import { check } from 'k6';
 import launcher from 'k6/x/browser';
 
 export default function() {
@@ -16,14 +16,12 @@ export default function() {
     }, 1000);
   });
 
-  page.waitForFunction(() => document.querySelector('h1') !== null, {
+  page.waitForFunction("document.querySelector('h1')", {
     polling: 'mutation',
     timeout: 2000,
   }).then(ok => {
-    check(ok, { 'waitForFunction successfully resolved': ok === null });
+    check(ok, { 'waitForFunction successfully resolved': ok.innerHTML() == 'Hello' });
     page.close();
     browser.close();
-  }, err => {
-    fail(err);
   });
 }
