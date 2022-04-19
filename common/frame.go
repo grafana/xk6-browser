@@ -592,7 +592,7 @@ func (f *Frame) waitForFunction(
 	pageFn := `
 		(injected, predicate, polling, timeout, ...args) => {
 			const fn = (...args) => {
-				return predicate(...args) === true || injected.continuePolling;
+				return predicate(...args) || injected.continuePolling;
 			}
 			return injected.waitForPredicateFunction(fn, polling, timeout, ...args);
 		}

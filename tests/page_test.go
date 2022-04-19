@@ -273,7 +273,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		assert.Contains(t, log[0], "timed out after 500ms")
 	})
 
-	t.Run("ok_func_poll_interval", func(t *testing.T) {
+	t.Run("ok_expr_poll_interval", func(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
@@ -281,9 +281,6 @@ func TestPageWaitForFunction(t *testing.T) {
 		require.NoError(t, tb.rt.Set("page", p))
 		var log []string
 		require.NoError(t, tb.rt.Set("log", func(s string) { log = append(log, s) }))
-
-		_, err := tb.rt.RunString(`fn = () => document.querySelector('h1') !== null`)
-		require.NoError(t, err)
 
 		p.Evaluate(tb.rt.ToValue(`() => {
 			setTimeout(() => {
@@ -293,15 +290,23 @@ func TestPageWaitForFunction(t *testing.T) {
 			}, 1000);
 		}`))
 
-		err = tb.vu.loop.Start(func() error {
-			if _, err := tb.rt.RunString(fmt.Sprintf(script, "fn",
+		script := `
+	        page.waitForFunction(%s, %s, %s).then(ok => {
+	            log('ok: '+ok.innerHTML());
+	        }, err => {
+	            log('err: '+err);
+	        });`
+
+		err := tb.vu.loop.Start(func() error {
+			if _, err := tb.rt.RunString(fmt.Sprintf(script,
+				fmt.Sprintf("%q", "document.querySelector('h1')"),
 				"{ polling: 100, timeout: 2000, }", "null")); err != nil {
 				return fmt.Errorf("%w", err)
 			}
 			return nil
 		})
 		require.NoError(t, err)
-		assert.Contains(t, log, "ok: null")
+		assert.Contains(t, log, "ok: Hello")
 	})
 
 	t.Run("ok_func_poll_mutation", func(t *testing.T) {
