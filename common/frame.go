@@ -603,10 +603,8 @@ func (f *Frame) waitForFunction(
 	promise, resolve, reject := rt.NewPromise()
 
 	go func() {
-		opts := evalOptions{
-			forceCallable: false,
-			returnByValue: false,
-		}
+		// First evaluate the predicate function itself to get its handle.
+		opts := evalOptions{forceCallable: false, returnByValue: false}
 		handle, err := execCtx.eval(apiCtx, opts, js)
 		if err != nil {
 			cb(func() error {
@@ -616,10 +614,9 @@ func (f *Frame) waitForFunction(
 			return
 		}
 
-		opts = evalOptions{
-			forceCallable: true,
-			returnByValue: false,
-		}
+		// Then evaluate the injected function call, passing it the predicate
+		// function handle and the rest of the arguments.
+		opts = evalOptions{forceCallable: true, returnByValue: false}
 		result, err := execCtx.eval(
 			apiCtx, opts, pageFn, append([]interface{}{
 				injected,
