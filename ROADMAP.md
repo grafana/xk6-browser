@@ -68,6 +68,18 @@ These are goals achievable within 6-12 months, tentatively done by mid 2023.
   When all users are eligible to upgrade to a plan that includes browser testing.
 
 
+- **Merge the extension into the main k6 repository.**<br>
+  k6 and Grafana consider browser testing to be another strategy under the testing umbrella, along with performance, contract, and other types of testing modern web applications benefit from. As such, the scope of the k6 tool will expand to include functional/E2E testing using browser automation, with the ultimate goal of merging the xk6-browser extension into the main k6 repository as a core JS module.
+
+  *How will we achieve this?*<br>
+  Once the extension and API is relatively stable, and it's well-tested in k6 Cloud, we will create a PR to the main k6 repository with the extension code. Then we will deprecate the standalone xk6-browser repository, and point users to use the main k6 binary instead.
+
+  This will be a minor breaking change, as scripts will have to import `k6/browser` instead of `k6/x/browser`, and CI jobs will need to change, but the functionality should remain the same.
+
+  *Definition of Done*<br>
+  Once the extension has been merged into the k6 repository.
+
+
 - **Increase test code coverage; refactor problematic areas of the codebase; fix "flaky" tests, linter issues, etc.**<br>
   This is both a mid and long term goal we'll be constantly focusing on. See issues [#228](https://github.com/grafana/xk6-browser/issues/228), [#241](https://github.com/grafana/xk6-browser/issues/241) and [#58](https://github.com/grafana/xk6-browser/issues/58).
 
@@ -101,18 +113,6 @@ These are goals achievable after a year, and don't have a clear date of delivery
 
   *Definition of Done*<br>
   When we implement all of the functionality found in other tools that makes sense for xk6-browser. This is intentionally vague at the moment, and we'll refine it as we make progress.
-
-
-- **Merge the extension into the main k6 repository.**<br>
-  k6 and Grafana consider browser testing to be another strategy under the testing umbrella, along with performance, contract, and other types of testing modern web applications benefit from. As such, the scope of the k6 tool will expand to include functional/E2E testing using browser automation, with the ultimate goal of merging the xk6-browser extension into the main k6 repository as a core JS module.
-
-  *How will we achieve this?*<br>
-  Once the extension is stable, feature-complete, and widely used in k6 Cloud, we will create a PR to the main k6 repository with the extension code. Then we will deprecate the standalone xk6-browser repository, and point users to use the main k6 binary instead.
-
-  This will be a minor breaking change, as scripts will have to import `k6/browser` instead of `k6/x/browser`, and CI jobs will need to change, but the functionality should remain the same.
-
-  *Definition of Done*<br>
-  Once the extension has been merged into the k6 repository.
 
 
 - **Optimize the k6 Cloud deployment and remove the Beta status.**<br>
