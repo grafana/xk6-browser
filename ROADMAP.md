@@ -1,7 +1,9 @@
 xk6-browser roadmap
 ===================
 
-xk6-browser is a young project that is undergoing substantial changes in order to make it more useful to all users—whether they're coming from API/performance testing with standard [k6](https://k6.io/), or are new to the k6 ecosystem and browser testing in general. In addition to being a useful tool, users would want to know what the team's, k6, and Grafana's goals are for the project, so that they can plan ahead and trust our commitment to its success.
+xk6-browser is a [k6](https://k6.io/) extension that will become part of the k6 core once it reaches its stability goals. The project adds browser automation support to k6, expanding the testing capabilities of the k6 ecosystem to include real-world user simulation in addition to API/performance testing. This allows web developers to test their applications fully end-to-end in a way that previously wasn't possible with k6 alone.
+
+We consider browser automation to be an important part of web application testing, and have big goals in mind for xk6-browser. In the spirit of transparency, we'd like to share our roadmap for the project with the k6 community, so that users can plan ahead, and trust the development team's, k6 and Grafana's commitment to its success.
 
 With that in mind, below we detail some of our short, mid and long-term goals. Most of these will be worked on concurrently, and reaching them will be a gradual process. The timeframes are also not set in stone, but serve as a tentative target the team is aiming for.
 
