@@ -37,7 +37,7 @@ These are goals achievable within 3-6 months, tentatively done by Q3 2022.
   The current documentation is not up-to-date which makes using xk6-browser outside of the examples quite difficult.
 
   *How will we achieve this?*<br>
-  We are prioritizing working on documentation in all upcoming cycles.
+  We are prioritizing working on documentation in all upcoming development cycles.
 
   *Definition of Done*<br>
   When the documentation reflects the state of the current API.
@@ -81,7 +81,7 @@ These are goals achievable within 6-12 months, tentatively done by mid 2023.
 Long-term goals
 ---------------
 
-These are goals achievable after a year, tentatively done in 2024 and beyond.
+These are goals achievable after a year, and don't have a clear date of delivery yet.
 
 - **Add support for Firefox and other WebKit-based browsers.**<br>
   Currently (April 2022), our main focus is supporting Chromium-based browsers, which should be expanded to include other browsers as well. The main challenges here will be around CDP and the behavior differences between browsers.
