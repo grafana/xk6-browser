@@ -754,7 +754,7 @@ func (f *Frame) Content() string {
 			if (document.documentElement) {
 				content += document.documentElement.outerHTML;
 			}
-			return document.documentElement.outerHTML;
+			return content;
 		}`
 
 	c := f.Evaluate(rt.ToValue(js))
