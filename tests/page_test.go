@@ -80,7 +80,7 @@ func TestPageContent(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	content := `<html><head></head><body><h1>Hello</h1></body></html>`
+	content := `<!DOCTYPE html><html><head></head><body><h1>Hello</h1></body></html>`
 	p.SetContent(content, nil)
 
 	assert.Equal(t, content, p.Content())
