@@ -117,7 +117,10 @@ func parseRemoteObjectValue(t cdpruntime.Type, val string, op *cdpruntime.Object
 }
 
 func parseExceptionDetails(exc *cdpruntime.ExceptionDetails) string {
-	errMsg := fmt.Sprintf("%s", exc)
+	if exc == nil {
+		return ""
+	}
+	var errMsg string
 	if exc.Exception != nil {
 		if o, _ := parseRemoteObject(exc.Exception); o != nil {
 			errMsg += fmt.Sprintf("%s", o)
