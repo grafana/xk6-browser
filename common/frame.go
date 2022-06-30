@@ -1778,7 +1778,7 @@ func (f *Frame) WaitForLoadState(state string, opts goja.Value) {
 	waitUntil := LifecycleEventLoad
 	if state != "" {
 		if err = waitUntil.UnmarshalText([]byte(state)); err != nil {
-			k6ext.Panic(f.ctx, "waitForLoadState error: %v", err)
+			k6ext.Panic(f.ctx, "waitForLoadState: %v", err)
 		}
 	}
 
