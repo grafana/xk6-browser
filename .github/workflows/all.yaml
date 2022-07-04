@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/427-event-refactoring-wip
     tags:
       - v*
   pull_request:
