@@ -60,4 +60,7 @@ type ElementHandle interface {
 	Uncheck(opts goja.Value)
 	WaitForElementState(state string, opts goja.Value)
 	WaitForSelector(selector string, opts goja.Value) ElementHandle
+
+	// AsyncClick returns a promise that scrolls element into view and clicks in the center of the element.
+	AsyncClick(opts goja.Value) *goja.Promise
 }

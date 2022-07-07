@@ -752,6 +752,34 @@ func (h *ElementHandle) Click(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
+// AsyncClick returns a promise that scrolls element into view and clicks in the center of the element.
+func (h *ElementHandle) AsyncClick(opts goja.Value) *goja.Promise {
+	rt := h.vu.Runtime()
+	cb := h.vu.RegisterCallback()
+	p, resolve, reject := rt.NewPromise()
+
+	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				cb(func() error {
+					err := fmt.Errorf("promise rejected: %v", err)
+					reject(err)
+					return err
+				})
+				return
+			}
+		}()
+		h.Click(opts)
+		cb(func() error {
+			resolve(true)
+			return nil
+		})
+	}()
+
+	return p
+}
+
 func (h *ElementHandle) ContentFrame() api.Frame {
 	var (
 		node *cdp.Node

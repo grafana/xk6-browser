@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	k6modules "go.k6.io/k6/js/modules"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/runtime"
@@ -49,6 +50,8 @@ type BaseJSHandle struct {
 	execCtx      *ExecutionContext
 	remoteObject *runtime.RemoteObject
 	disposed     bool
+
+	vu k6modules.VU
 }
 
 // NewJSHandle creates a new JS handle referencing a remote object.
@@ -67,6 +70,7 @@ func NewJSHandle(
 		remoteObject: ro,
 		disposed:     false,
 		logger:       l,
+		vu:           k6ext.GetVU(ctx),
 	}
 
 	if ro.Subtype == "node" && ectx.Frame() != nil {
