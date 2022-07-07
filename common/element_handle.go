@@ -752,30 +752,49 @@ func (h *ElementHandle) Click(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
-// AsyncClick returns a promise that scrolls element into view and clicks in the center of the element.
+// AsyncClick returns a promise that scrolls element into view and
+// clicks in the center of the element.
 func (h *ElementHandle) AsyncClick(opts goja.Value) *goja.Promise {
-	rt := h.vu.Runtime()
-	cb := h.vu.RegisterCallback()
-	p, resolve, reject := rt.NewPromise()
+	parse := func() (*ElementHandleClickOptions, error) {
+		o := NewElementHandleClickOptions(h.defaultTimeout())
+		if err := o.Parse(h.ctx, opts); err != nil {
+			return nil, fmt.Errorf("parsing element click options: %w", err)
+		}
+		return o, nil
+	}
+	act := func(o *ElementHandleClickOptions) error {
+		fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+			return nil, handle.click(p, o.ToMouseClickOptions())
+		}
+		pointerFn := h.newPointerAction(fn, &o.ElementHandleBasePointerOptions)
+		_, err := callApiWithTimeout(h.ctx, pointerFn, o.Timeout)
+		if err != nil {
+			return fmt.Errorf("clicking on element: %w", err)
+		}
+		return nil
+	}
 
-	go func() {
-		defer func() {
-			err := recover()
-			if err != nil {
-				cb(func() error {
-					err := fmt.Errorf("promise rejected: %v", err)
-					reject(err)
-					return err
-				})
-				return
-			}
-		}()
-		h.Click(opts)
-		cb(func() error {
-			resolve(true)
-			return nil
-		})
-	}()
+	cb := h.vu.RegisterCallback()
+	p, resolve, reject := h.vu.Runtime().NewPromise()
+
+	fn := func() error {
+		o, err := parse()
+		if err != nil {
+			reject(err)
+			return err
+		}
+		if err := act(o); err != nil {
+			reject(err)
+			return err
+		}
+
+		applySlowMo(h.ctx)
+		resolve(true)
+
+		return nil
+	}
+
+	go cb(fn)
 
 	return p
 }
