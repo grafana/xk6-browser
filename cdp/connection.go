@@ -1,24 +1,4 @@
-/*
- *
- * xk6-browser - a browser automation extension for k6
- * Copyright (C) 2021 Load Impact
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
-package common
+package cdp
 
 import (
 	"context"
@@ -34,7 +14,6 @@ import (
 	"github.com/grafana/xk6-browser/log"
 
 	"github.com/chromedp/cdproto"
-	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
@@ -46,42 +25,39 @@ import (
 const wsWriteBufferSize = 1 << 20
 
 // Ensure Connection implements the EventEmitter and Executor interfaces.
-var _ EventEmitter = &Connection{}
-var _ cdp.Executor = &Connection{}
+// var _ cdp.Executor = &Connection{}
 
-type executorEmitter interface {
-	cdp.Executor
-	EventEmitter
-}
+// type executorEmitter interface {
+// 	cdp.Executor
+// 	EventEmitter
+// }
 
-type connection interface {
-	executorEmitter
-	Close(...goja.Value)
-	getSession(target.SessionID) *Session
-}
+// type connection interface {
+// 	Close(...goja.Value)
+// 	// getSession(target.SessionID) *Session
+// }
 
-type session interface {
-	cdp.Executor
-	executorEmitter
-	ExecuteWithoutExpectationOnReply(context.Context, string, easyjson.Marshaler, easyjson.Unmarshaler) error
-	ID() target.SessionID
-	TargetID() target.ID
-	Done() <-chan struct{}
-}
+// type session interface {
+// 	ExecuteWithoutExpectationOnReply(context.Context, string, easyjson.Marshaler, easyjson.Unmarshaler) error
+// 	ID() target.SessionID
+// 	TargetID() target.ID
+// 	Done() <-chan struct{}
+// }
 
 // Action is the general interface of an CDP action.
-type Action interface {
-	Do(context.Context) error
-}
+// type Action interface {
+// 	Do(context.Context) error
+// }
 
 // ActionFunc is an adapter to allow regular functions to be used as an Action.
-type ActionFunc func(context.Context) error
+// type ActionFunc func(context.Context) error
 
 // Do executes the func f using the provided context.
-func (f ActionFunc) Do(ctx context.Context) error {
-	return f(ctx)
-}
+// func (f ActionFunc) Do(ctx context.Context) error {
+// 	return f(ctx)
+// }
 
+// TODO: Update this.
 /*
 		Connection represents a WebSocket connection and the root "Browser Session".
 
@@ -118,10 +94,8 @@ func (f ActionFunc) Do(ctx context.Context) error {
 │       Domain event.       │             │                    │                         │                    │
 └───────────────────────────┘             └────────────────────┘                         └────────────────────┘.
 */
-type Connection struct {
-	BaseEventEmitter
-
-	ctx          context.Context
+type connection struct {
+	// ctx          context.Context
 	wsURL        string
 	logger       *log.Logger
 	conn         *websocket.Conn
@@ -133,8 +107,8 @@ type Connection struct {
 	shutdownOnce sync.Once
 	msgID        int64
 
-	sessionsMu sync.RWMutex
-	sessions   map[target.SessionID]*Session
+	// sessionsMu sync.RWMutex
+	// sessions   map[target.SessionID]*Session
 
 	// Reuse the easyjson structs to avoid allocs per Read/Write.
 	decoder jlexer.Lexer
@@ -203,39 +177,38 @@ func (c *Connection) closeConnection(code int) error {
 			delete(c.sessions, s.id)
 		}
 		c.sessionsMu.Unlock()
-
-		c.emit(EventConnectionClose, nil)
 	})
 
 	return err
 }
 
-func (c *Connection) closeSession(sid target.SessionID, tid target.ID) {
-	c.logger.Debugf("Connection:closeSession", "sid:%v tid:%v wsURL:%v", sid, tid, c.wsURL)
-	c.sessionsMu.Lock()
-	if session, ok := c.sessions[sid]; ok {
-		session.close()
-	}
-	delete(c.sessions, sid)
-	c.sessionsMu.Unlock()
-}
+// TODO: Client should handle Sessions.
+// func (c *Connection) closeSession(sid target.SessionID, tid target.ID) {
+// 	c.logger.Debugf("Connection:closeSession", "sid:%v tid:%v wsURL:%v", sid, tid, c.wsURL)
+// 	c.sessionsMu.Lock()
+// 	if session, ok := c.sessions[sid]; ok {
+// 		session.close()
+// 	}
+// 	delete(c.sessions, sid)
+// 	c.sessionsMu.Unlock()
+// }
 
-func (c *Connection) createSession(info *target.Info) (*Session, error) {
-	c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s", info.TargetID, info.BrowserContextID, info.Type)
+// func (c *Connection) createSession(info *target.Info) (*Session, error) {
+// 	c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s", info.TargetID, info.BrowserContextID, info.Type)
 
-	var sessionID target.SessionID
-	var err error
-	action := target.AttachToTarget(info.TargetID).WithFlatten(true)
-	if sessionID, err = action.Do(cdp.WithExecutor(c.ctx, c)); err != nil {
-		c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s err:%v", info.TargetID, info.BrowserContextID, info.Type, err)
-		return nil, err
-	}
-	sess := c.getSession(sessionID)
-	if sess == nil {
-		c.logger.Warnf("Connection:createSession", "tid:%v bctxid:%v type:%s sid:%v, session is nil", info.TargetID, info.BrowserContextID, info.Type, sessionID)
-	}
-	return sess, nil
-}
+// 	var sessionID target.SessionID
+// 	var err error
+// 	action := target.AttachToTarget(info.TargetID).WithFlatten(true)
+// 	if sessionID, err = action.Do(cdp.WithExecutor(c.ctx, c)); err != nil {
+// 		c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s err:%v", info.TargetID, info.BrowserContextID, info.Type, err)
+// 		return nil, err
+// 	}
+// 	sess := c.getSession(sessionID)
+// 	if sess == nil {
+// 		c.logger.Warnf("Connection:createSession", "tid:%v bctxid:%v type:%s sid:%v, session is nil", info.TargetID, info.BrowserContextID, info.Type, sessionID)
+// 	}
+// 	return sess, nil
+// }
 
 func (c *Connection) handleIOError(err error) {
 	c.logger.Errorf("cdp", "communicating with browser: %v", err)
@@ -263,25 +236,25 @@ func (c *Connection) handleIOError(err error) {
 	}
 }
 
-func (c *Connection) getSession(id target.SessionID) *Session {
-	c.sessionsMu.RLock()
-	defer c.sessionsMu.RUnlock()
+// func (c *Connection) getSession(id target.SessionID) *Session {
+// 	c.sessionsMu.RLock()
+// 	defer c.sessionsMu.RUnlock()
 
-	return c.sessions[id]
-}
+// 	return c.sessions[id]
+// }
 
 // findTragetIDForLog should only be used for logging purposes.
 // It will return an empty string if logger.DebugMode is false.
-func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
-	if !c.logger.DebugMode() {
-		return ""
-	}
-	s := c.getSession(id)
-	if s == nil {
-		return ""
-	}
-	return s.targetID
-}
+// func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
+// 	if !c.logger.DebugMode() {
+// 		return ""
+// 	}
+// 	s := c.getSession(id)
+// 	if s == nil {
+// 		return ""
+// 	}
+// 	return s.targetID
+// }
 
 func (c *Connection) recvLoop() {
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
