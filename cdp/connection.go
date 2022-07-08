@@ -3,9 +3,7 @@ package cdp
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -94,11 +92,14 @@ const wsWriteBufferSize = 1 << 20
 │       Domain event.       │             │                    │                         │                    │
 └───────────────────────────┘             └────────────────────┘                         └────────────────────┘.
 */
+
+// connection abstracts everything about the low-level WebSocket connection
+// to the browser.
 type connection struct {
 	// ctx          context.Context
 	wsURL        string
 	logger       *log.Logger
-	conn         *websocket.Conn
+	wsConn       *websocket.Conn
 	sendCh       chan *cdproto.Message
 	recvCh       chan *cdproto.Message
 	closeCh      chan int
@@ -116,7 +117,7 @@ type connection struct {
 }
 
 // NewConnection creates a new browser.
-func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Connection, error) {
+func newConnection(ctx context.Context, wsURL string, logger *log.Logger) (*connection, error) {
 	var header http.Header
 	var tlsConfig *tls.Config
 	wsd := websocket.Dialer{
@@ -131,52 +132,49 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		return nil, connErr
 	}
 
-	c := Connection{
-		BaseEventEmitter: NewBaseEventEmitter(ctx),
-		ctx:              ctx,
-		wsURL:            wsURL,
-		logger:           logger,
-		conn:             conn,
-		sendCh:           make(chan *cdproto.Message, 32), // Avoid blocking in Execute
-		recvCh:           make(chan *cdproto.Message),
-		closeCh:          make(chan int),
-		errorCh:          make(chan error),
-		done:             make(chan struct{}),
-		msgID:            0,
-		sessions:         make(map[target.SessionID]*Session),
+	c := connection{
+		wsURL:   wsURL,
+		logger:  logger,
+		wsConn:  conn,
+		sendCh:  make(chan *cdproto.Message, 32), // Avoid blocking in Execute
+		recvCh:  make(chan *cdproto.Message),
+		closeCh: make(chan int),
+		errorCh: make(chan error),
+		done:    make(chan struct{}),
+		msgID:   0,
 	}
 
-	go c.recvLoop()
-	go c.sendLoop()
+	// go c.recvLoop()
+	// go c.sendLoop()
 
 	return &c, nil
 }
 
-// closeConnection cleanly closes the WebSocket connection.
+// close cleanly closes the WebSocket connection.
 // Returns an error if sending the close control frame fails.
-func (c *Connection) closeConnection(code int) error {
-	c.logger.Debugf("Connection:closeConnection", "code:%d", code)
+func (c *connection) close(code int) error {
+	c.logger.Debugf("Connection:close", "code:%d", code)
 
 	var err error
 	c.shutdownOnce.Do(func() {
 		defer func() {
-			_ = c.conn.Close()
+			_ = c.wsConn.Close()
 
 			// Stop the main control loop
 			close(c.done)
 		}()
 
-		err = c.conn.WriteControl(websocket.CloseMessage,
+		err = c.wsConn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
 			time.Now().Add(10*time.Second),
 		)
 
-		c.sessionsMu.Lock()
-		for _, s := range c.sessions {
-			s.close()
-			delete(c.sessions, s.id)
-		}
-		c.sessionsMu.Unlock()
+		// c.sessionsMu.Lock()
+		// for _, s := range c.sessions {
+		// 	s.close()
+		// 	delete(c.sessions, s.id)
+		// }
+		// c.sessionsMu.Unlock()
 	})
 
 	return err
@@ -210,31 +208,44 @@ func (c *Connection) closeConnection(code int) error {
 // 	return sess, nil
 // }
 
-func (c *Connection) handleIOError(err error) {
-	c.logger.Errorf("cdp", "communicating with browser: %v", err)
+func (c *connection) readMessage() (*cdproto.Message, error) {
+	_, buf, err := c.wsConn.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
 
-	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		// Report an unexpected closure
-		select {
-		case c.errorCh <- err:
-		case <-c.done:
-			return
-		}
+	var msg cdproto.Message
+	c.decoder = jlexer.Lexer{Data: buf}
+	msg.UnmarshalEasyJSON(&c.decoder)
+	if err := c.decoder.Error(); err != nil {
+		return nil, err
 	}
-	var (
-		cerr *websocket.CloseError
-		code = websocket.CloseGoingAway
-	)
-	if errors.As(err, &cerr) {
-		code = cerr.Code
-	}
-	select {
-	case c.closeCh <- code:
-		c.logger.Debugf("cdp", "ending browser communication with code %d", code)
-	case <-c.done:
-		c.logger.Debugf("cdp", "ending browser communication")
-	}
+
+	return &msg, nil
 }
+
+// func (c *connection) handleIOError(err error) {
+// 	c.logger.Errorf("Connection:handleIOError", "err:%v", err)
+
+// 	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+// 		// Report an unexpected closure
+// 		select {
+// 		case c.errorCh <- err:
+// 		case <-c.done:
+// 			return
+// 		}
+// 	}
+// 	code := websocket.CloseGoingAway
+// 	if e, ok := err.(*websocket.CloseError); ok {
+// 		code = e.Code
+// 	}
+// 	select {
+// 	case c.closeCh <- code:
+// 		c.logger.Debugf("Connection:handleIOError:c.closeCh <-", "code:%d", code)
+// 	case <-c.done:
+// 		c.logger.Debugf("Connection:handleIOError:<-c.done", "")
+// 	}
+// }
 
 // func (c *Connection) getSession(id target.SessionID) *Session {
 // 	c.sessionsMu.RLock()
@@ -256,103 +267,6 @@ func (c *Connection) handleIOError(err error) {
 // 	return s.targetID
 // }
 
-func (c *Connection) recvLoop() {
-	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
-	for {
-		_, buf, err := c.conn.ReadMessage()
-		if err != nil {
-			if !errors.Is(err, net.ErrClosed) {
-				c.logger.Debugf("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
-				c.handleIOError(err)
-			}
-			return
-		}
-
-		c.logger.Tracef("cdp:recv", "<- %s", buf)
-
-		var msg cdproto.Message
-		c.decoder = jlexer.Lexer{Data: buf}
-		msg.UnmarshalEasyJSON(&c.decoder)
-		if err := c.decoder.Error(); err != nil {
-			select {
-			case c.errorCh <- err:
-				c.logger.Debugf("Connection:recvLoop:<-err", "wsURL:%q err:%v", c.wsURL, err)
-			case <-c.done:
-				c.logger.Debugf("Connection:recvLoop:<-c.done", "wsURL:%q", c.wsURL)
-				return
-			}
-		}
-
-		// Handle attachment and detachment from targets,
-		// creating and deleting sessions as necessary.
-		if msg.Method == cdproto.EventTargetAttachedToTarget {
-			ev, err := cdproto.UnmarshalMessage(&msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
-			eva := ev.(*target.EventAttachedToTarget)
-			sid, tid := eva.SessionID, eva.TargetInfo.TargetID
-
-			c.sessionsMu.Lock()
-			session := NewSession(c.ctx, c, sid, tid, c.logger)
-			c.logger.Debugf("Connection:recvLoop:EventAttachedToTarget", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
-			c.sessions[sid] = session
-			c.sessionsMu.Unlock()
-		} else if msg.Method == cdproto.EventTargetDetachedFromTarget {
-			ev, err := cdproto.UnmarshalMessage(&msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
-			evt := ev.(*target.EventDetachedFromTarget)
-			sid := evt.SessionID
-			tid := c.findTargetIDForLog(sid)
-			c.closeSession(sid, tid)
-		}
-
-		switch {
-		case msg.SessionID != "" && (msg.Method != "" || msg.ID != 0):
-			// TODO: possible data race - session can get removed after getting it here
-			session := c.getSession(msg.SessionID)
-			if session == nil {
-				continue
-			}
-			if msg.Error != nil && msg.Error.Message == "No session with given id" {
-				c.logger.Debugf("Connection:recvLoop", "sid:%v tid:%v wsURL:%q, closeSession #2", session.id, session.targetID, c.wsURL)
-				c.closeSession(session.id, session.targetID)
-				continue
-			}
-
-			select {
-			case session.readCh <- &msg:
-			case code := <-c.closeCh:
-				c.logger.Debugf("Connection:recvLoop:<-c.closeCh", "sid:%v tid:%v wsURL:%v crashed:%t", session.id, session.targetID, c.wsURL, session.crashed)
-				_ = c.closeConnection(code)
-			case <-c.done:
-				c.logger.Debugf("Connection:recvLoop:<-c.done", "sid:%v tid:%v wsURL:%v crashed:%t", session.id, session.targetID, c.wsURL, session.crashed)
-				return
-			}
-
-		case msg.Method != "":
-			c.logger.Debugf("Connection:recvLoop:msg.Method:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
-			ev, err := cdproto.UnmarshalMessage(&msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
-			c.emit(string(msg.Method), ev)
-
-		case msg.ID != 0:
-			c.logger.Debugf("Connection:recvLoop:msg.ID:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
-			c.emit("", &msg)
-
-		default:
-			c.logger.Errorf("cdp", "ignoring malformed incoming message (missing id or method): %#v (message: %s)", msg, msg.Error.Message)
-		}
-	}
-}
-
 func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
 	select {
 	case c.sendCh <- msg:
@@ -361,11 +275,8 @@ func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan
 		return fmt.Errorf("sending a message to browser: %w", err)
 	case code := <-c.closeCh:
 		c.logger.Debugf("Connection:send:<-c.closeCh", "wsURL:%q sid:%v, websocket code:%v", c.wsURL, msg.SessionID, code)
-		_ = c.closeConnection(code)
-		return fmt.Errorf("closing communication with browser: %w", &websocket.CloseError{Code: code})
-	case <-ctx.Done():
-		c.logger.Debugf("Connection:send:<-ctx.Done", "wsURL:%q sid:%v err:%v", c.wsURL, msg.SessionID, c.ctx.Err())
-		return nil
+		_ = c.close(code)
+		return &websocket.CloseError{Code: code}
 	case <-c.done:
 		c.logger.Debugf("Connection:send:<-c.done", "wsURL:%q sid:%v", c.wsURL, msg.SessionID)
 		return nil
@@ -399,7 +310,7 @@ func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan
 		return err
 	case code := <-c.closeCh:
 		c.logger.Debugf("Connection:send:<-c.closeCh #2", "sid:%v tid:%v wsURL:%q, websocket code:%v", msg.SessionID, tid, c.wsURL, code)
-		_ = c.closeConnection(code)
+		_ = c.close(code)
 		return &websocket.CloseError{Code: code}
 	case <-c.done:
 		c.logger.Debugf("Connection:send:<-c.done #2", "sid:%v tid:%v wsURL:%q", msg.SessionID, tid, c.wsURL)
@@ -434,7 +345,7 @@ func (c *Connection) sendLoop() {
 
 			buf, _ := c.encoder.BuildBytes()
 			c.logger.Tracef("cdp:send", "-> %s", buf)
-			writer, err := c.conn.NextWriter(websocket.TextMessage)
+			writer, err := c.wsConn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				c.handleIOError(err)
 				return
@@ -449,7 +360,7 @@ func (c *Connection) sendLoop() {
 			}
 		case code := <-c.closeCh:
 			c.logger.Debugf("Connection:sendLoop:<-c.closeCh", "wsURL:%q code:%d", c.wsURL, code)
-			_ = c.closeConnection(code)
+			_ = c.close(code)
 			return
 		case <-c.done:
 			c.logger.Debugf("Connection:sendLoop:<-c.done#2", "wsURL:%q", c.wsURL)
@@ -461,13 +372,13 @@ func (c *Connection) sendLoop() {
 	}
 }
 
-func (c *Connection) Close(args ...goja.Value) {
+func (c *connection) Close(args ...goja.Value) {
 	code := websocket.CloseGoingAway
 	if len(args) > 0 {
 		code = int(args[0].ToInteger())
 	}
 	c.logger.Debugf("connection:Close", "wsURL:%q code:%d", c.wsURL, code)
-	_ = c.closeConnection(code)
+	_ = c.close(code)
 }
 
 // Execute implements cdproto.Executor and performs a synchronous send and receive.
