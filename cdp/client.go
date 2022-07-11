@@ -3,39 +3,114 @@ package cdp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"sync/atomic"
 
 	"github.com/chromedp/cdproto"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/mailru/easyjson"
+
+	cdppage "github.com/chromedp/cdproto/page"
 )
+
+var _ cdp.Executor = &Client{}
 
 // Client manages CDP communication with the browser.
 type Client struct {
+	ctx    context.Context
 	logger *log.Logger
 	conn   *connection
+	msgID  int64
+	wsURL  string
 }
 
 // NewClient returns a new Client.
-func NewClient(logger *log.Logger) *Client {
-	return &Client{logger: logger}
+func NewClient(ctx context.Context, logger *log.Logger) *Client {
+	return &Client{ctx: ctx, logger: logger}
 }
 
 // Connect to the browser that exposes a CDP API at wsURL.
-func (c *Client) Connect(ctx context.Context, wsURL string) (err error) {
-	if c.conn, err = newConnection(ctx, wsURL, c.logger); err != nil {
+func (c *Client) Connect(wsURL string) (err error) {
+	if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
 		return
 	}
 	c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
 
+	go c.recvLoop(c.ctx)
+
 	return nil
 }
 
-// Send a CDP command to the browser without waiting for a response.
-func (c *Client) Send(cmd *Command) error {
+// Execute implements cdproto.Executor and performs a synchronous send and receive.
+func (c *Client) Execute(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
+	c.logger.Debugf("connection:Execute", "wsURL:%q method:%q", c.wsURL, method)
+	id := atomic.AddInt64(&c.msgID, 1)
+
+	// Setup event handler used to block for response to message being sent.
+	ch := make(chan *cdproto.Message, 1)
+	evCancelCtx, evCancelFn := context.WithCancel(ctx)
+	chEvHandler := make(chan Event)
+	go func() {
+		for {
+			select {
+			case <-evCancelCtx.Done():
+				c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
+				return
+			case ev := <-chEvHandler:
+				msg, ok := ev.data.(*cdproto.Message)
+				if ok && msg.ID == id {
+					select {
+					case <-evCancelCtx.Done():
+						c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()#2", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
+					case ch <- msg:
+						// We expect only one response with the matching message ID,
+						// then remove event handler by cancelling context and stopping goroutine.
+						evCancelFn()
+						return
+					}
+				}
+			}
+		}
+	}()
+	c.onAll(evCancelCtx, chEvHandler)
+	defer evCancelFn() // Remove event handler
+
+	// Send the message
+	var buf []byte
+	if params != nil {
+		var err error
+		buf, err = easyjson.Marshal(params)
+		if err != nil {
+			return err
+		}
+	}
+	msg := &cdproto.Message{
+		ID:     id,
+		Method: cdproto.MethodType(method),
+		Params: buf,
+	}
+	return c.send(c.ctx, msg, ch, res)
 }
 
-func (c *Client) recvLoop() {
+func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
+	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frameID))
+	_, documentID, errorText, err := action.Do(cdp.WithExecutor(c.ctx, c))
+	if err != nil {
+		err = fmt.Errorf("%s at %q: %w", errorText, url, err)
+	}
+
+	return documentID.String(), err
+}
+
+// Send a CDP command to the browser without waiting for a response.
+// func (c *Client) send(action action) error {
+// 	return nil
+// }
+
+func (c *Client) recvLoop(ctx context.Context) {
 	for {
 		msg, err := c.conn.readMessage()
 		if err != nil {
