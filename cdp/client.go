@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"sync/atomic"
 
 	"github.com/chromedp/cdproto"
@@ -22,9 +23,13 @@ var _ cdp.Executor = &Client{}
 type Client struct {
 	ctx    context.Context
 	logger *log.Logger
-	conn   *connection
-	msgID  int64
-	wsURL  string
+
+	sessionsMu sync.RWMutex
+	sessions   map[target.SessionID]*session
+
+	conn  *connection
+	msgID int64
+	wsURL string
 }
 
 // NewClient returns a new Client.
@@ -114,19 +119,23 @@ func (c *Client) recvLoop(ctx context.Context) {
 	for {
 		msg, err := c.conn.readMessage()
 		if err != nil {
-			if !errors.Is(err, net.ErrClosed) {
+			if errors.Is(err, net.ErrClosed) {
+				c.logger.Infof("cdp", "connection closed to %q: %w", c.wsURL, err)
+				return
 			}
+			c.logger.Errorf("cdp", "reading CDP message: %w", err)
+		}
+
+		ev, err := cdproto.UnmarshalMessage(&msg)
+		if err != nil {
+			c.logger.Errorf("cdp", "unmarshalling CDP message: %w", err)
+			continue
 		}
 
 		// TODO: Move this to an EventWatcher
 		// Handle attachment and detachment from targets,
 		// creating and deleting sessions as necessary.
 		if msg.Method == cdproto.EventTargetAttachedToTarget {
-			ev, err := cdproto.UnmarshalMessage(msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
 			eva := ev.(*target.EventAttachedToTarget)
 			sid, tid := eva.SessionID, eva.TargetInfo.TargetID
 

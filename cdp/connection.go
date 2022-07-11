@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/grafana/xk6-browser/log"
@@ -267,7 +266,7 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 // 	return s.targetID
 // }
 
-func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
+func (c *connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
 	select {
 	case c.sendCh <- msg:
 	case err := <-c.errorCh:
@@ -324,7 +323,7 @@ func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan
 	return nil
 }
 
-func (c *Connection) sendLoop() {
+func (c *connection) sendLoop() {
 	c.logger.Debugf("Connection:sendLoop", "wsURL:%q, starts", c.wsURL)
 	for {
 		select {
@@ -382,52 +381,52 @@ func (c *connection) Close(args ...goja.Value) {
 }
 
 // Execute implements cdproto.Executor and performs a synchronous send and receive.
-func (c *Connection) Execute(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
-	c.logger.Debugf("connection:Execute", "wsURL:%q method:%q", c.wsURL, method)
-	id := atomic.AddInt64(&c.msgID, 1)
+// func (c *Connection) Execute(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
+// 	c.logger.Debugf("connection:Execute", "wsURL:%q method:%q", c.wsURL, method)
+// 	id := atomic.AddInt64(&c.msgID, 1)
 
-	// Setup event handler used to block for response to message being sent.
-	ch := make(chan *cdproto.Message, 1)
-	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	chEvHandler := make(chan Event)
-	go func() {
-		for {
-			select {
-			case <-evCancelCtx.Done():
-				c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
-				return
-			case ev := <-chEvHandler:
-				msg, ok := ev.data.(*cdproto.Message)
-				if ok && msg.ID == id {
-					select {
-					case <-evCancelCtx.Done():
-						c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()#2", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
-					case ch <- msg:
-						// We expect only one response with the matching message ID,
-						// then remove event handler by cancelling context and stopping goroutine.
-						evCancelFn()
-						return
-					}
-				}
-			}
-		}
-	}()
-	c.onAll(evCancelCtx, chEvHandler)
-	defer evCancelFn() // Remove event handler
+// 	// Setup event handler used to block for response to message being sent.
+// 	ch := make(chan *cdproto.Message, 1)
+// 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
+// 	chEvHandler := make(chan Event)
+// 	go func() {
+// 		for {
+// 			select {
+// 			case <-evCancelCtx.Done():
+// 				c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
+// 				return
+// 			case ev := <-chEvHandler:
+// 				msg, ok := ev.data.(*cdproto.Message)
+// 				if ok && msg.ID == id {
+// 					select {
+// 					case <-evCancelCtx.Done():
+// 						c.logger.Debugf("connection:Execute:<-evCancelCtx.Done()#2", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
+// 					case ch <- msg:
+// 						// We expect only one response with the matching message ID,
+// 						// then remove event handler by cancelling context and stopping goroutine.
+// 						evCancelFn()
+// 						return
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}()
+// 	c.onAll(evCancelCtx, chEvHandler)
+// 	defer evCancelFn() // Remove event handler
 
-	// Send the message
-	var buf []byte
-	if params != nil {
-		var err error
-		buf, err = easyjson.Marshal(params)
-		if err != nil {
-			return err
-		}
-	}
-	msg := &cdproto.Message{
-		ID:     id,
-		Method: cdproto.MethodType(method),
-		Params: buf,
-	}
-	return c.send(c.ctx, msg, ch, res)
-}
+// 	// Send the message
+// 	var buf []byte
+// 	if params != nil {
+// 		var err error
+// 		buf, err = easyjson.Marshal(params)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	msg := &cdproto.Message{
+// 		ID:     id,
+// 		Method: cdproto.MethodType(method),
+// 		Params: buf,
+// 	}
+// 	return c.send(c.ctx, msg, ch, res)
+// }
