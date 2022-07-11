@@ -878,6 +878,13 @@ func (p *Page) WaitForNavigation(opts goja.Value) api.Response {
 	return p.frameManager.MainFrame().WaitForNavigation(opts)
 }
 
+// AsyncWaitForNavigation waits for the given navigation lifecycle event to happen.
+func (p *Page) AsyncWaitForNavigation(opts goja.Value) *goja.Promise {
+	p.logger.Debugf("Page:AsyncWaitForNavigation", "sid:%v", p.sessionID())
+
+	return p.frameManager.MainFrame().AsyncWaitForNavigation(opts)
+}
+
 func (p *Page) WaitForRequest(urlOrPredicate, opts goja.Value) api.Request {
 	k6ext.Panic(p.ctx, "Page.waitForRequest(urlOrPredicate, opts) has not been implemented yet")
 	return nil

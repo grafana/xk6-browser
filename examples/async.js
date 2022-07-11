@@ -11,20 +11,24 @@ export default function() {
   page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
   const elem = page.$('a[href="/my_messages.php"]');
   
-  elem.asyncClick().then(() => {
-    // Enter login credentials and login
+  elem.asyncClick().then(() => {    
     page.$('input[name="login"]').type('admin');
     page.$('input[name="password"]').type('123');
-    page.$('input[type="submit"]').click();
 
-    // We expect the above form submission to trigger a navigation, so wait for it
-    // and the page to be loaded.
-    page.waitForNavigation();
-
+    // GOMAXPROCS=1 fails.
+    // Reason: Two promise goroutines depend on each other.
+    return Promise.all([
+      page.$('input[type="submit"]').asyncClick(),
+      page.asyncWaitForNavigation(),
+    ]);
+  }).then(() => {
     check(page, {
       'header': page.$('h2').textContent() == 'Welcome, admin!',
     });
-
+    page.close();
+    browser.close();
+  }).catch(e => {
+    console.error("ERROR:", e);
     page.close();
     browser.close();
   });

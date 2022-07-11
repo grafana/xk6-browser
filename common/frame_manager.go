@@ -754,6 +754,132 @@ func (m *FrameManager) WaitForFrameNavigation(frame *Frame, opts goja.Value) api
 	return event.newDocument.request.response
 }
 
+// AsyncWaitForFrameNavigation waits for the given navigation lifecycle
+// event to happen.
+// nolint
+func (m *FrameManager) AsyncWaitForFrameNavigation(
+	frame *Frame, opts goja.Value,
+) *goja.Promise {
+	fn := func() (api.Response, error) {
+		m.logger.Debugf("FrameManager:WaitForFrameNavigation",
+			"fmid:%d fid:%s furl:%s",
+			m.ID(), frame.ID(), frame.URL())
+		defer m.logger.Debugf("FrameManager:WaitForFrameNavigation:return",
+			"fmid:%d fid:%s furl:%s",
+			m.ID(), frame.ID(), frame.URL())
+
+		parsedOpts := NewFrameWaitForNavigationOptions(time.Duration(m.timeoutSettings.timeout()) * time.Second)
+		if err := parsedOpts.Parse(m.ctx, opts); err != nil {
+			return nil, fmt.Errorf("cannot parse waitForNavigation options: %w", err)
+		}
+
+		ch, evCancelFn := createWaitForEventHandler(m.ctx, frame, []string{EventFrameNavigation},
+			func(data interface{}) bool {
+				return true // Both successful and failed navigations are considered
+			})
+		defer evCancelFn() // Remove event handler
+
+		var event *NavigationEvent
+		select {
+		case <-m.ctx.Done():
+			// ignore: the extension is shutting down
+			m.logger.Warnf("FrameManager:WaitForFrameNavigation:<-ctx.Done",
+				"fmid:%d furl:%s err:%v",
+				m.ID(), frame.URL(), m.ctx.Err())
+			return nil, fmt.Errorf("%w", m.ctx.Err()) // TODO
+		case <-time.After(parsedOpts.Timeout):
+			return nil, fmt.Errorf("waitForFrameNavigation timed out after %s", parsedOpts.Timeout)
+		case data := <-ch:
+			event = data.(*NavigationEvent)
+		}
+
+		if event.newDocument == nil {
+			// In case of navigation within the same document (e.g. via an anchor
+			// link or the History API), there is no new document and a
+			// LifecycleEvent will not be fired, so we don't need to wait for it.
+			return nil, nil
+		}
+
+		if frame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
+			m.logger.Debugf("FrameManager:WaitForFrameNavigation",
+				"fmid:%d furl:%s hasSubtreeLifecycleEventFired:true",
+				m.ID(), frame.URL())
+
+			_, err := waitForEvent(m.ctx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
+				return data.(LifecycleEvent) == parsedOpts.WaitUntil //nolint:forcetypeassert
+			}, parsedOpts.Timeout)
+			if err != nil {
+				return nil, fmt.Errorf("waitForFrameNavigation cannot wait for event (EventFrameAddLifecycle): %w", err)
+			}
+		}
+
+		return event.newDocument.request.response, nil
+	}
+
+	cb := m.vu.RegisterCallback()
+	p, resolve, reject := m.vu.Runtime().NewPromise()
+
+	async := func() error {
+		r, err := fn()
+		if err != nil {
+			reject(err)
+			return err
+		}
+		resolve(r)
+
+		return nil
+	}
+
+	go cb(async)
+
+	return p
+}
+
+/*
+	parse := func() (*ElementHandleClickOptions, error) {
+		o := NewElementHandleClickOptions(h.defaultTimeout())
+		if err := o.Parse(h.ctx, opts); err != nil {
+			return nil, fmt.Errorf("parsing element click options: %w", err)
+		}
+		return o, nil
+	}
+	act := func(o *ElementHandleClickOptions) error {
+		fn := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
+			return nil, handle.click(p, o.ToMouseClickOptions())
+		}
+		pointerFn := h.newPointerAction(fn, &o.ElementHandleBasePointerOptions)
+		_, err := callApiWithTimeout(h.ctx, pointerFn, o.Timeout)
+		if err != nil {
+			return fmt.Errorf("clicking on element: %w", err)
+		}
+		return nil
+	}
+
+	cb := h.vu.RegisterCallback()
+	p, resolve, reject := h.vu.Runtime().NewPromise()
+
+	fn := func() error {
+		o, err := parse()
+		if err != nil {
+			reject(err)
+			return err
+		}
+		if err := act(o); err != nil {
+			reject(err)
+			return err
+		}
+
+		applySlowMo(h.ctx)
+		resolve(true)
+
+		return nil
+	}
+
+	go cb(fn)
+
+	return p
+*/
+
 // ID returns the unique ID of a FrameManager value.
 func (m *FrameManager) ID() int64 {
 	return atomic.LoadInt64(&m.id)

@@ -1822,6 +1822,11 @@ func (f *Frame) WaitForNavigation(opts goja.Value) api.Response {
 	return f.manager.WaitForFrameNavigation(f, opts)
 }
 
+// AsyncWaitForNavigation waits for the given navigation lifecycle event to happen.
+func (f *Frame) AsyncWaitForNavigation(opts goja.Value) *goja.Promise {
+	return f.manager.AsyncWaitForFrameNavigation(f, opts)
+}
+
 // WaitForSelector waits for the given selector to match the waiting criteria.
 func (f *Frame) WaitForSelector(selector string, opts goja.Value) api.ElementHandle {
 	parsedOpts := NewFrameWaitForSelectorOptions(f.defaultTimeout())
