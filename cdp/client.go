@@ -33,18 +33,18 @@ type Client struct {
 }
 
 // NewClient returns a new Client.
-func NewClient(ctx context.Context, logger *log.Logger) *Client {
-	return &Client{ctx: ctx, logger: logger}
+func NewClient(logger *log.Logger) *Client {
+	return &Client{logger: logger}
 }
 
 // Connect to the browser that exposes a CDP API at wsURL.
-func (c *Client) Connect(wsURL string) (err error) {
+func (c *Client) Connect(ctx context.Context, wsURL string) (err error) {
 	if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
 		return
 	}
 	c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
 
-	go c.recvLoop(c.ctx)
+	go c.recvLoop(ctx)
 
 	return nil
 }
@@ -97,9 +97,11 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		Method: cdproto.MethodType(method),
 		Params: buf,
 	}
-	return c.send(c.ctx, msg, ch, res)
+	return c.send(ctx, msg, ch, res)
 }
 
+// Navigate sends the Page.navigate CDP command.
+// TODO: Break this up into CDP domains.
 func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frameID))
 	_, documentID, errorText, err := action.Do(cdp.WithExecutor(c.ctx, c))
