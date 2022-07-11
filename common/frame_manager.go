@@ -815,24 +815,9 @@ func (m *FrameManager) AsyncWaitForFrameNavigation(
 
 		return event.newDocument.request.response, nil
 	}
-
-	cb := m.vu.RegisterCallback()
-	p, resolve, reject := m.vu.Runtime().NewPromise()
-
-	async := func() error {
-		r, err := fn()
-		if err != nil {
-			reject(err)
-			return err
-		}
-		resolve(r)
-
-		return nil
-	}
-
-	go cb(async)
-
-	return p
+	return k6ext.Promise(m.ctx, func() (interface{}, error) {
+		return fn()
+	})
 }
 
 /*
