@@ -138,6 +138,7 @@ func (b *Browser) connect() (err error) {
 	if err = client.Connect(b.browserProc.WsURL()); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
+	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
 	b.client = client
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser

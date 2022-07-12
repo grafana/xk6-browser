@@ -65,24 +65,24 @@ func newSession(
 	return &s
 }
 
-func (s *session) close() {
-	s.logger.Debugf("session:close", "sid:%v tid:%v", s.id, s.targetID)
-	if s.closed {
-		s.logger.Debugf("session:close", "already closed, sid:%v tid:%v", s.id, s.targetID)
-		return
-	}
+// func (s *session) close() {
+// 	s.logger.Debugf("session:close", "sid:%v tid:%v", s.id, s.targetID)
+// 	if s.closed {
+// 		s.logger.Debugf("session:close", "already closed, sid:%v tid:%v", s.id, s.targetID)
+// 		return
+// 	}
 
-	// Stop the read loop
-	close(s.done)
-	s.closed = true
+// 	// Stop the read loop
+// 	close(s.done)
+// 	s.closed = true
 
-	// s.emit(EventsessionClosed, nil)
-}
+// 	// s.emit(EventsessionClosed, nil)
+// }
 
-func (s *session) markAsCrashed() {
-	s.logger.Debugf("session:markAsCrashed", "sid:%v tid:%v", s.id, s.targetID)
-	s.crashed = true
-}
+// func (s *session) markAsCrashed() {
+// 	s.logger.Debugf("session:markAsCrashed", "sid:%v tid:%v", s.id, s.targetID)
+// 	s.crashed = true
+// }
 
 // Wraps conn.ReadMessage in a channel.
 // func (s *session) readLoop() {

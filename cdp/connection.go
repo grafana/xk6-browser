@@ -11,10 +11,8 @@ import (
 	"github.com/grafana/xk6-browser/log"
 
 	"github.com/chromedp/cdproto"
-	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
-	"github.com/mailru/easyjson"
 	"github.com/mailru/easyjson/jlexer"
 	"github.com/mailru/easyjson/jwriter"
 )
@@ -92,27 +90,17 @@ const wsWriteBufferSize = 1 << 20
 └───────────────────────────┘             └────────────────────┘                         └────────────────────┘.
 */
 
-// connection abstracts everything about the low-level WebSocket connection
-// to the browser.
+// connection handles the low-level WebSocket communication with the browser.
 type connection struct {
-	// ctx          context.Context
 	wsURL        string
-	logger       *log.Logger
 	wsConn       *websocket.Conn
-	sendCh       chan *cdproto.Message
-	recvCh       chan *cdproto.Message
-	closeCh      chan int
-	errorCh      chan error
-	done         chan struct{}
 	shutdownOnce sync.Once
-	msgID        int64
-
-	// sessionsMu sync.RWMutex
-	// sessions   map[target.SessionID]*Session
 
 	// Reuse the easyjson structs to avoid allocs per Read/Write.
 	decoder jlexer.Lexer
 	encoder jwriter.Writer
+
+	logger *log.Logger
 }
 
 // NewConnection creates a new browser.
@@ -132,19 +120,10 @@ func newConnection(ctx context.Context, wsURL string, logger *log.Logger) (*conn
 	}
 
 	c := connection{
-		wsURL:   wsURL,
-		logger:  logger,
-		wsConn:  conn,
-		sendCh:  make(chan *cdproto.Message, 32), // Avoid blocking in Execute
-		recvCh:  make(chan *cdproto.Message),
-		closeCh: make(chan int),
-		errorCh: make(chan error),
-		done:    make(chan struct{}),
-		msgID:   0,
+		wsURL:  wsURL,
+		logger: logger,
+		wsConn: conn,
 	}
-
-	// go c.recvLoop()
-	// go c.sendLoop()
 
 	return &c, nil
 }
@@ -160,7 +139,7 @@ func (c *connection) close(code int) error {
 			_ = c.wsConn.Close()
 
 			// Stop the main control loop
-			close(c.done)
+			// close(c.done)
 		}()
 
 		err = c.wsConn.WriteControl(websocket.CloseMessage,
@@ -208,6 +187,7 @@ func (c *connection) close(code int) error {
 // }
 
 func (c *connection) readMessage() (*cdproto.Message, error) {
+	fmt.Printf(">>> calling wsConn.ReadMessage()\n")
 	_, buf, err := c.wsConn.ReadMessage()
 	if err != nil {
 		return nil, err
@@ -223,28 +203,63 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 	return &msg, nil
 }
 
-// func (c *connection) handleIOError(err error) {
-// 	c.logger.Errorf("Connection:handleIOError", "err:%v", err)
+func (c *connection) writeMessage(msg *cdproto.Message) error {
+	c.encoder = jwriter.Writer{}
+	msg.MarshalEasyJSON(&c.encoder)
+	if err := c.encoder.Error; err != nil {
+		return err
+		// sid := msg.SessionID
+		// tid := c.findTargetIDForLog(sid)
+		// select {
+		// case c.errorCh <- err:
+		// c.logger.Debugf("Connection:sendLoop:c.errorCh <- err", "sid:%v tid:%v wsURL:%q err:%v", sid, tid, c.wsURL, err)
+		// case <-c.done:
+		// 	// c.logger.Debugf("Connection:sendLoop:<-c.done", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
+		// 	return nil
+		// }
+	}
 
-// 	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-// 		// Report an unexpected closure
-// 		select {
-// 		case c.errorCh <- err:
-// 		case <-c.done:
-// 			return
-// 		}
-// 	}
-// 	code := websocket.CloseGoingAway
-// 	if e, ok := err.(*websocket.CloseError); ok {
-// 		code = e.Code
-// 	}
-// 	select {
-// 	case c.closeCh <- code:
-// 		c.logger.Debugf("Connection:handleIOError:c.closeCh <-", "code:%d", code)
-// 	case <-c.done:
-// 		c.logger.Debugf("Connection:handleIOError:<-c.done", "")
-// 	}
-// }
+	buf, _ := c.encoder.BuildBytes()
+	c.logger.Tracef("cdp:send", "-> %s", buf)
+	writer, err := c.wsConn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		// c.handleIOError(err)
+		return err
+	}
+	if _, err := writer.Write(buf); err != nil {
+		// c.handleIOError(err)
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		// c.handleIOError(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *connection) handleIOError(err error) {
+	c.logger.Errorf("Connection:handleIOError", "err:%v", err)
+
+	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		// Report an unexpected closure
+		select {
+		case c.errorCh <- err:
+		case <-c.done:
+			return
+		}
+	}
+	code := websocket.CloseGoingAway
+	if e, ok := err.(*websocket.CloseError); ok {
+		code = e.Code
+	}
+	select {
+	case c.closeCh <- code:
+		c.logger.Debugf("Connection:handleIOError:c.closeCh <-", "code:%d", code)
+	case <-c.done:
+		c.logger.Debugf("Connection:handleIOError:<-c.done", "")
+	}
+}
 
 // func (c *Connection) getSession(id target.SessionID) *Session {
 // 	c.sessionsMu.RLock()
@@ -266,110 +281,116 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 // 	return s.targetID
 // }
 
-func (c *connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
-	select {
-	case c.sendCh <- msg:
-	case err := <-c.errorCh:
-		c.logger.Debugf("Connection:send:<-c.errorCh", "wsURL:%q sid:%v, err:%v", c.wsURL, msg.SessionID, err)
-		return fmt.Errorf("sending a message to browser: %w", err)
-	case code := <-c.closeCh:
-		c.logger.Debugf("Connection:send:<-c.closeCh", "wsURL:%q sid:%v, websocket code:%v", c.wsURL, msg.SessionID, code)
-		_ = c.close(code)
-		return &websocket.CloseError{Code: code}
-	case <-c.done:
-		c.logger.Debugf("Connection:send:<-c.done", "wsURL:%q sid:%v", c.wsURL, msg.SessionID)
-		return nil
-	}
+// func (c *connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
+// 	select {
+// 	case c.sendCh <- msg:
+// 	case err := <-c.errorCh:
+// 		c.logger.Debugf("Connection:send:<-c.errorCh", "wsURL:%q sid:%v, err:%v", c.wsURL, msg.SessionID, err)
+// 		return err
+// 	case code := <-c.closeCh:
+// 		c.logger.Debugf("Connection:send:<-c.closeCh", "wsURL:%q sid:%v, websocket code:%v", c.wsURL, msg.SessionID, code)
+// 		_ = c.close(code)
+// 		return &websocket.CloseError{Code: code}
+// 	case <-c.done:
+// 		c.logger.Debugf("Connection:send:<-c.done", "wsURL:%q sid:%v", c.wsURL, msg.SessionID)
+// 		return nil
+// 	case <-ctx.Done():
+// 		c.logger.Errorf("Connection:send:<-ctx.Done()", "wsURL:%q sid:%v err:%v", c.wsURL, msg.SessionID, c.ctx.Err())
+// 		return ctx.Err()
+// 	case <-c.ctx.Done():
+// 		c.logger.Errorf("Connection:send:<-c.ctx.Done()", "wsURL:%q sid:%v err:%v", c.wsURL, msg.SessionID, c.ctx.Err())
+// 		return ctx.Err()
+// 	}
 
-	// Block waiting for response.
-	if recvCh == nil {
-		return nil
-	}
-	tid := c.findTargetIDForLog(msg.SessionID)
-	select {
-	case msg := <-recvCh:
-		var sid target.SessionID
-		tid = ""
-		if msg != nil {
-			sid = msg.SessionID
-			tid = c.findTargetIDForLog(sid)
-		}
-		switch {
-		case msg == nil:
-			c.logger.Debugf("Connection:send", "wsURL:%q, err:ErrChannelClosed", c.wsURL)
-			return ErrChannelClosed
-		case msg.Error != nil:
-			c.logger.Debugf("Connection:send", "sid:%v tid:%v wsURL:%q, msg err:%v", sid, tid, c.wsURL, msg.Error)
-			return msg.Error
-		case res != nil:
-			return easyjson.Unmarshal(msg.Result, res)
-		}
-	case err := <-c.errorCh:
-		c.logger.Debugf("Connection:send:<-c.errorCh #2", "sid:%v tid:%v wsURL:%q, err:%v", msg.SessionID, tid, c.wsURL, err)
-		return err
-	case code := <-c.closeCh:
-		c.logger.Debugf("Connection:send:<-c.closeCh #2", "sid:%v tid:%v wsURL:%q, websocket code:%v", msg.SessionID, tid, c.wsURL, code)
-		_ = c.close(code)
-		return &websocket.CloseError{Code: code}
-	case <-c.done:
-		c.logger.Debugf("Connection:send:<-c.done #2", "sid:%v tid:%v wsURL:%q", msg.SessionID, tid, c.wsURL)
-	case <-ctx.Done():
-		c.logger.Debugf("Connection:send:<-ctx.Done()", "sid:%v tid:%v wsURL:%q err:%v", msg.SessionID, tid, c.wsURL, c.ctx.Err())
-		return ctx.Err()
-	case <-c.ctx.Done():
-		c.logger.Debugf("Connection:send:<-c.ctx.Done()", "sid:%v tid:%v wsURL:%q err:%v", msg.SessionID, tid, c.wsURL, c.ctx.Err())
-		return c.ctx.Err()
-	}
-	return nil
-}
+// 	// Block waiting for response.
+// 	if recvCh == nil {
+// 		return nil
+// 	}
+// 	tid := c.findTargetIDForLog(msg.SessionID)
+// 	select {
+// 	case msg := <-recvCh:
+// 		var sid target.SessionID
+// 		tid = ""
+// 		if msg != nil {
+// 			sid = msg.SessionID
+// 			tid = c.findTargetIDForLog(sid)
+// 		}
+// 		switch {
+// 		case msg == nil:
+// 			c.logger.Debugf("Connection:send", "wsURL:%q, err:ErrChannelClosed", c.wsURL)
+// 			return ErrChannelClosed
+// 		case msg.Error != nil:
+// 			c.logger.Debugf("Connection:send", "sid:%v tid:%v wsURL:%q, msg err:%v", sid, tid, c.wsURL, msg.Error)
+// 			return msg.Error
+// 		case res != nil:
+// 			return easyjson.Unmarshal(msg.Result, res)
+// 		}
+// 	case err := <-c.errorCh:
+// 		c.logger.Debugf("Connection:send:<-c.errorCh #2", "sid:%v tid:%v wsURL:%q, err:%v", msg.SessionID, tid, c.wsURL, err)
+// 		return err
+// 	case code := <-c.closeCh:
+// 		c.logger.Debugf("Connection:send:<-c.closeCh #2", "sid:%v tid:%v wsURL:%q, websocket code:%v", msg.SessionID, tid, c.wsURL, code)
+// 		_ = c.close(code)
+// 		return &websocket.CloseError{Code: code}
+// 	case <-c.done:
+// 		c.logger.Debugf("Connection:send:<-c.done #2", "sid:%v tid:%v wsURL:%q", msg.SessionID, tid, c.wsURL)
+// 	case <-ctx.Done():
+// 		c.logger.Debugf("Connection:send:<-ctx.Done()", "sid:%v tid:%v wsURL:%q err:%v", msg.SessionID, tid, c.wsURL, c.ctx.Err())
+// 		return ctx.Err()
+// 	case <-c.ctx.Done():
+// 		c.logger.Debugf("Connection:send:<-c.ctx.Done()", "sid:%v tid:%v wsURL:%q err:%v", msg.SessionID, tid, c.wsURL, c.ctx.Err())
+// 		return c.ctx.Err()
+// 	}
+// 	return nil
+// }
 
-func (c *connection) sendLoop() {
-	c.logger.Debugf("Connection:sendLoop", "wsURL:%q, starts", c.wsURL)
-	for {
-		select {
-		case msg := <-c.sendCh:
-			c.encoder = jwriter.Writer{}
-			msg.MarshalEasyJSON(&c.encoder)
-			if err := c.encoder.Error; err != nil {
-				sid := msg.SessionID
-				tid := c.findTargetIDForLog(sid)
-				select {
-				case c.errorCh <- err:
-					c.logger.Debugf("Connection:sendLoop:c.errorCh <- err", "sid:%v tid:%v wsURL:%q err:%v", sid, tid, c.wsURL, err)
-				case <-c.done:
-					c.logger.Debugf("Connection:sendLoop:<-c.done", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
-					return
-				}
-			}
+// func (c *connection) sendLoop() {
+// 	c.logger.Debugf("Connection:sendLoop", "wsURL:%q, starts", c.wsURL)
+// 	for {
+// 		select {
+// 		case msg := <-c.sendCh:
+// 			c.encoder = jwriter.Writer{}
+// 			msg.MarshalEasyJSON(&c.encoder)
+// 			if err := c.encoder.Error; err != nil {
+// 				sid := msg.SessionID
+// 				tid := c.findTargetIDForLog(sid)
+// 				select {
+// 				case c.errorCh <- err:
+// 					c.logger.Debugf("Connection:sendLoop:c.errorCh <- err", "sid:%v tid:%v wsURL:%q err:%v", sid, tid, c.wsURL, err)
+// 				case <-c.done:
+// 					c.logger.Debugf("Connection:sendLoop:<-c.done", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
+// 					return
+// 				}
+// 			}
 
-			buf, _ := c.encoder.BuildBytes()
-			c.logger.Tracef("cdp:send", "-> %s", buf)
-			writer, err := c.wsConn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				c.handleIOError(err)
-				return
-			}
-			if _, err := writer.Write(buf); err != nil {
-				c.handleIOError(err)
-				return
-			}
-			if err := writer.Close(); err != nil {
-				c.handleIOError(err)
-				return
-			}
-		case code := <-c.closeCh:
-			c.logger.Debugf("Connection:sendLoop:<-c.closeCh", "wsURL:%q code:%d", c.wsURL, code)
-			_ = c.close(code)
-			return
-		case <-c.done:
-			c.logger.Debugf("Connection:sendLoop:<-c.done#2", "wsURL:%q", c.wsURL)
-			return
-		case <-c.ctx.Done():
-			c.logger.Debugf("connection:sendLoop", "returning, ctx.Err: %q", c.ctx.Err())
-			return
-		}
-	}
-}
+// 			buf, _ := c.encoder.BuildBytes()
+// 			c.logger.Tracef("cdp:send", "-> %s", buf)
+// 			writer, err := c.wsConn.NextWriter(websocket.TextMessage)
+// 			if err != nil {
+// 				c.handleIOError(err)
+// 				return
+// 			}
+// 			if _, err := writer.Write(buf); err != nil {
+// 				c.handleIOError(err)
+// 				return
+// 			}
+// 			if err := writer.Close(); err != nil {
+// 				c.handleIOError(err)
+// 				return
+// 			}
+// 		case code := <-c.closeCh:
+// 			c.logger.Debugf("Connection:sendLoop:<-c.closeCh", "wsURL:%q code:%d", c.wsURL, code)
+// 			_ = c.close(code)
+// 			return
+// 		case <-c.done:
+// 			c.logger.Debugf("Connection:sendLoop:<-c.done#2", "wsURL:%q", c.wsURL)
+// 			return
+// 		case <-c.ctx.Done():
+// 			c.logger.Debugf("connection:sendLoop", "returning, ctx.Err: %q", c.ctx.Err())
+// 			return
+// 		}
+// 	}
+// }
 
 func (c *connection) Close(args ...goja.Value) {
 	code := websocket.CloseGoingAway
