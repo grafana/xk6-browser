@@ -18,7 +18,7 @@
  *
  */
 
-package common
+package cdp
 
 import (
 	"context"
