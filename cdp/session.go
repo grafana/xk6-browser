@@ -35,7 +35,7 @@ import (
 // session represents a CDP session to a target.
 type session struct {
 	conn     *connection
-	id       target.sessionID
+	id       target.SessionID
 	targetID target.ID
 	// msgID    int64
 	// readCh   chan *cdproto.Message
@@ -48,7 +48,7 @@ type session struct {
 
 // newsession creates a new session.
 func newSession(
-	ctx context.Context, id target.sessionID, tid target.ID, logger *log.Logger,
+	ctx context.Context, id target.SessionID, tid target.ID, logger *log.Logger,
 ) *session {
 	s := session{
 		// BaseEventEmitter: NewBaseEventEmitter(ctx),
@@ -63,16 +63,6 @@ func newSession(
 	s.logger.Debugf("session:Newsession", "sid:%v tid:%v", id, tid)
 	// go s.readLoop()
 	return &s
-}
-
-// ID returns session ID.
-func (s *session) id() target.sessionID {
-	return s.id
-}
-
-// TargetID returns session's target ID.
-func (s *session) targetID() target.ID {
-	return s.targetID
 }
 
 func (s *session) close() {
