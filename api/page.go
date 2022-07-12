@@ -30,6 +30,7 @@ type Page interface {
 	BringToFront()
 	Check(selector string, opts goja.Value)
 	Click(selector string, opts goja.Value)
+	AsyncClick(selector string, opts goja.Value) *goja.Promise
 	Close(opts goja.Value)
 	Content() string
 	Context() BrowserContext

@@ -8,6 +8,7 @@ type Frame interface {
 	AddStyleTag(opts goja.Value)
 	Check(selector string, opts goja.Value)
 	ChildFrames() []Frame
+	AsyncClick(selector string, opts goja.Value) *goja.Promise
 	Click(selector string, opts goja.Value)
 	Content() string
 	Dblclick(selector string, opts goja.Value)

@@ -9,9 +9,9 @@ export default function() {
   const page = context.newPage();
 
   page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
-  const elem = page.$('a[href="/my_messages.php"]');
+  // const elem = page.$('a[href="/my_messages.php"]');
   
-  elem.asyncClick().then(() => {    
+  page.asyncClick('a[href="/my_messages.php"]').then(() => {    
     page.$('input[name="login"]').type('admin');
     page.$('input[name="password"]').type('123');
 

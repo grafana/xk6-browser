@@ -410,6 +410,13 @@ func (p *Page) IsChecked(selector string, opts goja.Value) bool {
 	return p.MainFrame().IsChecked(selector, opts)
 }
 
+// AsyncClick clicks an element matching provided selector.
+func (p *Page) AsyncClick(selector string, opts goja.Value) *goja.Promise {
+	p.logger.Debugf("Page:AsyncClick", "sid:%v selector:%s", p.sessionID(), selector)
+
+	return p.MainFrame().AsyncClick(selector, opts)
+}
+
 // Click clicks an element matching provided selector.
 func (p *Page) Click(selector string, opts goja.Value) {
 	p.logger.Debugf("Page:Click", "sid:%v selector:%s", p.sessionID(), selector)

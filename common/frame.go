@@ -692,6 +692,29 @@ func (f *Frame) ChildFrames() []api.Frame {
 	return l
 }
 
+// AsyncClick clicks the first element found that matches selector.
+func (f *Frame) AsyncClick(selector string, opts goja.Value) *goja.Promise {
+	f.log.Debugf("Frame:AsyncClick", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
+
+	fn := func() error {
+		popts := NewFrameClickOptions(f.defaultTimeout())
+		if err := popts.Parse(f.ctx, opts); err != nil {
+			return fmt.Errorf("parsing frame click options: %w", err)
+		}
+		if err := f.click(selector, popts); err != nil {
+			return fmt.Errorf("%w", err)
+		}
+
+		applySlowMo(f.ctx)
+
+		return nil
+	}
+
+	return k6ext.Promise(f.ctx, func() (interface{}, error) {
+		return nil, fn()
+	})
+}
+
 // Click clicks the first element found that matches selector.
 func (f *Frame) Click(selector string, opts goja.Value) {
 	f.log.Debugf("Frame:Click", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
@@ -707,6 +730,15 @@ func (f *Frame) Click(selector string, opts goja.Value) {
 }
 
 func (f *Frame) click(selector string, opts *FrameClickOptions) error {
+	//
+	// callApiWithTimeout(func act(func click()))
+	//    result, err := <- errCh, resultCh
+	// newPointerAction(elementActionabilityOptions, func click())
+	//    callApiWithTimeout <- errCh, resultCh
+	// handle.click
+	//    <<actionability checks>>
+	//    retryPointerAction
+	//
 	click := func(apiCtx context.Context, handle *ElementHandle, p *Position) (interface{}, error) {
 		return nil, handle.click(p, opts.ToMouseClickOptions())
 	}
@@ -1955,9 +1987,21 @@ func (f *Frame) newAction(
 	}
 }
 
+// click := func(
+//   apiCtx context.Context, handle *ElementHandle, p *Position,
+// ) (interface{}, error) {
+// 	 return nil, handle.click(p, opts.ToMouseClickOptions())
+// }
+//
+// act := f.newPointerAction(
+//		selector, DOMElementStateAttached,
+//      opts.Strict, click, &opts.ElementHandleBasePointerOptions,
+//	)
+
 //nolint:unparam
 func (f *Frame) newPointerAction(
-	selector string, state DOMElementState, strict bool, fn elementHandlePointerActionFunc,
+	selector string, state DOMElementState, strict bool,
+	fn elementHandlePointerActionFunc,
 	opts *ElementHandleBasePointerOptions,
 ) func(apiCtx context.Context, resultCh chan interface{}, errCh chan error) {
 	// We execute a frame pointer action in the following steps:
