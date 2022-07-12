@@ -33,18 +33,18 @@ type Client struct {
 }
 
 // NewClient returns a new Client.
-func NewClient(logger *log.Logger) *Client {
-	return &Client{logger: logger}
+func NewClient(ctx context.Context, logger *log.Logger) *Client {
+	return &Client{ctx: ctx, logger: logger}
 }
 
 // Connect to the browser that exposes a CDP API at wsURL.
-func (c *Client) Connect(ctx context.Context, wsURL string) (err error) {
+func (c *Client) Connect(wsURL string) (err error) {
 	if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
 		return
 	}
 	c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
 
-	go c.recvLoop(ctx)
+	go c.recvLoop(c.ctx)
 
 	return nil
 }

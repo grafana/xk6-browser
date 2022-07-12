@@ -28,6 +28,7 @@ import (
 	"sync/atomic"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -35,7 +36,7 @@ import (
 
 	"github.com/chromedp/cdproto"
 	cdpbrowser "github.com/chromedp/cdproto/browser"
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
@@ -65,10 +66,11 @@ type Browser struct {
 
 	// Connection to the browser to talk CDP protocol.
 	// A *Connection is saved to this field, see: connect().
-	conn connection
+	conn   connection
+	client *cdp.Client
 
 	contextsMu     sync.RWMutex
-	contexts       map[cdp.BrowserContextID]*BrowserContext
+	contexts       map[cdpext.BrowserContextID]*BrowserContext
 	defaultContext *BrowserContext
 
 	// Cancel function to stop event listening
@@ -117,7 +119,7 @@ func newBrowser(
 		state:               int64(BrowserStateOpen),
 		browserProc:         browserProc,
 		launchOpts:          launchOpts,
-		contexts:            make(map[cdp.BrowserContextID]*BrowserContext),
+		contexts:            make(map[cdpext.BrowserContextID]*BrowserContext),
 		pages:               make(map[target.ID]*Page),
 		sessionIDtoTargetID: make(map[target.SessionID]target.ID),
 		vu:                  k6ext.GetVU(ctx),
@@ -125,14 +127,18 @@ func newBrowser(
 	}
 }
 
-func (b *Browser) connect() error {
+func (b *Browser) connect() (err error) {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
-	conn, err := NewConnection(b.ctx, b.browserProc.WsURL(), b.logger)
-	if err != nil {
+	// TODO: Remove this connection once all CDP calls are moved to the cdp package.
+	if b.conn, err = NewConnection(b.ctx, b.browserProc.WsURL(), b.logger); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 
-	b.conn = conn
+	client := cdp.NewClient(b.ctx, b.logger)
+	if err = client.Connect(b.browserProc.WsURL()); err != nil {
+		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
+	}
+	b.client = client
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
 	b.defaultContext = NewBrowserContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
@@ -140,11 +146,11 @@ func (b *Browser) connect() error {
 	return b.initEvents()
 }
 
-func (b *Browser) disposeContext(id cdp.BrowserContextID) error {
+func (b *Browser) disposeContext(id cdpext.BrowserContextID) error {
 	b.logger.Debugf("Browser:disposeContext", "bctxid:%v", id)
 
 	action := target.DisposeBrowserContext(id)
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
 		return fmt.Errorf("disposing browser context ID %s: %w", id, err)
 	}
 
@@ -204,7 +210,7 @@ func (b *Browser) initEvents() error {
 	}()
 
 	action := target.SetAutoAttach(true, true).WithFlatten(true)
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
 		return fmt.Errorf("internal error while auto-attaching to browser pages: %w", err)
 	}
 
@@ -212,7 +218,7 @@ func (b *Browser) initEvents() error {
 	// However making a dummy call afterwards fixes this.
 	// This can be removed after https://chromium-review.googlesource.com/c/chromium/src/+/2885888 lands in stable.
 	action2 := target.GetTargetInfo()
-	if _, err := action2.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+	if _, err := action2.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
 		return fmt.Errorf("internal error while getting browser target info: %w", err)
 	}
 
@@ -347,7 +353,7 @@ func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
 	}
 }
 
-func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
+func (b *Browser) newPageInContext(id cdpext.BrowserContextID) (*Page, error) {
 	b.contextsMu.RLock()
 	browserCtx, ok := b.contexts[id]
 	b.contextsMu.RUnlock()
@@ -380,7 +386,7 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 
 	// create a new page.
 	action := target.CreateTarget("about:blank").WithBrowserContextID(id)
-	tid, err := action.Do(cdp.WithExecutor(ctx, b.conn))
+	tid, err := action.Do(cdpext.WithExecutor(ctx, b.conn))
 	if err != nil {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
@@ -421,7 +427,7 @@ func (b *Browser) Close() {
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
 
 	action := cdpbrowser.Close()
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
 		if _, ok := err.(*websocket.CloseError); !ok {
 			k6ext.Panic(b.ctx, "closing the browser: %v", err)
 		}
@@ -457,7 +463,7 @@ func (b *Browser) IsConnected() bool {
 // NewContext creates a new incognito-like browser context.
 func (b *Browser) NewContext(opts goja.Value) api.BrowserContext {
 	action := target.CreateBrowserContext().WithDisposeOnDetach(true)
-	browserContextID, err := action.Do(cdp.WithExecutor(b.ctx, b.conn))
+	browserContextID, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
 	b.logger.Debugf("Browser:NewContext", "bctxid:%v", browserContextID)
 	if err != nil {
 		k6ext.Panic(b.ctx, "creating browser context ID %s: %w", browserContextID, err)
@@ -501,7 +507,7 @@ func (b *Browser) On(event string) *goja.Promise {
 // UserAgent returns the controlled browser's user agent string.
 func (b *Browser) UserAgent() string {
 	action := cdpbrowser.GetVersion()
-	_, _, _, ua, _, err := action.Do(cdp.WithExecutor(b.ctx, b.conn))
+	_, _, _, ua, _, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
 	if err != nil {
 		k6ext.Panic(b.ctx, "getting browser user agent: %w", err)
 	}
@@ -511,7 +517,7 @@ func (b *Browser) UserAgent() string {
 // Version returns the controlled browser's version.
 func (b *Browser) Version() string {
 	action := cdpbrowser.GetVersion()
-	_, product, _, _, _, err := action.Do(cdp.WithExecutor(b.ctx, b.conn))
+	_, product, _, _, _, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
 	if err != nil {
 		k6ext.Panic(b.ctx, "getting browser version: %w", err)
 	}
