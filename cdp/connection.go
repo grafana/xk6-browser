@@ -19,6 +19,12 @@ import (
 
 const wsWriteBufferSize = 1 << 20
 
+type wsIOError struct{ error }
+
+func (e wsIOError) Unwrap() error {
+	return e.error
+}
+
 // Ensure Connection implements the EventEmitter and Executor interfaces.
 // var _ cdp.Executor = &Connection{}
 
@@ -223,42 +229,29 @@ func (c *connection) writeMessage(msg *cdproto.Message) error {
 	c.logger.Tracef("cdp:send", "-> %s", buf)
 	writer, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
-		// c.handleIOError(err)
-		return err
+		return wsIOError{err}
 	}
 	if _, err := writer.Write(buf); err != nil {
-		// c.handleIOError(err)
-		return err
+		return wsIOError{err}
 	}
 	if err := writer.Close(); err != nil {
-		// c.handleIOError(err)
-		return err
+		return wsIOError{err}
 	}
 
 	return nil
 }
 
-func (c *connection) handleIOError(err error) {
-	c.logger.Errorf("Connection:handleIOError", "err:%v", err)
-
+func (c *connection) handleIOError(err error) error {
 	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		// Report an unexpected closure
-		select {
-		case c.errorCh <- err:
-		case <-c.done:
-			return
-		}
+		return err
 	}
+
 	code := websocket.CloseGoingAway
 	if e, ok := err.(*websocket.CloseError); ok {
 		code = e.Code
 	}
-	select {
-	case c.closeCh <- code:
-		c.logger.Debugf("Connection:handleIOError:c.closeCh <-", "code:%d", code)
-	case <-c.done:
-		c.logger.Debugf("Connection:handleIOError:<-c.done", "")
-	}
+
+	return c.close(code)
 }
 
 // func (c *Connection) getSession(id target.SessionID) *Session {
