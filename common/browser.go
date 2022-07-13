@@ -130,16 +130,16 @@ func newBrowser(
 func (b *Browser) connect() (err error) {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
 	// TODO: Remove this connection once all CDP calls are moved to the cdp package.
-	if b.conn, err = NewConnection(b.ctx, b.browserProc.WsURL(), b.logger); err != nil {
-		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
-	}
-
 	client := cdp.NewClient(b.ctx, b.logger)
 	if err = client.Connect(b.browserProc.WsURL()); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
 	b.client = client
+
+	if b.conn, err = NewConnection(b.ctx, b.browserProc.WsURL(), b.logger); err != nil {
+		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
+	}
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
 	b.defaultContext = NewBrowserContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
