@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/xk6-browser/log"
 
 	"github.com/chromedp/cdproto"
-	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
 	"github.com/mailru/easyjson/jlexer"
 	"github.com/mailru/easyjson/jwriter"
@@ -196,8 +195,10 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 	fmt.Printf(">>> calling wsConn.ReadMessage()\n")
 	_, buf, err := c.wsConn.ReadMessage()
 	if err != nil {
+		fmt.Printf(">>> got err from wsConn.ReadMessage(): %#+v\n", err)
 		return nil, err
 	}
+	fmt.Printf(">>> got message from wsConn.ReadMessage()\n")
 
 	var msg cdproto.Message
 	c.decoder = jlexer.Lexer{Data: buf}
@@ -385,11 +386,11 @@ func (c *connection) handleIOError(err error) error {
 // 	}
 // }
 
-func (c *connection) Close(args ...goja.Value) {
+func (c *connection) Close() {
 	code := websocket.CloseGoingAway
-	if len(args) > 0 {
-		code = int(args[0].ToInteger())
-	}
+	// if len(args) > 0 {
+	// 	code = int(args[0].ToInteger())
+	// }
 	c.logger.Debugf("connection:Close", "wsURL:%q code:%d", c.wsURL, code)
 	_ = c.close(code)
 }

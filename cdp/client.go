@@ -52,10 +52,15 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 
 // Connect to the browser that exposes a CDP API at wsURL.
 func (c *Client) Connect(wsURL string) (err error) {
+	if c.wsURL != "" {
+		return fmt.Errorf("CDP connection already established to %q", c.wsURL)
+	}
+
 	if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
 		return
 	}
 	c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
+	c.wsURL = wsURL
 
 	go c.recvLoop()
 	go c.sendLoop()
@@ -208,7 +213,7 @@ func (c *Client) recvLoop() {
 		msg, err := c.conn.readMessage()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				c.logger.Debugf("Client:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+				c.logger.Errorf("Client:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
 				c.conn.handleIOError(err)
 			}
 			return
@@ -303,12 +308,15 @@ func (c *Client) recvLoop() {
 }
 
 func (c *Client) sendLoop() {
-	c.logger.Debugf("Client:sendLoop", "wsURL:%q, starts", c.wsURL)
+	// c.logger.Debugf("Client:sendLoop", "wsURL:%q, starts", c.wsURL)
 	for {
+		fmt.Printf(">>> looping in Client.sendLoop()\n")
 		select {
 		case msg := <-c.sendCh:
+			fmt.Printf(">>> writing message in Client.sendLoop()\n")
 			err := c.conn.writeMessage(msg)
 			if err != nil {
+				fmt.Printf(">>> got err writing message in Client.sendLoop()\n")
 				c.errorCh <- err
 			}
 		case code := <-c.closeCh:
@@ -320,6 +328,7 @@ func (c *Client) sendLoop() {
 			return
 		case <-c.ctx.Done():
 			c.logger.Debugf("Client:sendLoop", "returning, ctx.Err: %q", c.ctx.Err())
+			c.conn.Close()
 			return
 		}
 	}
