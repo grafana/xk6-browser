@@ -135,7 +135,12 @@ func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cd
 	case c.sendCh <- msg:
 	case err := <-c.errorCh:
 		c.logger.Debugf("Connection:send:<-c.errorCh", "wsURL:%q sid:%v, err:%v", c.wsURL, msg.SessionID, err)
+		var wsErr wsIOError
+		if errors.As(err, &wsErr) {
+			return c.conn.handleIOError(wsErr.Unwrap())
+		}
 		return err
+	// 	return err
 	// case code := <-c.closeCh:
 	// 	c.logger.Debugf("Connection:send:<-c.closeCh", "wsURL:%q sid:%v, websocket code:%v", c.wsURL, msg.SessionID, code)
 	// 	_ = c.conn.close(code)
@@ -173,13 +178,17 @@ func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cd
 		case res != nil:
 			return easyjson.Unmarshal(msg.Result, res)
 		}
-	// case err := <-c.errorCh:
-	// 	c.logger.Debugf("Connection:send:<-c.errorCh #2", "sid:%v tid:%v wsURL:%q, err:%v", msg.SessionID, tid, c.wsURL, err)
-	// 	return err
+	case err := <-c.errorCh:
+		// c.logger.Debugf("Connection:send:<-c.errorCh #2", "sid:%v tid:%v wsURL:%q, err:%v", msg.SessionID, tid, c.wsURL, err)
+		var wsErr wsIOError
+		if errors.As(err, &wsErr) {
+			return c.conn.handleIOError(wsErr.Unwrap())
+		}
+		return err
 	// case code := <-c.closeCh:
-	// c.logger.Debugf("Connection:send:<-c.closeCh #2", "sid:%v tid:%v wsURL:%q, websocket code:%v", msg.SessionID, tid, c.wsURL, code)
-	// _ = c.conn.close(code)
-	// return &websocket.CloseError{Code: code}
+	// 	// c.logger.Debugf("Connection:send:<-c.closeCh #2", "sid:%v tid:%v wsURL:%q, websocket code:%v", msg.SessionID, tid, c.wsURL, code)
+	// 	_ = c.conn.close(code)
+	// 	return &websocket.CloseError{Code: code}
 	// case <-c.done:
 	// 	c.logger.Debugf("Connection:send:<-c.done #2", "sid:%v tid:%v wsURL:%q", msg.SessionID, tid, c.wsURL)
 	case <-ctx.Done():
@@ -200,7 +209,7 @@ func (c *Client) recvLoop() {
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
 				c.logger.Debugf("Client:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
-				c.handleIOError(err)
+				c.conn.handleIOError(err)
 			}
 			return
 		}
