@@ -66,8 +66,8 @@ type Browser struct {
 
 	// Connection to the browser to talk CDP protocol.
 	// A *Connection is saved to this field, see: connect().
-	conn   connection
-	client *cdp.Client
+	conn      connection
+	cdpClient *cdp.Client
 
 	contextsMu     sync.RWMutex
 	contexts       map[cdpext.BrowserContextID]*BrowserContext
@@ -115,6 +115,7 @@ func newBrowser(
 	return &Browser{
 		BaseEventEmitter:    NewBaseEventEmitter(ctx),
 		ctx:                 ctx,
+		cdpClient:           cdp.NewClient(ctx, logger),
 		cancelFn:            cancelFn,
 		state:               int64(BrowserStateOpen),
 		browserProc:         browserProc,
@@ -130,16 +131,14 @@ func newBrowser(
 func (b *Browser) connect() (err error) {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
 	// TODO: Remove this connection once all CDP calls are moved to the cdp package.
-	client := cdp.NewClient(b.ctx, b.logger)
-	if err = client.Connect(b.browserProc.WsURL()); err != nil {
-		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
-	}
-	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
-	b.client = client
-
 	if b.conn, err = NewConnection(b.ctx, b.browserProc.WsURL(), b.logger); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
+
+	if err = b.cdpClient.Connect(b.browserProc.WsURL()); err != nil {
+		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
+	}
+	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
 	b.defaultContext = NewBrowserContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
