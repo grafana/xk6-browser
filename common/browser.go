@@ -226,6 +226,8 @@ func (b *Browser) initEvents() error {
 		return fmt.Errorf("executing getTargetInfo: %w", err)
 	}
 
+	b.cdpClient.TargetSetAutoAttach(true, true, true)
+
 	return nil
 }
 
