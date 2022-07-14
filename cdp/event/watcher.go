@@ -1,38 +1,30 @@
-package cdp
+package event
 
 import (
 	"context"
 	"sync"
 )
 
-// TODO: Move this into subpackages? cdp/event/page, cdp/event/network, etc.
-// Or expose global structs for each CDP domain?
-// import "cdp/event"
-// event.Page.Navigated, event.Target.AttachedToTarget, event.Network.LoadingFinished
-type Event struct {
-	Name string
-	Data interface{}
-}
-
-type eventWatcher struct {
+type Watcher struct {
 	ctx    context.Context
 	subsMu sync.RWMutex
-	subs   map[string][]chan *Event
+	subs   map[CDPName][]chan *Event
 }
 
-func newEventWatcher(ctx context.Context) *eventWatcher {
-	return &eventWatcher{
+func NewWatcher(ctx context.Context) *Watcher {
+	return &Watcher{
 		ctx:  ctx,
-		subs: make(map[string][]chan *Event),
+		subs: make(map[CDPName][]chan *Event),
 	}
 }
 
 // func (w *eventWatcher) subscribe(sessionID, frameID string, evt *Event) <-chan *Event {
-func (w *eventWatcher) subscribe(evt *Event) <-chan *Event {
+// TODO: Handle event unsubscriptions
+func (w *Watcher) Subscribe(evt CDPName) <-chan *Event {
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
 	ch := make(chan *Event, 1)
-	w.subs[evt.Name] = append(w.subs[evt.Name], ch)
+	w.subs[evt] = append(w.subs[evt], ch)
 	return ch
 }
 
@@ -49,7 +41,7 @@ func (w *eventWatcher) subscribe(evt *Event) <-chan *Event {
 // 	return ch
 // }
 
-func (w *eventWatcher) onEventReceived(evt *Event) {
+func (w *Watcher) OnEventReceived(evt *Event) {
 	subs, ok := w.subs[evt.Name]
 	if !ok {
 		return
