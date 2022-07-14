@@ -135,7 +135,11 @@ func (b *Browser) connect() (err error) {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 
-	if err = b.cdpClient.Connect(b.browserProc.WsURL()); err != nil {
+	// WIP HACK: Reusing the same WS connection established above for
+	// cdp.Client, otherwise messages wouldn't be received on a second WS
+	// connection. This second argument will be removed once the entire #427
+	// refactor is done
+	if err = b.cdpClient.Connect(b.browserProc.WsURL(), b.conn.(*Connection).conn); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
