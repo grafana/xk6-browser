@@ -11,6 +11,7 @@ import (
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
+	"github.com/gorilla/websocket"
 	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/mailru/easyjson"
@@ -53,15 +54,25 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 }
 
 // Connect to the browser that exposes a CDP API at wsURL.
-func (c *Client) Connect(wsURL string) (err error) {
+func (c *Client) Connect(wsURL string, wsConn *websocket.Conn) (err error) {
 	if c.wsURL != "" {
 		return fmt.Errorf("CDP connection already established to %q", c.wsURL)
 	}
 
-	if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
-		return
+	if wsConn == nil {
+		if c.conn, err = newConnection(c.ctx, wsURL, c.logger); err != nil {
+			return
+		}
+		c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
+	} else {
+		// WIP HACK: Set an existing WS connection to use. This will be removed
+		// once the entire #427 refactor is done.
+		c.conn = &connection{
+			wsConn: wsConn,
+			wsURL:  wsURL,
+			logger: c.logger,
+		}
 	}
-	c.logger.Infof("cdp", "established CDP connection to %q", wsURL)
 	c.wsURL = wsURL
 
 	go c.recvLoop()
