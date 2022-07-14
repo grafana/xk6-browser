@@ -135,10 +135,10 @@ func (b *Browser) connect() (err error) {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 
-	// if err = b.cdpClient.Connect(b.browserProc.WsURL()); err != nil {
-	// 	return fmt.Errorf("connecting to browser DevTools URL: %w", err)
-	// }
-	// fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
+	if err = b.cdpClient.Connect(b.browserProc.WsURL()); err != nil {
+		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
+	}
+	fmt.Printf(">>> connected to browser at %s with client\n", b.browserProc.WsURL())
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
 	b.defaultContext = NewBrowserContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
@@ -222,7 +222,7 @@ func (b *Browser) initEvents() error {
 		return fmt.Errorf("internal error while getting browser target info: %w", err)
 	}
 
-	b.cdpClient.TargetSetAutoAttach(true, true, true)
+	// b.cdpClient.TargetSetAutoAttach(true, true, true)
 
 	return nil
 }

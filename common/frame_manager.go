@@ -31,6 +31,7 @@ import (
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/cdp"
+	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -628,25 +629,27 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		fs = frame.page.mainFrameSession
 	}
 
-	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
+	// newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
+	// if err != nil {
+	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
+	// }
+
+	navCh := m.cdpClient.Subscribe(event.PageNavigated)
+	// TODO: Move this to a helper function?
+	go func() {
+		select {
+		case evt := <-navCh:
+			fmt.Printf(">>> got NavigationEvent: %#+v\n", evt)
+		}
+	}()
+
+	newDocumentID, err := m.cdpClient.PageNavigate(
+		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
 
-	// navCh := m.cdpClient.Subscribe(event.PageNavigated)
-	// // TODO: Move this to a helper function?
-	// go func() {
-	// 	select {
-	// 	case evt := <-navCh:
-	// 		fmt.Printf(">>> got NavigationEvent: %#+v\n", evt)
-	// 	}
-	// }()
-
-	// newDocumentID, err := m.cdpClient.PageNavigate(
-	// 	url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
-	// if err != nil {
-	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
-	// }
+	fmt.Printf(">>> got newDocumentID: %s\n", newDocumentID)
 
 	var event *NavigationEvent
 	if newDocumentID != "" {
