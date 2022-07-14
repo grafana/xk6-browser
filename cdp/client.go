@@ -48,6 +48,7 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 		// Buffered channels to avoid blocking in Execute
 		recvCh:  make(chan *cdproto.Message, 32),
 		sendCh:  make(chan *cdproto.Message, 32),
+		msgID:   1000,
 		watcher: event.NewWatcher(ctx),
 	}
 }

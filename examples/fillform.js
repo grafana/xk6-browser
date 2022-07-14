@@ -5,6 +5,7 @@ export default function() {
   const browser = launcher.launch('chromium', {
     headless: __ENV.XK6_HEADLESS ? true : false,
     timeout: '10m',
+    args: ['remote-debugging-port=9222'],
   });
   const context = browser.newContext();
   const page = context.newPage();
@@ -14,7 +15,7 @@ export default function() {
   const elem = page.$('a[href="/my_messages.php"]');
   elem.click();
 
-  sleep(60);
+  // sleep(60);
 
   // Enter login credentials and login
   page.$('input[name="login"]').type('admin');
