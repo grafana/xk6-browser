@@ -11,6 +11,7 @@ import (
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
+	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/mailru/easyjson"
 
@@ -34,7 +35,7 @@ type Client struct {
 
 	sessionsMu sync.RWMutex
 	sessions   map[target.SessionID]*session
-	watcher    *eventWatcher
+	watcher    *event.Watcher
 	wsURL      string
 }
 
@@ -47,7 +48,7 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 		// Buffered channels to avoid blocking in Execute
 		recvCh:  make(chan *cdproto.Message, 32),
 		sendCh:  make(chan *cdproto.Message, 32),
-		watcher: newEventWatcher(ctx),
+		watcher: event.NewWatcher(ctx),
 	}
 }
 
@@ -137,10 +138,10 @@ func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
 	return documentID.String(), err
 }
 
-// SubscribeToEvent returns a channel that will be notified when an incoming CDP
-// event is received.
-func (c *Client) SubscribeToEvent(evt *Event) <-chan *Event {
-	return c.watcher.subscribe(evt)
+// Subscribe returns a channel that will be notified when the provided CDP event
+// is received.
+func (c *Client) Subscribe(evt event.CDPName) <-chan *event.Event {
+	return c.watcher.Subscribe(evt)
 }
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
@@ -224,9 +225,11 @@ func (c *Client) recvLoop() {
 				c.logger.Errorf("Client:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
 				c.conn.handleIOError(err)
 			}
+			fmt.Printf(">>> got err in Client.recvLoop(): %#+v\n", err)
 			return
 		}
 
+		fmt.Printf(">>> got message in Client.recvLoop(): %#+v\n", msg)
 		switch {
 		case msg.Method != "":
 			evt, err := cdproto.UnmarshalMessage(msg)
@@ -235,7 +238,7 @@ func (c *Client) recvLoop() {
 				continue
 			}
 			fmt.Printf(">>> received event %s\n", msg.Method)
-			c.watcher.onEventReceived(&Event{string(msg.Method), evt})
+			c.watcher.OnEventReceived(&event.Event{event.CDPName(msg.Method), evt})
 		case msg.ID != 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
 			select {
