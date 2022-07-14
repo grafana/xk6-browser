@@ -624,10 +624,20 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		// main frame's session.
 		fs = frame.page.mainFrameSession
 	}
+
 	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
+
+	// navCh := m.cdpClient.SubscribeToEvent(event.PageNavigated)
+	// go func() {
+	// 	select {
+	// 	case <-navCh:
+	// 	}
+	// }()
+
+	// newDocumentID, err := m.cdpClient.PageNavigate(m.session.ID())
 
 	var event *NavigationEvent
 	if newDocumentID != "" {

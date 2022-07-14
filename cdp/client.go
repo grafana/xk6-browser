@@ -113,11 +113,15 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		}
 	}
 	msg := &cdproto.Message{
-		ID: id,
-		// TODO: Figure out a way of injecting session ID here...
+		ID:     id,
 		Method: cdproto.MethodType(method),
 		Params: buf,
 	}
+
+	if sid := getSessionID(ctx); sid != "" {
+		msg.SessionID = target.SessionID(sid)
+	}
+
 	return c.send(ctx, msg, ch, res)
 }
 
