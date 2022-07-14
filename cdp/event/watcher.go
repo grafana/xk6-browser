@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -25,6 +26,7 @@ func (w *Watcher) Subscribe(evt CDPName) <-chan *Event {
 	defer w.subsMu.Unlock()
 	ch := make(chan *Event, 1)
 	w.subs[evt] = append(w.subs[evt], ch)
+	fmt.Printf(">>> subscribed to event %s\n", evt)
 	return ch
 }
 
@@ -47,7 +49,8 @@ func (w *Watcher) OnEventReceived(evt *Event) {
 		return
 	}
 
-	for _, ch := range subs {
+	for i, ch := range subs {
+		fmt.Printf(">>> notifying subscriber %d of event %s\n", i, evt.Name)
 		select {
 		case ch <- evt:
 		case <-w.ctx.Done():
