@@ -24,21 +24,22 @@ type Client struct {
 	ctx    context.Context
 	logger *log.Logger
 
-	sessionsMu sync.RWMutex
-	sessions   map[target.SessionID]*session
-	watcher    *Watcher
-
-	conn    *connection
-	msgID   int64
-	recvCh  chan *cdproto.Message
-	sendCh  chan *cdproto.Message
-	closeCh chan int
+	conn   *connection
+	msgID  int64
+	recvCh chan *cdproto.Message
+	sendCh chan *cdproto.Message
+	// closeCh chan int
 	errorCh chan error
 	done    chan struct{}
-	wsURL   string
+
+	sessionsMu sync.RWMutex
+	sessions   map[target.SessionID]*session
+	watcher    *eventWatcher
+	wsURL      string
 }
 
-// NewClient returns a new Client.
+// NewClient returns a new Client that is unusable until a CDP connection is
+// established with Connect().
 func NewClient(ctx context.Context, logger *log.Logger) *Client {
 	return &Client{
 		ctx:    ctx,
@@ -46,7 +47,7 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 		// Buffered channels to avoid blocking in Execute
 		recvCh:  make(chan *cdproto.Message, 32),
 		sendCh:  make(chan *cdproto.Message, 32),
-		watcher: NewWatcher(),
+		watcher: newEventWatcher(ctx),
 	}
 }
 
@@ -68,7 +69,8 @@ func (c *Client) Connect(wsURL string) (err error) {
 	return nil
 }
 
-// Execute implements cdproto.Executor and performs a synchronous send and receive.
+// Execute implements cdproto.Executor and performs a synchronous send and
+// receive.
 func (c *Client) Execute(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
 	c.logger.Debugf("connection:Execute", "wsURL:%q method:%q", c.wsURL, method)
 	id := atomic.AddInt64(&c.msgID, 1)
@@ -111,7 +113,8 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		}
 	}
 	msg := &cdproto.Message{
-		ID:     id,
+		ID: id,
+		// TODO: Figure out a way of injecting session ID here...
 		Method: cdproto.MethodType(method),
 		Params: buf,
 	}
@@ -130,10 +133,11 @@ func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
 	return documentID.String(), err
 }
 
-// Send a CDP command to the browser without waiting for a response.
-// func (c *Client) send(action action) error {
-// 	return nil
-// }
+// SubscribeToEvent returns a channel that will be notified when an incoming CDP
+// event is received.
+func (c *Client) SubscribeToEvent(evt *Event) <-chan *Event {
+	return c.watcher.subscribe(evt)
+}
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
 	select {
@@ -319,10 +323,10 @@ func (c *Client) sendLoop() {
 				fmt.Printf(">>> got err writing message in Client.sendLoop()\n")
 				c.errorCh <- err
 			}
-		case code := <-c.closeCh:
-			c.logger.Debugf("Client:sendLoop:<-c.closeCh", "wsURL:%q code:%d", c.wsURL, code)
-			_ = c.conn.close(code)
-			return
+		// case code := <-c.closeCh:
+		// 	c.logger.Debugf("Client:sendLoop:<-c.closeCh", "wsURL:%q code:%d", c.wsURL, code)
+		// 	_ = c.conn.close(code)
+		// 	return
 		case <-c.done:
 			c.logger.Debugf("Client:sendLoop:<-c.done#2", "wsURL:%q", c.wsURL)
 			return
