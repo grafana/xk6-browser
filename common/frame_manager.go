@@ -624,7 +624,11 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		fs = frame.page.mainFrameSession
 	}
 
-	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
+	// TODO: A saner way of accessing cdp.Client?
+	cdpClient := frame.page.browserCtx.browser.cdpClient
+
+	newDocumentID, err := cdpClient.PageNavigate(
+		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
