@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -625,19 +626,27 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		fs = frame.page.mainFrameSession
 	}
 
-	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
+	// newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
+	// if err != nil {
+	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
+	// }
+
+	// TODO: A saner way of accessing cdp.Client?
+	cdpClient := frame.page.browserCtx.browser.cdpClient
+
+	navCh := cdpClient.Subscribe(event.PageNavigated)
+	go func() {
+		select {
+		case evt := <-navCh:
+			fmt.Printf(">>> got NavigationEvent: %#+v\n", evt)
+		}
+	}()
+
+	newDocumentID, err := cdpClient.PageNavigate(
+		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
-
-	// navCh := m.cdpClient.SubscribeToEvent(event.PageNavigated)
-	// go func() {
-	// 	select {
-	// 	case <-navCh:
-	// 	}
-	// }()
-
-	// newDocumentID, err := m.cdpClient.PageNavigate(m.session.ID())
 
 	var event *NavigationEvent
 	if newDocumentID != "" {
