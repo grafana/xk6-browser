@@ -30,13 +30,14 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
 	k6modules "go.k6.io/k6/js/modules"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/dop251/goja"
 )
@@ -46,6 +47,7 @@ type FrameManager struct {
 	ctx             context.Context
 	session         session
 	page            *Page
+	cdpClient       *cdp.Client
 	timeoutSettings *TimeoutSettings
 
 	// protects from the data race between:
@@ -57,7 +59,7 @@ type FrameManager struct {
 	// Needed as the frames map will be accessed from multiple Go routines,
 	// the main VU/JS go routine and the Go routine listening for CDP messages.
 	framesMu sync.RWMutex
-	frames   map[cdp.FrameID]*Frame
+	frames   map[cdpext.FrameID]*Frame
 
 	inflightRequests map[network.RequestID]bool
 
@@ -85,8 +87,9 @@ func NewFrameManager(
 		ctx:              ctx,
 		session:          s,
 		page:             p,
+		cdpClient:        p.browserCtx.browser.cdpClient,
 		timeoutSettings:  ts,
-		frames:           make(map[cdp.FrameID]*Frame),
+		frames:           make(map[cdpext.FrameID]*Frame),
 		inflightRequests: make(map[network.RequestID]bool),
 		barriers:         make([]*Barrier, 0),
 		vu:               k6ext.GetVU(ctx),
@@ -132,7 +135,7 @@ func (m *FrameManager) dispose() {
 	}
 }
 
-func (m *FrameManager) frameAbortedNavigation(frameID cdp.FrameID, errorText, documentID string) {
+func (m *FrameManager) frameAbortedNavigation(frameID cdpext.FrameID, errorText, documentID string) {
 	m.logger.Debugf("FrameManager:frameAbortedNavigation",
 		"fmid:%d fid:%v err:%s docid:%s",
 		m.ID(), frameID, errorText, documentID)
@@ -162,7 +165,7 @@ func (m *FrameManager) frameAbortedNavigation(frameID cdp.FrameID, errorText, do
 	frame.emit(EventFrameNavigation, ne)
 }
 
-func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.FrameID) {
+func (m *FrameManager) frameAttached(frameID cdpext.FrameID, parentFrameID cdpext.FrameID) {
 	m.logger.Debugf("FrameManager:frameAttached", "fmid:%d fid:%v pfid:%v",
 		m.ID(), frameID, parentFrameID)
 
@@ -189,7 +192,7 @@ func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.Fram
 	}
 }
 
-func (m *FrameManager) frameDetached(frameID cdp.FrameID) {
+func (m *FrameManager) frameDetached(frameID cdpext.FrameID) {
 	m.logger.Debugf("FrameManager:frameDetached", "fmid:%d fid:%v", m.ID(), frameID)
 
 	// TODO: use getFrameByID here
@@ -206,7 +209,7 @@ func (m *FrameManager) frameDetached(frameID cdp.FrameID) {
 	m.removeFramesRecursively(frame)
 }
 
-func (m *FrameManager) frameLifecycleEvent(frameID cdp.FrameID, event LifecycleEvent) {
+func (m *FrameManager) frameLifecycleEvent(frameID cdpext.FrameID, event LifecycleEvent) {
 	m.logger.Debugf("FrameManager:frameLifecycleEvent",
 		"fmid:%d fid:%v event:%s",
 		m.ID(), frameID, lifecycleEventToString[event])
@@ -218,7 +221,7 @@ func (m *FrameManager) frameLifecycleEvent(frameID cdp.FrameID, event LifecycleE
 	}
 }
 
-func (m *FrameManager) frameLoadingStarted(frameID cdp.FrameID) {
+func (m *FrameManager) frameLoadingStarted(frameID cdpext.FrameID) {
 	m.logger.Debugf("FrameManager:frameLoadingStarted",
 		"fmid:%d fid:%v", m.ID(), frameID)
 
@@ -228,7 +231,7 @@ func (m *FrameManager) frameLoadingStarted(frameID cdp.FrameID) {
 	}
 }
 
-func (m *FrameManager) frameLoadingStopped(frameID cdp.FrameID) {
+func (m *FrameManager) frameLoadingStopped(frameID cdpext.FrameID) {
 	m.logger.Debugf("FrameManager:frameLoadingStopped",
 		"fmid:%d fid:%v", m.ID(), frameID)
 
@@ -238,7 +241,7 @@ func (m *FrameManager) frameLoadingStopped(frameID cdp.FrameID) {
 	}
 }
 
-func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.FrameID, documentID string, name string, url string, initial bool) error {
+func (m *FrameManager) frameNavigated(frameID cdpext.FrameID, parentFrameID cdpext.FrameID, documentID string, name string, url string, initial bool) error {
 	m.logger.Debugf("FrameManager:frameNavigated",
 		"fmid:%d fid:%v pfid:%v docid:%s fname:%s furl:%s initial:%t",
 		m.ID(), frameID, parentFrameID, documentID, name, url, initial)
@@ -278,7 +281,7 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 			m.ID(), frameID, parentFrameID, documentID, name, url, initial, frame.ID())
 
 		// Update frame ID to retain frame identity on cross-process navigation.
-		delete(m.frames, cdp.FrameID(frame.ID()))
+		delete(m.frames, cdpext.FrameID(frame.ID()))
 		frame.setID(frameID)
 		mainFrame = frame
 	}
@@ -350,7 +353,7 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 	return nil
 }
 
-func (m *FrameManager) frameNavigatedWithinDocument(frameID cdp.FrameID, url string) {
+func (m *FrameManager) frameNavigatedWithinDocument(frameID cdpext.FrameID, url string) {
 	m.logger.Debugf("FrameManager:frameNavigatedWithinDocument",
 		"fmid:%d fid:%v url:%s", m.ID(), frameID, url)
 
@@ -372,7 +375,7 @@ func (m *FrameManager) frameNavigatedWithinDocument(frameID cdp.FrameID, url str
 	frame.emit(EventFrameNavigation, &NavigationEvent{url: url, name: frame.Name()})
 }
 
-func (m *FrameManager) frameRequestedNavigation(frameID cdp.FrameID, url string, documentID string) error {
+func (m *FrameManager) frameRequestedNavigation(frameID cdpext.FrameID, url string, documentID string) error {
 	m.logger.Debugf("FrameManager:frameRequestedNavigation",
 		"fmid:%d fid:%v url:%s docid:%s", m.ID(), frameID, url, documentID)
 
@@ -414,7 +417,7 @@ func (m *FrameManager) frameRequestedNavigation(frameID cdp.FrameID, url string,
 	return nil
 }
 
-func (m *FrameManager) getFrameByID(id cdp.FrameID) *Frame {
+func (m *FrameManager) getFrameByID(id cdpext.FrameID) *Frame {
 	m.framesMu.RLock()
 	defer m.framesMu.RUnlock()
 	return m.frames[id]
@@ -442,7 +445,7 @@ func (m *FrameManager) removeFramesRecursively(frame *Frame) {
 		"fmid:%d fid:%v fname:%s furl:%s",
 		m.ID(), frame.ID(), frame.Name(), frame.URL())
 
-	delete(m.frames, cdp.FrameID(frame.ID()))
+	delete(m.frames, cdpext.FrameID(frame.ID()))
 	m.framesMu.Unlock()
 
 	if !m.page.IsClosed() {
@@ -488,7 +491,7 @@ func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 	if canceled {
 		errorText += "; maybe frame was detached?"
 	}
-	m.frameAbortedNavigation(cdp.FrameID(frame.ID()), errorText,
+	m.frameAbortedNavigation(cdpext.FrameID(frame.ID()), errorText,
 		frame.pendingDocument.documentID)
 }
 
@@ -614,7 +617,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	})
 	defer evCancelFn2() // Remove event handler
 
-	fs := frame.page.getFrameSession(cdp.FrameID(frame.ID()))
+	fs := frame.page.getFrameSession(cdpext.FrameID(frame.ID()))
 	if fs == nil {
 		m.logger.Debugf("FrameManager:NavigateFrame",
 			"fmid:%d fid:%v furl:%s url:%s fs:nil",
@@ -631,10 +634,8 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	// }
 
-	// TODO: A saner way of accessing cdp.Client?
-	cdpClient := frame.page.browserCtx.browser.cdpClient
-
-	navCh := cdpClient.Subscribe(event.PageNavigated)
+	navCh := m.cdpClient.Subscribe(event.PageNavigated)
+	// TODO: Move this to a helper function?
 	go func() {
 		select {
 		case evt := <-navCh:
@@ -642,7 +643,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		}
 	}()
 
-	newDocumentID, err := cdpClient.PageNavigate(
+	newDocumentID, err := m.cdpClient.PageNavigate(
 		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
