@@ -123,10 +123,13 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 	return c.send(ctx, msg, ch, res)
 }
 
-// Subscribe returns a channel that will be notified when the provided CDP event
-// is received.
-func (c *Client) Subscribe(events ...cdproto.MethodType) <-chan *Event {
-	return c.watcher.subscribe(events...)
+// Subscribe returns a channel that will be notified when the provided CDP
+// events are received for the given session and frame IDs, and a cancellation
+// function that will unsubscribe and close the channel.
+func (c *Client) Subscribe(
+	sessionID, frameID string, events ...cdproto.MethodType,
+) (<-chan *Event, func()) {
+	return c.watcher.subscribe(sessionID, frameID, events...)
 }
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
