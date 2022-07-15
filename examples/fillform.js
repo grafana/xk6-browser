@@ -12,23 +12,23 @@ export default function() {
 
   // Goto front page, find login link and click it
   page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
-  const elem = page.$('a[href="/my_messages.php"]');
-  elem.click();
+  // const elem = page.$('a[href="/my_messages.php"]');
+  // elem.click();
 
-  // sleep(60);
+  // // sleep(60);
 
-  // Enter login credentials and login
-  page.$('input[name="login"]').type('admin');
-  page.$('input[name="password"]').type('123');
-  page.$('input[type="submit"]').click();
+  // // Enter login credentials and login
+  // page.$('input[name="login"]').type('admin');
+  // page.$('input[name="password"]').type('123');
+  // page.$('input[type="submit"]').click();
 
-  // We expect the above form submission to trigger a navigation, so wait for it
-  // and the page to be loaded.
-  page.waitForNavigation();
+  // // We expect the above form submission to trigger a navigation, so wait for it
+  // // and the page to be loaded.
+  // page.waitForNavigation();
 
-  check(page, {
-    'header': page.$('h2').textContent() == 'Welcome, admin!',
-  });
+  // check(page, {
+  //   'header': page.$('h2').textContent() == 'Welcome, admin!',
+  // });
 
   page.close();
   browser.close();

@@ -8,49 +8,65 @@ import (
 	"github.com/chromedp/cdproto"
 )
 
+type LifecycleEvent string
+
+const (
+	LifecycleEventLoad             LifecycleEvent = "load"
+	LifecycleEventDOMContentLoaded LifecycleEvent = "domcontentloaded"
+	LifecycleEventNetworkIdle      LifecycleEvent = "networkidle"
+)
+
 type Event struct {
 	Name cdproto.MethodType
 	Data interface{}
 }
 
+type subKey struct {
+	sessionID, frameID string
+}
+
 type eventWatcher struct {
 	ctx    context.Context
 	subsMu sync.RWMutex
-	subs   map[cdproto.MethodType][]chan *Event
+	subs   map[cdproto.MethodType]map[subKey]chan *Event
 }
 
 func newEventWatcher(ctx context.Context) *eventWatcher {
 	return &eventWatcher{
 		ctx:  ctx,
-		subs: make(map[cdproto.MethodType][]chan *Event),
+		subs: make(map[cdproto.MethodType]map[subKey]chan *Event),
 	}
 }
 
 // func (w *eventeventWatcher) subscribe(sessionID, frameID string, evt *event) <-chan *event {
 // TODO: Handle event unsubscriptions
-func (w *eventWatcher) subscribe(events ...cdproto.MethodType) <-chan *Event {
+// func (w *eventWatcher) subscribe(sessionID, frameID string, events ...cdproto.MethodType) <-chan *Event {
+func (w *eventWatcher) subscribe(
+	sessionID, frameID string, events ...cdproto.MethodType,
+) (<-chan *Event, func()) {
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
-	ch := make(chan *Event, 1)
-	for _, evt := range events {
-		w.subs[evt] = append(w.subs[evt], ch)
-		fmt.Printf(">>> subscribed to event %s\n", evt)
+	evtCh := make(chan *Event, 1)
+	key := subKey{sessionID, frameID}
+	for _, evtName := range events {
+		if _, ok := w.subs[evtName]; !ok {
+			w.subs[evtName] = make(map[subKey]chan *Event)
+		}
+		w.subs[evtName][key] = evtCh
+		fmt.Printf(">>> subscribed to event %s\n", evtName)
 	}
-	return ch
-}
 
-// func (w *eventWatcher) subscribeToMessage(msgID int64) <-chan *cdproto.Message {
-// 	w.msgMu.RLock()
-// 	if ch, ok := w.msgSubs[msgID]; ok {
-// 		w.msgMu.RUnlock()
-// 		return ch
-// 	}
-// 	w.msgMu.Lock()
-// 	defer w.msgMu.Unlock()
-// 	ch := make(chan *cdproto.Message)
-// 	w.msgSubs[msgID] = ch
-// 	return ch
-// }
+	unsub := func() {
+		close(evtCh)
+		w.subsMu.Lock()
+		defer w.subsMu.Unlock()
+		for _, evtName := range events {
+			delete(w.subs[evtName], key)
+		}
+	}
+
+	return evtCh, unsub
+}
 
 func (w *eventWatcher) notify(evt *Event) {
 	w.subsMu.RLock()
@@ -71,6 +87,3 @@ func (w *eventWatcher) notify(evt *Event) {
 		}
 	}
 }
-
-// func (w *eventWatcher) onMessageReceived(msg *cdproto.Message) {
-// }
