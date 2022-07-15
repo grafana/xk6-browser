@@ -52,7 +52,7 @@ func (w *eventWatcher) subscribe(events ...cdproto.MethodType) <-chan *Event {
 // 	return ch
 // }
 
-func (w *eventWatcher) onEventReceived(evt *Event) {
+func (w *eventWatcher) notify(evt *Event) {
 	w.subsMu.RLock()
 	defer w.subsMu.RUnlock()
 	subs, ok := w.subs[evt.Name]
