@@ -631,6 +631,8 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		cdproto.EventPageLifecycleEvent)
 	defer cdpUnsub()
 
+	// TODO: Abstract this away somehow? I tried passing event handlers to
+	// Subscribe(), but it was messy...
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

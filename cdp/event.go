@@ -76,8 +76,8 @@ func (w *eventWatcher) notify(evt *Event) {
 		return
 	}
 
-	for i, ch := range subs {
-		fmt.Printf(">>> notifying subscriber %d of event %s\n", i, evt.Name)
+	for key, ch := range subs {
+		fmt.Printf(">>> notifying subscriber %s of event %s\n", key, evt.Name)
 		select {
 		case ch <- evt:
 		case <-w.ctx.Done():

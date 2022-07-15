@@ -198,14 +198,14 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 		fmt.Printf(">>> got err from wsConn.ReadMessage(): %#+v\n", err)
 		return nil, err
 	}
-	c.logger.Tracef("connection:readMessage", "<- %s", buf)
-
 	var msg cdproto.Message
 	c.decoder = jlexer.Lexer{Data: buf}
 	msg.UnmarshalEasyJSON(&c.decoder)
 	if err := c.decoder.Error(); err != nil {
 		return nil, err
 	}
+
+	c.logger.Tracef("connection:readMessage", "<- msgID: %d %s", msg.ID, buf)
 
 	return &msg, nil
 }
