@@ -11,7 +11,6 @@ import (
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
-	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/mailru/easyjson"
 
@@ -35,7 +34,7 @@ type Client struct {
 
 	sessionsMu sync.RWMutex
 	sessions   map[target.SessionID]*session
-	watcher    *event.Watcher
+	watcher    *eventWatcher
 	wsURL      string
 }
 
@@ -48,7 +47,7 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 		// Buffered channels to avoid blocking in Execute
 		recvCh:  make(chan *cdproto.Message, 32),
 		sendCh:  make(chan *cdproto.Message, 32),
-		watcher: event.NewWatcher(ctx),
+		watcher: newEventWatcher(ctx),
 	}
 }
 
@@ -140,8 +139,8 @@ func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
 
 // Subscribe returns a channel that will be notified when the provided CDP event
 // is received.
-func (c *Client) Subscribe(evt event.CDPName) <-chan *event.Event {
-	return c.watcher.Subscribe(evt)
+func (c *Client) Subscribe(events ...cdproto.MethodType) <-chan *Event {
+	return c.watcher.subscribe(events...)
 }
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
@@ -238,7 +237,7 @@ func (c *Client) recvLoop() {
 				continue
 			}
 			fmt.Printf(">>> received event %s\n", msg.Method)
-			c.watcher.OnEventReceived(&event.Event{event.CDPName(msg.Method), evt})
+			c.watcher.onEventReceived(&Event{msg.Method, evt})
 		case msg.ID != 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
 			select {

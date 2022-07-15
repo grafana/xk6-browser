@@ -222,6 +222,29 @@ func (b *Browser) initEvents() error {
 		return fmt.Errorf("internal error while getting browser target info: %w", err)
 	}
 
+	attachCh := b.cdpClient.Subscribe(
+		cdproto.EventTargetAttachedToTarget,
+		cdproto.EventTargetDetachedFromTarget,
+	)
+	// TODO: Handle session creation (maybe in BrowserContext?)
+	go func() {
+		select {
+		case event := <-attachCh:
+			fmt.Printf(">>> got browser event: %#+v\n", event)
+			if ev, ok := event.Data.(*target.EventAttachedToTarget); ok {
+				b.logger.Debugf("Browser:initEvents:onAttachedToTarget new", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
+				b.onAttachedToTarget(ev)
+			} else if ev, ok := event.Data.(*target.EventDetachedFromTarget); ok {
+				b.logger.Debugf("Browser:initEvents:onDetachedFromTarget new", "sid:%v", ev.SessionID)
+				b.onDetachedFromTarget(ev)
+			}
+		case <-b.browserProc.lostConnection:
+			b.logger.Debugf("Browser:initEvents", "lost browser connection")
+			return
+		case <-cancelCtx.Done():
+			return
+		}
+	}()
 	b.cdpClient.TargetSetAutoAttach(true, true, true)
 
 	return nil
