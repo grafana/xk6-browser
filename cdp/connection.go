@@ -198,7 +198,7 @@ func (c *connection) readMessage() (*cdproto.Message, error) {
 		fmt.Printf(">>> got err from wsConn.ReadMessage(): %#+v\n", err)
 		return nil, err
 	}
-	fmt.Printf(">>> got message from wsConn.ReadMessage()\n")
+	c.logger.Tracef("connection:readMessage", "<- %s", buf)
 
 	var msg cdproto.Message
 	c.decoder = jlexer.Lexer{Data: buf}
@@ -227,7 +227,7 @@ func (c *connection) writeMessage(msg *cdproto.Message) error {
 	}
 
 	buf, _ := c.encoder.BuildBytes()
-	c.logger.Tracef("cdp:send", "-> %s", buf)
+	c.logger.Tracef("connection:writeMessage", "-> %s", buf)
 	writer, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return wsIOError{err}
