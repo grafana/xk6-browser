@@ -23,6 +23,7 @@ func (c *Client) PageNavigate(url, referrer, frameID, sessionID string) (string,
 	return documentID.String(), err
 }
 
+// TargetSetAutoAttach executes the CDP Target.setAutoAttach command.
 func (c *Client) TargetSetAutoAttach(autoAttach, waitForDebuggerOnStart, flatten bool) error {
 	action := target.SetAutoAttach(autoAttach, waitForDebuggerOnStart).WithFlatten(flatten)
 	if err := action.Do(cdp.WithExecutor(c.ctx, c)); err != nil {
