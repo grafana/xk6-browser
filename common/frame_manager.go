@@ -31,13 +31,13 @@ import (
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/cdp"
-	"github.com/grafana/xk6-browser/cdp/event"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
 	k6common "go.k6.io/k6/js/common"
 	k6modules "go.k6.io/k6/js/modules"
 
+	"github.com/chromedp/cdproto"
 	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/dop251/goja"
@@ -636,12 +636,12 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	// }
 
-	navCh := m.cdpClient.Subscribe(event.PageNavigated)
+	navCh := m.cdpClient.Subscribe(cdproto.EventPageFrameNavigated)
 	// TODO: Move this to a helper function?
 	go func() {
 		select {
 		case evt := <-navCh:
-			fmt.Printf(">>> got NavigationEvent: %#+v\n", evt)
+			fmt.Printf(">>> got Page.frameNavigated event: %#+v\n", evt)
 		}
 	}()
 
