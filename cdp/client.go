@@ -13,8 +13,6 @@ import (
 	"github.com/chromedp/cdproto/target"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/mailru/easyjson"
-
-	cdppage "github.com/chromedp/cdproto/page"
 )
 
 var _ cdp.Executor = &Client{}
@@ -123,18 +121,6 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 	}
 
 	return c.send(ctx, msg, ch, res)
-}
-
-// Navigate sends the Page.navigate CDP command.
-// TODO: Break this up into CDP domains.
-func (c *Client) Navigate(url, frameID, referrer string) (string, error) {
-	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frameID))
-	_, documentID, errorText, err := action.Do(cdp.WithExecutor(c.ctx, c))
-	if err != nil {
-		err = fmt.Errorf("%s at %q: %w", errorText, url, err)
-	}
-
-	return documentID.String(), err
 }
 
 // Subscribe returns a channel that will be notified when the provided CDP event
