@@ -24,7 +24,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,6 +38,7 @@ import (
 	"github.com/chromedp/cdproto"
 	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
+	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
 )
 
@@ -607,16 +607,6 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(m.ctx, parsedOpts.Timeout)
 	defer timeoutCancelFn()
 
-	chSameDoc, evCancelFn := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-		return data.(*NavigationEvent).newDocument == nil
-	})
-	defer evCancelFn() // Remove event handler
-
-	chWaitUntilCh, evCancelFn2 := createWaitForEventHandler(timeoutCtx, frame, []string{EventFrameAddLifecycle}, func(data interface{}) bool {
-		return data.(LifecycleEvent) == parsedOpts.WaitUntil
-	})
-	defer evCancelFn2() // Remove event handler
-
 	fs := frame.page.getFrameSession(cdpext.FrameID(frame.ID()))
 	if fs == nil {
 		m.logger.Debugf("FrameManager:NavigateFrame",
@@ -634,102 +624,68 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	// }
 
-	navCh := m.cdpClient.Subscribe(cdproto.EventPageFrameNavigated)
-	// TODO: Move this to a helper function?
+	evtCh, cdpUnsub := m.cdpClient.Subscribe(
+		string(m.session.ID()), frame.ID(),
+		cdproto.EventPageFrameNavigated,
+		cdproto.EventPageNavigatedWithinDocument,
+		cdproto.EventPageLifecycleEvent)
+	defer cdpUnsub()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		select {
-		case evt := <-navCh:
-			fmt.Printf(">>> got Page.frameNavigated event: %#+v\n", evt)
+		defer wg.Done()
+		for {
+			select {
+			case evt := <-evtCh:
+				switch e := evt.Data.(type) {
+				case *cdppage.EventLifecycleEvent:
+					// This marshalling won't be needed once WaitUntil is changed to string
+					lcEvt, err := parsedOpts.WaitUntil.MarshalText()
+					if err != nil {
+						m.logger.Error("FrameManager:NavigateFrame",
+							"parsing waitUntil value: %v", err)
+					}
+					if e.Name == string(lcEvt) {
+						return
+					}
+				case *cdppage.EventFrameNavigated:
+					fmt.Printf(">>> full navigation event: %#+v\n", e)
+				case *cdppage.EventNavigatedWithinDocument:
+					fmt.Printf(">>> navigated within document event: %#+v\n", e)
+				}
+			case <-timeoutCtx.Done():
+				if timeoutCtx.Err() == context.DeadlineExceeded {
+					k6ext.Panic(m.ctx, "navigating to %q: %s after %s", url, ErrTimedOut, parsedOpts.Timeout)
+				}
+				return
+			}
 		}
 	}()
 
-	newDocumentID, err := m.cdpClient.PageNavigate(
+	var err error
+	newDocID, err := m.cdpClient.PageNavigate(
 		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
 
-	fmt.Printf(">>> got newDocumentID: %s\n", newDocumentID)
+	fmt.Printf(">>> got newDocID: %s\n", newDocID)
 
-	var event *NavigationEvent
-	if newDocumentID != "" {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:%s",
-			fmid, fid, furl, url, newDocumentID)
+	// if newDocID == "" {
+	// 	// It's a navigation within the same document (e.g. via an anchor link),
+	// 	// so skip waiting for the LifecycleEvent
+	// }
 
-		data, err := waitForEvent(m.ctx, frame, []string{EventFrameNavigation}, func(data interface{}) bool {
-			ev := data.(*NavigationEvent)
-
-			// We are interested either in this specific document, or any other document that
-			// did commit and replaced the expected document.
-			if ev.newDocument != nil && (ev.newDocument.documentID == newDocumentID || ev.err == nil) {
-				return true
-			}
-			return false
-		}, parsedOpts.Timeout)
-		if err != nil {
-			err = &k6ext.UserFriendlyError{
-				Err:     err,
-				Timeout: parsedOpts.Timeout,
-			}
-			k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
-		}
-
-		event = data.(*NavigationEvent)
-		if event.newDocument.documentID != newDocumentID {
-			m.logger.Debugf("FrameManager:NavigateFrame:interrupted",
-				"fmid:%d fid:%v furl:%s url:%s docID:%s newDocID:%s",
-				fmid, fid, furl, url, event.newDocument.documentID, newDocumentID)
-		} else if event.err != nil &&
-			// TODO: A more graceful way of avoiding Throw()?
-			!(netMgr.userReqInterceptionEnabled &&
-				strings.Contains(event.err.Error(), "ERR_BLOCKED_BY_CLIENT")) {
-			k6ext.Panic(m.ctx, "%w", event.err)
-		}
-	} else {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s newDocID:0",
-			fmid, fid, furl, url)
-
-		select {
-		case <-timeoutCtx.Done():
-			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-				err = &k6ext.UserFriendlyError{
-					Err:     err,
-					Timeout: parsedOpts.Timeout,
-				}
-				k6ext.Panic(m.ctx, "navigating to %q: %w", url, err)
-			}
-		case data := <-chSameDoc:
-			event = data.(*NavigationEvent)
-		}
-	}
-
-	if !frame.hasSubtreeLifecycleEventFired(parsedOpts.WaitUntil) {
-		m.logger.Debugf("FrameManager:NavigateFrame",
-			"fmid:%d fid:%v furl:%s url:%s hasSubtreeLifecycleEventFired:false",
-			fmid, fid, furl, url)
-
-		select {
-		case <-timeoutCtx.Done():
-			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-				err = &k6ext.UserFriendlyError{
-					Err:     err,
-					Timeout: parsedOpts.Timeout,
-				}
-				k6ext.Panic(m.ctx, "navigating to %q: %w", url, err)
-			}
-		case <-chWaitUntilCh:
-		}
-	}
+	wg.Wait()
 
 	var resp *Response
-	if event.newDocument != nil {
-		req := event.newDocument.request
-		if req != nil && req.response != nil {
-			resp = req.response
-		}
-	}
+	// if event.newDocument != nil {
+	// 	req := event.newDocument.request
+	// 	if req != nil && req.response != nil {
+	// 		resp = req.response
+	// 	}
+	// }
 	return resp
 }
 
