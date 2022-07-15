@@ -238,7 +238,7 @@ func (c *Client) recvLoop() {
 				continue
 			}
 			fmt.Printf(">>> received event %s\n", msg.Method)
-			c.watcher.onEventReceived(&Event{msg.Method, evt})
+			c.watcher.notify(&Event{msg.Method, evt})
 		case msg.ID != 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
 			select {
