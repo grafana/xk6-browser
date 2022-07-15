@@ -331,6 +331,7 @@ func (m *NetworkManager) initDomains() error {
 			fetch.Enable().WithPatterns([]*fetch.RequestPattern{{URLPattern: "*"}}))
 	}
 	for _, action := range actions {
+		fmt.Printf(">>> enabling domain with session ID: %s\n", m.session.ID())
 		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
 			return fmt.Errorf("initializing networking %T: %w", action, err)
 		}

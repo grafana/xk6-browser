@@ -216,6 +216,7 @@ func (c *Connection) closeSession(sid target.SessionID, tid target.ID) {
 	c.sessionsMu.Unlock()
 }
 
+// TODO: Delete, unused.
 func (c *Connection) createSession(info *target.Info) (*Session, error) {
 	c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s", info.TargetID, info.BrowserContextID, info.Type)
 
@@ -305,31 +306,31 @@ func (c *Connection) recvLoop() {
 
 		// Handle attachment and detachment from targets,
 		// creating and deleting sessions as necessary.
-		if msg.Method == cdproto.EventTargetAttachedToTarget {
-			ev, err := cdproto.UnmarshalMessage(&msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
-			eva := ev.(*target.EventAttachedToTarget)
-			sid, tid := eva.SessionID, eva.TargetInfo.TargetID
+		// if msg.Method == cdproto.EventTargetAttachedToTarget {
+		// 	ev, err := cdproto.UnmarshalMessage(&msg)
+		// 	if err != nil {
+		// 		c.logger.Errorf("cdp", "%s", err)
+		// 		continue
+		// 	}
+		// 	eva := ev.(*target.EventAttachedToTarget)
+		// 	sid, tid := eva.SessionID, eva.TargetInfo.TargetID
 
-			c.sessionsMu.Lock()
-			session := NewSession(c.ctx, c, sid, tid, c.logger)
-			c.logger.Debugf("Connection:recvLoop:EventAttachedToTarget", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
-			c.sessions[sid] = session
-			c.sessionsMu.Unlock()
-		} else if msg.Method == cdproto.EventTargetDetachedFromTarget {
-			ev, err := cdproto.UnmarshalMessage(&msg)
-			if err != nil {
-				c.logger.Errorf("cdp", "%s", err)
-				continue
-			}
-			evt := ev.(*target.EventDetachedFromTarget)
-			sid := evt.SessionID
-			tid := c.findTargetIDForLog(sid)
-			c.closeSession(sid, tid)
-		}
+		// 	c.sessionsMu.Lock()
+		// 	session := NewSession(c.ctx, c, sid, tid, c.logger)
+		// 	c.logger.Debugf("Connection:recvLoop:EventAttachedToTarget", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
+		// 	c.sessions[sid] = session
+		// 	c.sessionsMu.Unlock()
+		// } else if msg.Method == cdproto.EventTargetDetachedFromTarget {
+		// 	ev, err := cdproto.UnmarshalMessage(&msg)
+		// 	if err != nil {
+		// 		c.logger.Errorf("cdp", "%s", err)
+		// 		continue
+		// 	}
+		// 	evt := ev.(*target.EventDetachedFromTarget)
+		// 	sid := evt.SessionID
+		// 	tid := c.findTargetIDForLog(sid)
+		// 	c.closeSession(sid, tid)
+		// }
 
 		switch {
 		case msg.SessionID != "" && (msg.Method != "" || msg.ID != 0):
