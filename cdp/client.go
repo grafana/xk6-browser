@@ -22,10 +22,12 @@ type Client struct {
 	ctx    context.Context
 	logger *log.Logger
 
-	conn   *connection
-	msgID  int64
-	recvCh chan *cdproto.Message
-	sendCh chan *cdproto.Message
+	conn      *connection
+	msgID     int64
+	recvCh    chan *cdproto.Message
+	sendCh    chan *cdproto.Message
+	msgSubsMu sync.RWMutex
+	msgSubs   map[int64]chan *cdproto.Message
 	// closeCh chan int
 	errorCh chan error
 	done    chan struct{}
@@ -42,10 +44,10 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 	return &Client{
 		ctx:    ctx,
 		logger: logger,
-		// Buffered channels to avoid blocking in Execute
-		recvCh: make(chan *cdproto.Message, 32),
-		sendCh: make(chan *cdproto.Message, 32),
+		recvCh: make(chan *cdproto.Message),
+		sendCh: make(chan *cdproto.Message, 32), // Buffered to avoid blocking in Execute
 		// msgID:   1000,
+		msgSubs: make(map[int64]chan *cdproto.Message),
 		watcher: newEventWatcher(ctx),
 	}
 }
@@ -63,6 +65,7 @@ func (c *Client) Connect(wsURL string) (err error) {
 	c.wsURL = wsURL
 
 	go c.recvLoop()
+	go c.recvMsgLoop()
 	go c.sendLoop()
 
 	return nil
@@ -75,26 +78,27 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 	id := atomic.AddInt64(&c.msgID, 1)
 
 	// Setup event handler used to block for response to message being sent.
-	ch := make(chan *cdproto.Message, 1)
+	recvCh := make(chan *cdproto.Message, 1)
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	// chEvHandler := make(chan Event)
+	msgCh := make(chan *cdproto.Message, 1)
+	c.msgSubsMu.Lock()
+	c.msgSubs[id] = msgCh
+	c.msgSubsMu.Unlock()
 	go func() {
 		for {
 			select {
 			case <-evCancelCtx.Done():
 				c.logger.Debugf("Connection:Execute:<-evCancelCtx.Done()", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
 				return
-			case msg := <-c.recvCh:
-				if msg.ID == id {
-					select {
-					case <-evCancelCtx.Done():
-						c.logger.Debugf("Client:Execute:<-evCancelCtx.Done()#2", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
-					case ch <- msg:
-						// We expect only one response with the matching message ID,
-						// then remove event handler by cancelling context and stopping goroutine.
-						evCancelFn()
-						return
-					}
+			case msg := <-msgCh:
+				select {
+				case <-evCancelCtx.Done():
+					c.logger.Debugf("Client:Execute:<-evCancelCtx.Done()#2", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
+				case recvCh <- msg:
+					// We expect only one response with the matching message ID,
+					// then remove event handler by cancelling context and stopping goroutine.
+					evCancelFn()
+					return
 				}
 			}
 		}
@@ -121,7 +125,7 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		msg.SessionID = target.SessionID(sid)
 	}
 
-	return c.send(ctx, msg, ch, res)
+	return c.send(ctx, msg, recvCh, res)
 }
 
 // Subscribe returns a channel that will be notified when the provided CDP
@@ -165,12 +169,6 @@ func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cd
 	}
 	select {
 	case msg := <-recvCh:
-		// var sid target.SessionID
-		// tid = ""
-		// if msg != nil {
-		// 	sid = msg.SessionID
-		// tid = c.findTargetIDForLog(sid)
-		// }
 		switch {
 		case msg == nil:
 			c.logger.Debugf("Connection:send", "wsURL:%q, err:ErrChannelClosed", c.wsURL)
@@ -218,7 +216,8 @@ func (c *Client) recvLoop() {
 			return
 		}
 
-		fmt.Printf(">>> got message in Client.recvLoop(): %#+v\n", msg)
+		msgParams, _ := msg.Params.MarshalJSON()
+		fmt.Printf(">>> got message in Client.recvLoop(): ID: %d, SessionID: %q, Method: %s, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
 		switch {
 		case msg.Method != "":
 			evt, err := cdproto.UnmarshalMessage(msg)
@@ -228,11 +227,18 @@ func (c *Client) recvLoop() {
 			}
 			fmt.Printf(">>> received event %s\n", msg.Method)
 			c.watcher.notify(&Event{msg.Method, evt})
-		case msg.ID != 0:
+		case msg.ID > 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
+			// TODO: Move this to the watcher?
+			c.msgSubsMu.Lock()
+			ch := c.recvCh
+			if idCh, ok := c.msgSubs[msg.ID]; ok {
+				ch = idCh
+				delete(c.msgSubs, msg.ID)
+			}
+			c.msgSubsMu.Unlock()
 			select {
-			// TODO: Add a timeout?
-			case c.recvCh <- msg:
+			case ch <- msg:
 			case <-c.ctx.Done():
 				c.logger.Errorf("cdp", "receiving CDP messages from %q: %v", c.ctx.Err())
 				return
@@ -240,70 +246,19 @@ func (c *Client) recvLoop() {
 		default:
 			c.logger.Errorf("cdp", "ignoring malformed incoming CDP message (missing id or method): %#v (message: %s)", msg, msg.Error.Message)
 		}
+	}
+}
 
-		// TODO: Move this to an EventWatcher
-		// Handle attachment and detachment from targets,
-		// creating and deleting sessions as necessary.
-		// if msg.Method == cdproto.EventTargetAttachedToTarget {
-		// 	eva := ev.(*target.EventAttachedToTarget)
-		// 	sid, tid := eva.SessionID, eva.TargetInfo.TargetID
-
-		// 	c.sessionsMu.Lock()
-		// 	session := NewSession(c.ctx, c, sid, tid, c.logger)
-		// 	c.logger.Debugf("Connection:recvLoop:EventAttachedToTarget", "sid:%v tid:%v wsURL:%q", sid, tid, c.wsURL)
-		// 	c.sessions[sid] = session
-		// 	c.sessionsMu.Unlock()
-		// } else if msg.Method == cdproto.EventTargetDetachedFromTarget {
-		// 	ev, err := cdproto.UnmarshalMessage(&msg)
-		// 	if err != nil {
-		// 		c.logger.Errorf("cdp", "%s", err)
-		// 		continue
-		// 	}
-		// 	evt := ev.(*target.EventDetachedFromTarget)
-		// 	sid := evt.SessionID
-		// 	tid := c.findTargetIDForLog(sid)
-		// 	c.closeSession(sid, tid)
-		// }
-
-		// switch {
-		// case msg.SessionID != "" && (msg.Method != "" || msg.ID != 0):
-		// 	// TODO: possible data race - session can get removed after getting it here
-		// 	session := c.getSession(msg.SessionID)
-		// 	if session == nil {
-		// 		continue
-		// 	}
-		// 	if msg.Error != nil && msg.Error.Message == "No session with given id" {
-		// 		c.logger.Debugf("Connection:recvLoop", "sid:%v tid:%v wsURL:%q, closeSession #2", session.id, session.targetID, c.wsURL)
-		// 		c.closeSession(session.id, session.targetID)
-		// 		continue
-		// 	}
-
-		// 	select {
-		// 	case session.readCh <- &msg:
-		// 	case code := <-c.closeCh:
-		// 		c.logger.Debugf("Connection:recvLoop:<-c.closeCh", "sid:%v tid:%v wsURL:%v crashed:%t", session.id, session.targetID, c.wsURL, session.crashed)
-		// 		_ = c.close(code)
-		// 	case <-c.done:
-		// 		c.logger.Debugf("Connection:recvLoop:<-c.done", "sid:%v tid:%v wsURL:%v crashed:%t", session.id, session.targetID, c.wsURL, session.crashed)
-		// 		return
-		// 	}
-
-		// case msg.Method != "":
-		// 	c.logger.Debugf("Connection:recvLoop:msg.Method:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
-		// 	ev, err := cdproto.UnmarshalMessage(&msg)
-		// 	if err != nil {
-		// 		c.logger.Errorf("cdp", "%s", err)
-		// 		continue
-		// 	}
-		// 	c.emit(string(msg.Method), ev)
-
-		// // case msg.ID != 0:
-		// // 	c.logger.Debugf("Connection:recvLoop:msg.ID:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
-		// // 	c.emit("", &msg)
-
-		// default:
-		// 	c.logger.Errorf("cdp", "ignoring malformed incoming message (missing id or method): %#v (message: %s)", msg, msg.Error.Message)
-		// }
+func (c *Client) recvMsgLoop() {
+	for {
+		select {
+		case msg := <-c.recvCh:
+			msgParams, _ := msg.Params.MarshalJSON()
+			fmt.Printf(">>> got message in Client.recvMsgLoop(): ID: %d, SessionID: %q, Method: %q, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
+		case <-c.ctx.Done():
+			c.logger.Debugf("Client:recvMsgLoop", "returning, ctx.Err: %q", c.ctx.Err())
+			return
+		}
 	}
 }
 
@@ -313,10 +268,10 @@ func (c *Client) sendLoop() {
 		fmt.Printf(">>> looping in Client.sendLoop()\n")
 		select {
 		case msg := <-c.sendCh:
-			fmt.Printf(">>> writing message in Client.sendLoop()\n")
+			fmt.Printf(">>> writing message with ID %d in Client.sendLoop()\n", msg.ID)
 			err := c.conn.writeMessage(msg)
 			if err != nil {
-				fmt.Printf(">>> got err writing message in Client.sendLoop()\n")
+				fmt.Printf(">>> got err writing message with ID %d in Client.sendLoop()\n", msg.ID)
 				c.errorCh <- err
 			}
 		// case code := <-c.closeCh:
