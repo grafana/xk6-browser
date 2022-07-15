@@ -10,6 +10,17 @@ import (
 
 // TODO: Break actions apart into separate CDP domains.
 
+// PageEnable enables the CDP page domain notifications.
+func (c *Client) PageEnable(sessionID string) error {
+	ctx := withSessionID(c.ctx, sessionID)
+	action := page.Enable()
+	if err := action.Do(cdp.WithExecutor(ctx, c)); err != nil {
+		return fmt.Errorf("enabling page CDP domain: %w", err)
+	}
+
+	return nil
+}
+
 // PageNavigate executes the CDP Page.navigate command.
 func (c *Client) PageNavigate(url, referrer, frameID, sessionID string) (string, error) {
 	ctx := withSessionID(c.ctx, sessionID)
