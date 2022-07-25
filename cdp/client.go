@@ -11,6 +11,7 @@ import (
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
+	"github.com/grafana/xk6-browser/cdp/domains"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/mailru/easyjson"
 )
@@ -21,6 +22,9 @@ var _ cdp.Executor = &Client{}
 type Client struct {
 	ctx    context.Context
 	logger *log.Logger
+
+	Page   domains.Page
+	Target domains.Target
 
 	conn      *connection
 	msgID     int64
@@ -41,7 +45,7 @@ type Client struct {
 // NewClient returns a new Client that is unusable until a CDP connection is
 // established with Connect().
 func NewClient(ctx context.Context, logger *log.Logger) *Client {
-	return &Client{
+	c := &Client{
 		ctx:    ctx,
 		logger: logger,
 		recvCh: make(chan *cdproto.Message),
@@ -50,6 +54,12 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 		msgSubs: make(map[int64]chan *cdproto.Message),
 		watcher: newEventWatcher(ctx),
 	}
+
+	// TODO: Extract Execute outside of Client?
+	c.Page = domains.NewPage(c)
+	c.Target = domains.NewTarget(c)
+
+	return c
 }
 
 // Connect to the browser that exposes a CDP API at wsURL.
@@ -121,7 +131,7 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		Params: buf,
 	}
 
-	if sid := getSessionID(ctx); sid != "" {
+	if sid := GetSessionID(ctx); sid != "" {
 		msg.SessionID = target.SessionID(sid)
 	}
 

@@ -83,6 +83,7 @@ func NewFrameManager(
 	ts *TimeoutSettings,
 	l *log.Logger,
 ) *FrameManager {
+	ctx = cdp.WithSessionID(ctx, string(s.ID()))
 	m := &FrameManager{
 		ctx:              ctx,
 		session:          s,
@@ -666,8 +667,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	}()
 
 	var err error
-	newDocID, err := m.cdpClient.PageNavigate(
-		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
+	newDocID, err := m.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
