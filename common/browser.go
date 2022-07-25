@@ -211,19 +211,6 @@ func (b *Browser) initEvents() error {
 		}
 	}()
 
-	action := target.SetAutoAttach(true, true).WithFlatten(true)
-	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
-		return fmt.Errorf("internal error while auto-attaching to browser pages: %w", err)
-	}
-
-	// Target.setAutoAttach has a bug where it does not wait for new Targets being attached.
-	// However making a dummy call afterwards fixes this.
-	// This can be removed after https://chromium-review.googlesource.com/c/chromium/src/+/2885888 lands in stable.
-	action2 := target.GetTargetInfo()
-	if _, err := action2.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
-		return fmt.Errorf("internal error while getting browser target info: %w", err)
-	}
-
 	evtCh, _ := b.cdpClient.Subscribe(
 		// TODO: Maybe have a separate Subscribe() method for non-session
 		// event subscriptions?
