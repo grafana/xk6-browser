@@ -23,8 +23,9 @@ type Client struct {
 	ctx    context.Context
 	logger *log.Logger
 
-	Page   domains.Page
-	Target domains.Target
+	Browser domains.Browser
+	Page    domains.Page
+	Target  domains.Target
 
 	conn      *connection
 	msgID     int64
@@ -58,6 +59,7 @@ func NewClient(ctx context.Context, logger *log.Logger) *Client {
 	// TODO: Extract Execute outside of Client?
 	c.Page = domains.NewPage(c)
 	c.Target = domains.NewTarget(c)
+	c.Browser = domains.NewBrowser(c)
 
 	return c
 }
