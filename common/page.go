@@ -29,12 +29,13 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
 	k6modules "go.k6.io/k6/js/modules"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/emulation"
 	cdppage "github.com/chromedp/cdproto/page"
@@ -56,11 +57,9 @@ type Page struct {
 
 	ctx context.Context
 
-	// what it really needs is an executor with
-	// SessionID and TargetID
-	session session
-
 	browserCtx      *BrowserContext
+	sessionID       string
+	cdpClient       *cdp.Client
 	targetID        target.ID
 	opener          *Page
 	frameManager    *FrameManager
@@ -85,7 +84,7 @@ type Page struct {
 
 	mainFrameSession *FrameSession
 	// TODO: FrameSession changes by attachFrameSession (mutex?)
-	frameSessions map[cdp.FrameID]*FrameSession
+	frameSessions map[cdpext.FrameID]*FrameSession
 	workers       map[target.SessionID]*Worker
 	routes        []api.Route
 	vu            k6modules.VU
@@ -96,18 +95,20 @@ type Page struct {
 // NewPage creates a new browser page context.
 func NewPage(
 	ctx context.Context,
-	s session,
 	bctx *BrowserContext,
+	sessionID string,
 	tid target.ID,
 	opener *Page,
 	bp bool,
 	logger *log.Logger,
 ) (*Page, error) {
+	ctx = cdp.WithSessionID(ctx, sessionID)
 	p := Page{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
 		ctx:              ctx,
-		session:          s,
 		browserCtx:       bctx,
+		sessionID:        sessionID,
+		cdpClient:        bctx.browser.cdpClient,
 		targetID:         tid,
 		opener:           opener,
 		backgroundPage:   bp,
@@ -116,9 +117,9 @@ func NewPage(
 		reducedMotion:    bctx.opts.ReducedMotion,
 		extraHTTPHeaders: bctx.opts.ExtraHTTPHeaders,
 		timeoutSettings:  NewTimeoutSettings(bctx.timeoutSettings),
-		Keyboard:         NewKeyboard(ctx, s),
+		Keyboard:         NewKeyboard(ctx, s), // TODO: Pass cdpClient to Keyboard?
 		jsEnabled:        true,
-		frameSessions:    make(map[cdp.FrameID]*FrameSession),
+		frameSessions:    make(map[cdpext.FrameID]*FrameSession),
 		workers:          make(map[target.SessionID]*Worker),
 		routes:           make([]api.Route, 0),
 		vu:               k6ext.GetVU(ctx),
@@ -126,7 +127,7 @@ func NewPage(
 	}
 
 	p.logger.Debugf("Page:NewPage", "sid:%v tid:%v backgroundPage:%t",
-		p.sessionID(), tid, bp)
+		p.sessionID, tid, bp)
 
 	// We need to init viewport and screen size before initializing the main frame session,
 	// as that's where the emulation is activated.
@@ -139,16 +140,15 @@ func NewPage(
 	p.mainFrameSession, err = NewFrameSession(ctx, s, &p, nil, tid, p.logger)
 	if err != nil {
 		p.logger.Debugf("Page:NewPage:NewFrameSession:return", "sid:%v tid:%v err:%v",
-			p.sessionID(), tid, err)
+			p.sessionID, tid, err)
 
 		return nil, err
 	}
-	p.frameSessions[cdp.FrameID(tid)] = p.mainFrameSession
+	p.frameSessions[cdpext.FrameID(tid)] = p.mainFrameSession
 	p.Mouse = NewMouse(ctx, s, p.frameManager.MainFrame(), bctx.timeoutSettings, p.Keyboard)
 	p.Touchscreen = NewTouchscreen(ctx, s, p.Keyboard)
 
-	action := target.SetAutoAttach(true, true).WithFlatten(true)
-	if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := p.cdpClient.Target.SetAutoAttach(p.ctx, true, true, true); err != nil {
 		return nil, fmt.Errorf("internal error while auto attaching to browser pages: %w", err)
 	}
 
@@ -169,7 +169,7 @@ func (p *Page) defaultTimeout() time.Duration {
 }
 
 func (p *Page) didClose() {
-	p.logger.Debugf("Page:didClose", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:didClose", "sid:%v", p.sessionID)
 
 	p.closedMu.Lock()
 	{
@@ -181,7 +181,7 @@ func (p *Page) didClose() {
 }
 
 func (p *Page) didCrash() {
-	p.logger.Debugf("Page:didCrash", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:didCrash", "sid:%v", p.sessionID)
 
 	p.frameManager.dispose()
 	p.emit(EventPageCrash, p)
@@ -193,10 +193,10 @@ func (p *Page) evaluateOnNewDocument(source string) {
 
 func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
 	if f == nil {
-		p.logger.Debugf("Page:getFrameElement", "sid:%v frame:nil", p.sessionID())
+		p.logger.Debugf("Page:getFrameElement", "sid:%v frame:nil", p.sessionID)
 	} else {
 		p.logger.Debugf("Page:getFrameElement", "sid:%v fid:%s furl:%s",
-			p.sessionID(), f.ID(), f.URL())
+			p.sessionID, f.ID(), f.URL())
 	}
 
 	parent := f.parentFrame
@@ -204,9 +204,9 @@ func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
 		return nil, errors.New("frame has been detached 1")
 	}
 
-	parentSession := p.getFrameSession(cdp.FrameID(parent.ID()))
-	action := dom.GetFrameOwner(cdp.FrameID(f.ID()))
-	backendNodeId, _, err := action.Do(cdp.WithExecutor(p.ctx, parentSession.session))
+	parentSession := p.getFrameSession(cdpext.FrameID(parent.ID()))
+	action := dom.GetFrameOwner(cdpext.FrameID(f.ID()))
+	backendNodeId, _, err := action.Do(cdpext.WithExecutor(p.ctx, parentSession.session))
 	if err != nil {
 		if strings.Contains(err.Error(), "frame with the given id was not found") {
 			return nil, errors.New("frame has been detached")
@@ -221,8 +221,8 @@ func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
 	return parent.adoptBackendNodeID(mainWorld, backendNodeId)
 }
 
-func (p *Page) getOwnerFrame(apiCtx context.Context, h *ElementHandle) cdp.FrameID {
-	p.logger.Debugf("Page:getOwnerFrame", "sid:%v", p.sessionID())
+func (p *Page) getOwnerFrame(apiCtx context.Context, h *ElementHandle) cdpext.FrameID {
+	p.logger.Debugf("Page:getOwnerFrame", "sid:%v", p.sessionID)
 
 	// document.documentElement has frameId of the owner frame
 	pageFn := `
@@ -240,29 +240,29 @@ func (p *Page) getOwnerFrame(apiCtx context.Context, h *ElementHandle) cdp.Frame
 	}
 	result, err := h.execCtx.eval(apiCtx, opts, pageFn, h)
 	if err != nil {
-		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v err:%v", p.sessionID(), err)
+		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v err:%v", p.sessionID, err)
 		return ""
 	}
 	switch result.(type) {
 	case nil:
-		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v result:nil", p.sessionID())
+		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v result:nil", p.sessionID)
 		return ""
 	}
 
 	documentElement := result.(*ElementHandle)
 	if documentElement == nil {
-		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v docel:nil", p.sessionID())
+		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v docel:nil", p.sessionID)
 		return ""
 	}
 	if documentElement.remoteObject.ObjectID == "" {
-		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v robjid:%q", p.sessionID(), "")
+		p.logger.Debugf("Page:getOwnerFrame:return", "sid:%v robjid:%q", p.sessionID, "")
 		return ""
 	}
 
 	action := dom.DescribeNode().WithObjectID(documentElement.remoteObject.ObjectID)
-	node, err := action.Do(cdp.WithExecutor(p.ctx, p.session))
+	node, err := action.Do(cdpext.WithExecutor(p.ctx, p.session))
 	if err != nil {
-		p.logger.Debugf("Page:getOwnerFrame:DescribeNode:return", "sid:%v err:%v", p.sessionID(), err)
+		p.logger.Debugf("Page:getOwnerFrame:DescribeNode:return", "sid:%v err:%v", p.sessionID, err)
 		return ""
 	}
 
@@ -271,13 +271,13 @@ func (p *Page) getOwnerFrame(apiCtx context.Context, h *ElementHandle) cdp.Frame
 	return frameID
 }
 
-func (p *Page) attachFrameSession(fid cdp.FrameID, fs *FrameSession) {
-	p.logger.Debugf("Page:attachFrameSession", "sid:%v fid=%v", p.session.ID(), fid)
+func (p *Page) attachFrameSession(fid cdpext.FrameID, fs *FrameSession) {
+	p.logger.Debugf("Page:attachFrameSession", "sid:%v fid=%v", p.sessionID, fid)
 	fs.page.frameSessions[fid] = fs
 }
 
-func (p *Page) getFrameSession(frameID cdp.FrameID) *FrameSession {
-	p.logger.Debugf("Page:getFrameSession", "sid:%v fid:%v", p.sessionID(), frameID)
+func (p *Page) getFrameSession(frameID cdpext.FrameID) *FrameSession {
+	p.logger.Debugf("Page:getFrameSession", "sid:%v fid:%v", p.sessionID, frameID)
 
 	return p.frameSessions[frameID]
 }
@@ -287,14 +287,14 @@ func (p *Page) hasRoutes() bool {
 }
 
 func (p *Page) resetViewport() error {
-	p.logger.Debugf("Page:resetViewport", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:resetViewport", "sid:%v", p.sessionID)
 
 	action := emulation.SetDeviceMetricsOverride(0, 0, 0, false)
-	return action.Do(cdp.WithExecutor(p.ctx, p.session))
+	return action.Do(cdpext.WithExecutor(p.ctx, p.session))
 }
 
 func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
-	p.logger.Debugf("Page:setEmulatedSize", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:setEmulatedSize", "sid:%v", p.sessionID)
 
 	p.emulatedSize = emulatedSize
 	return p.mainFrameSession.updateViewport()
@@ -302,7 +302,7 @@ func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
 
 func (p *Page) setViewportSize(viewportSize *Size) error {
 	p.logger.Debugf("Page:setViewportSize", "sid:%v vps:%v",
-		p.sessionID(), viewportSize)
+		p.sessionID, viewportSize)
 
 	viewport := &Viewport{
 		Width:  int64(viewportSize.Width),
@@ -316,7 +316,7 @@ func (p *Page) setViewportSize(viewportSize *Size) error {
 }
 
 func (p *Page) updateExtraHTTPHeaders() {
-	p.logger.Debugf("Page:updateExtraHTTPHeaders", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:updateExtraHTTPHeaders", "sid:%v", p.sessionID)
 
 	for _, fs := range p.frameSessions {
 		fs.updateExtraHTTPHeaders(false)
@@ -324,17 +324,17 @@ func (p *Page) updateExtraHTTPHeaders() {
 }
 
 func (p *Page) updateGeolocation() error {
-	p.logger.Debugf("Page:updateGeolocation", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:updateGeolocation", "sid:%v", p.sessionID)
 
 	for _, fs := range p.frameSessions {
 		p.logger.Debugf("Page:updateGeolocation:frameSession",
 			"sid:%v tid:%v wid:%v",
-			p.sessionID(), fs.targetID, fs.windowID)
+			p.sessionID, fs.targetID, fs.windowID)
 
 		if err := fs.updateGeolocation(false); err != nil {
 			p.logger.Debugf("Page:updateGeolocation:frameSession:return",
 				"sid:%v tid:%v wid:%v err:%v",
-				p.sessionID(), fs.targetID, fs.windowID, err)
+				p.sessionID, fs.targetID, fs.windowID, err)
 
 			return err
 		}
@@ -343,7 +343,7 @@ func (p *Page) updateGeolocation() error {
 }
 
 func (p *Page) updateOffline() {
-	p.logger.Debugf("Page:updateOffline", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:updateOffline", "sid:%v", p.sessionID)
 
 	for _, fs := range p.frameSessions {
 		fs.updateOffline(false)
@@ -351,7 +351,7 @@ func (p *Page) updateOffline() {
 }
 
 func (p *Page) updateHttpCredentials() {
-	p.logger.Debugf("Page:updateHttpCredentials", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:updateHttpCredentials", "sid:%v", p.sessionID)
 
 	for _, fs := range p.frameSessions {
 		fs.updateHTTPCredentials(false)
@@ -380,24 +380,24 @@ func (p *Page) AddStyleTag(opts goja.Value) {
 
 // BringToFront activates the browser tab for this page.
 func (p *Page) BringToFront() {
-	p.logger.Debugf("Page:BringToFront", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:BringToFront", "sid:%v", p.sessionID)
 
 	action := cdppage.BringToFront()
-	if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
 		k6ext.Panic(p.ctx, "bringing page to front: %w", err)
 	}
 }
 
 // Check checks an element matching the provided selector.
 func (p *Page) Check(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:Check", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Check", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Check(selector, opts)
 }
 
 // Uncheck unchecks an element matching the provided selector.
 func (p *Page) Uncheck(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:Uncheck", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Uncheck", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Uncheck(selector, opts)
 }
@@ -405,28 +405,28 @@ func (p *Page) Uncheck(selector string, opts goja.Value) {
 // IsChecked returns true if the first element that matches the selector
 // is checked. Otherwise, returns false.
 func (p *Page) IsChecked(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsChecked", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsChecked", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsChecked(selector, opts)
 }
 
 // Click clicks an element matching provided selector.
 func (p *Page) Click(selector string, opts goja.Value) *goja.Promise {
-	p.logger.Debugf("Page:Click", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Click", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().Click(selector, opts)
 }
 
 // Close closes the page.
 func (p *Page) Close(opts goja.Value) {
-	p.logger.Debugf("Page:Close", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:Close", "sid:%v", p.sessionID)
 
 	p.browserCtx.Close()
 }
 
 // Content returns the HTML content of the page.
 func (p *Page) Content() string {
-	p.logger.Debugf("Page:Content", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:Content", "sid:%v", p.sessionID)
 
 	return p.MainFrame().Content()
 }
@@ -438,13 +438,13 @@ func (p *Page) Context() api.BrowserContext {
 
 // Dblclick double clicks an element matching provided selector.
 func (p *Page) Dblclick(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:Dblclick", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Dblclick", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Dblclick(selector, opts)
 }
 
 func (p *Page) DispatchEvent(selector string, typ string, eventInit goja.Value, opts goja.Value) {
-	p.logger.Debugf("Page:DispatchEvent", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:DispatchEvent", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().DispatchEvent(selector, typ, eventInit, opts)
 }
@@ -454,7 +454,7 @@ func (p *Page) DragAndDrop(source string, target string, opts goja.Value) {
 }
 
 func (p *Page) EmulateMedia(opts goja.Value) {
-	p.logger.Debugf("Page:EmulateMedia", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:EmulateMedia", "sid:%v", p.sessionID)
 
 	parsedOpts := NewPageEmulateMediaOptions(p.mediaType, p.colorScheme, p.reducedMotion)
 	if err := parsedOpts.Parse(p.ctx, opts); err != nil {
@@ -476,7 +476,7 @@ func (p *Page) EmulateMedia(opts goja.Value) {
 
 // EmulateVisionDeficiency activates/deactivates emulation of a vision deficiency.
 func (p *Page) EmulateVisionDeficiency(typ string) {
-	p.logger.Debugf("Page:EmulateVisionDeficiency", "sid:%v typ:%s", p.sessionID(), typ)
+	p.logger.Debugf("Page:EmulateVisionDeficiency", "sid:%v typ:%s", p.sessionID, typ)
 
 	validTypes := map[string]emulation.SetEmulatedVisionDeficiencyType{
 		"achromatopsia": emulation.SetEmulatedVisionDeficiencyTypeAchromatopsia,
@@ -492,7 +492,7 @@ func (p *Page) EmulateVisionDeficiency(typ string) {
 	}
 
 	action := emulation.SetEmulatedVisionDeficiency(t)
-	if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
 		k6ext.Panic(p.ctx, "setting emulated vision deficiency %q: %w", typ, err)
 	}
 
@@ -501,13 +501,13 @@ func (p *Page) EmulateVisionDeficiency(typ string) {
 
 // Evaluate runs JS code within the execution context of the main frame of the page.
 func (p *Page) Evaluate(pageFunc goja.Value, args ...goja.Value) interface{} {
-	p.logger.Debugf("Page:Evaluate", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:Evaluate", "sid:%v", p.sessionID)
 
 	return p.MainFrame().Evaluate(pageFunc, args...)
 }
 
 func (p *Page) EvaluateHandle(pageFunc goja.Value, args ...goja.Value) api.JSHandle {
-	p.logger.Debugf("Page:EvaluateHandle", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:EvaluateHandle", "sid:%v", p.sessionID)
 
 	return p.MainFrame().EvaluateHandle(pageFunc, args...)
 }
@@ -521,13 +521,13 @@ func (p *Page) ExposeFunction(name string, callback goja.Callable) {
 }
 
 func (p *Page) Fill(selector string, value string, opts goja.Value) {
-	p.logger.Debugf("Page:Fill", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Fill", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Fill(selector, value, opts)
 }
 
 func (p *Page) Focus(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:Focus", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Focus", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Focus(selector, opts)
 }
@@ -544,7 +544,7 @@ func (p *Page) Frames() []api.Frame {
 
 func (p *Page) GetAttribute(selector string, name string, opts goja.Value) goja.Value {
 	p.logger.Debugf("Page:GetAttribute", "sid:%v selector:%s name:%s",
-		p.sessionID(), selector, name)
+		p.sessionID, selector, name)
 
 	return p.MainFrame().GetAttribute(selector, name, opts)
 }
@@ -561,31 +561,31 @@ func (p *Page) GoForward(opts goja.Value) api.Response {
 
 // Goto will navigate the page to the specified URL and return a HTTP response object.
 func (p *Page) Goto(url string, opts goja.Value) api.Response {
-	p.logger.Debugf("Page:Goto", "sid:%v url:%q", p.sessionID(), url)
+	p.logger.Debugf("Page:Goto", "sid:%v url:%q", p.sessionID, url)
 
 	return p.MainFrame().Goto(url, opts)
 }
 
 func (p *Page) Hover(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:Hover", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Hover", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Hover(selector, opts)
 }
 
 func (p *Page) InnerHTML(selector string, opts goja.Value) string {
-	p.logger.Debugf("Page:InnerHTML", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:InnerHTML", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().InnerHTML(selector, opts)
 }
 
 func (p *Page) InnerText(selector string, opts goja.Value) string {
-	p.logger.Debugf("Page:InnerText", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:InnerText", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().InnerText(selector, opts)
 }
 
 func (p *Page) InputValue(selector string, opts goja.Value) string {
-	p.logger.Debugf("Page:InputValue", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:InputValue", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().InputValue(selector, opts)
 }
@@ -598,38 +598,38 @@ func (p *Page) IsClosed() bool {
 }
 
 func (p *Page) IsDisabled(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsDisabled", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsDisabled", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsDisabled(selector, opts)
 }
 
 func (p *Page) IsEditable(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsEditable", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsEditable", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsEditable(selector, opts)
 }
 
 func (p *Page) IsEnabled(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsEnabled", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsEnabled", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsEnabled(selector, opts)
 }
 
 func (p *Page) IsHidden(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsHidden", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsHidden", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsHidden(selector, opts)
 }
 
 func (p *Page) IsVisible(selector string, opts goja.Value) bool {
-	p.logger.Debugf("Page:IsVisible", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:IsVisible", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().IsVisible(selector, opts)
 }
 
 // Locator creates and returns a new locator for this page (main frame).
 func (p *Page) Locator(selector string, opts goja.Value) api.Locator {
-	p.logger.Debugf("Page:Locator", "sid:%s sel: %q opts:%+v", p.sessionID(), selector, opts)
+	p.logger.Debugf("Page:Locator", "sid:%s sel: %q opts:%+v", p.sessionID, selector, opts)
 
 	return p.MainFrame().Locator(selector, opts)
 }
@@ -639,11 +639,11 @@ func (p *Page) MainFrame() api.Frame {
 	mf := p.frameManager.MainFrame()
 
 	if mf == nil {
-		p.logger.Debugf("Page:MainFrame", "sid:%v", p.sessionID())
+		p.logger.Debugf("Page:MainFrame", "sid:%v", p.sessionID)
 	} else {
 		p.logger.Debugf("Page:MainFrame",
 			"sid:%v mfid:%v mflid:%v mfurl:%v",
-			p.sessionID(), mf.id, mf.loaderID, mf.url)
+			p.sessionID, mf.id, mf.loaderID, mf.url)
 	}
 
 	return mf
@@ -665,26 +665,26 @@ func (p *Page) Pdf(opts goja.Value) goja.ArrayBuffer {
 }
 
 func (p *Page) Press(selector string, key string, opts goja.Value) {
-	p.logger.Debugf("Page:Press", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Press", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Press(selector, key, opts)
 }
 
 func (p *Page) Query(selector string) api.ElementHandle {
-	p.logger.Debugf("Page:Query", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:Query", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.frameManager.MainFrame().Query(selector)
 }
 
 func (p *Page) QueryAll(selector string) []api.ElementHandle {
-	p.logger.Debugf("Page:QueryAll", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:QueryAll", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.frameManager.MainFrame().QueryAll(selector)
 }
 
 // Reload will reload the current page.
 func (p *Page) Reload(opts goja.Value) api.Response {
-	p.logger.Debugf("Page:Reload", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:Reload", "sid:%v", p.sessionID)
 
 	parsedOpts := NewPageReloadOptions(LifecycleEventLoad, p.defaultTimeout())
 	if err := parsedOpts.Parse(p.ctx, opts); err != nil {
@@ -697,7 +697,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 	defer evCancelFn() // Remove event handler
 
 	action := cdppage.Reload()
-	if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
 		k6ext.Panic(p.ctx, "reloading page: %w", err)
 	}
 
@@ -747,34 +747,34 @@ func (p *Page) Screenshot(opts goja.Value) goja.ArrayBuffer {
 }
 
 func (p *Page) SelectOption(selector string, values goja.Value, opts goja.Value) []string {
-	p.logger.Debugf("Page:SelectOption", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:SelectOption", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().SelectOption(selector, values, opts)
 }
 
 func (p *Page) SetContent(html string, opts goja.Value) {
-	p.logger.Debugf("Page:SetContent", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:SetContent", "sid:%v", p.sessionID)
 
 	p.MainFrame().SetContent(html, opts)
 }
 
 // SetDefaultNavigationTimeout sets the default navigation timeout in milliseconds.
 func (p *Page) SetDefaultNavigationTimeout(timeout int64) {
-	p.logger.Debugf("Page:SetDefaultNavigationTimeout", "sid:%v timeout:%d", p.sessionID(), timeout)
+	p.logger.Debugf("Page:SetDefaultNavigationTimeout", "sid:%v timeout:%d", p.sessionID, timeout)
 
 	p.timeoutSettings.setDefaultNavigationTimeout(timeout)
 }
 
 // SetDefaultTimeout sets the default maximum timeout in milliseconds.
 func (p *Page) SetDefaultTimeout(timeout int64) {
-	p.logger.Debugf("Page:SetDefaultTimeout", "sid:%v timeout:%d", p.sessionID(), timeout)
+	p.logger.Debugf("Page:SetDefaultTimeout", "sid:%v timeout:%d", p.sessionID, timeout)
 
 	p.timeoutSettings.setDefaultTimeout(timeout)
 }
 
 // SetExtraHTTPHeaders sets default HTTP headers for page and whole frame hierarchy.
 func (p *Page) SetExtraHTTPHeaders(headers map[string]string) {
-	p.logger.Debugf("Page:SetExtraHTTPHeaders", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:SetExtraHTTPHeaders", "sid:%v", p.sessionID)
 
 	p.extraHTTPHeaders = headers
 	p.updateExtraHTTPHeaders()
@@ -787,7 +787,7 @@ func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value)
 
 // SetViewportSize will update the viewport width and height.
 func (p *Page) SetViewportSize(viewportSize goja.Value) {
-	p.logger.Debugf("Page:SetViewportSize", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:SetViewportSize", "sid:%v", p.sessionID)
 
 	s := &Size{}
 	if err := s.Parse(p.ctx, viewportSize); err != nil {
@@ -800,26 +800,26 @@ func (p *Page) SetViewportSize(viewportSize goja.Value) {
 }
 
 func (p *Page) Tap(selector string, opts goja.Value) {
-	p.logger.Debugf("Page:SetViewportSize", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:SetViewportSize", "sid:%v selector:%s", p.sessionID, selector)
 
 	p.MainFrame().Tap(selector, opts)
 }
 
 func (p *Page) TextContent(selector string, opts goja.Value) string {
-	p.logger.Debugf("Page:TextContent", "sid:%v selector:%s", p.sessionID(), selector)
+	p.logger.Debugf("Page:TextContent", "sid:%v selector:%s", p.sessionID, selector)
 
 	return p.MainFrame().TextContent(selector, opts)
 }
 
 func (p *Page) Title() string {
-	p.logger.Debugf("Page:Title", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:Title", "sid:%v", p.sessionID)
 
 	v := p.vu.Runtime().ToValue(`() => document.title`)
 	return gojaValueToString(p.ctx, p.Evaluate(v))
 }
 
 func (p *Page) Type(selector string, text string, opts goja.Value) {
-	p.logger.Debugf("Page:Type", "sid:%v selector:%s text:%s", p.sessionID(), selector, text)
+	p.logger.Debugf("Page:Type", "sid:%v selector:%s text:%s", p.sessionID, selector, text)
 
 	p.MainFrame().Type(selector, text, opts)
 }
@@ -842,7 +842,7 @@ func (p *Page) Video() api.Video {
 
 // ViewportSize will return information on the viewport width and height.
 func (p *Page) ViewportSize() map[string]float64 {
-	p.logger.Debugf("Page:ViewportSize", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:ViewportSize", "sid:%v", p.sessionID)
 
 	vps := p.viewportSize()
 	return map[string]float64{
@@ -859,21 +859,21 @@ func (p *Page) WaitForEvent(event string, optsOrPredicate goja.Value) interface{
 
 // WaitForFunction waits for the given predicate to return a truthy value.
 func (p *Page) WaitForFunction(fn, opts goja.Value, args ...goja.Value) *goja.Promise {
-	p.logger.Debugf("Page:WaitForFunction", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:WaitForFunction", "sid:%v", p.sessionID)
 
 	return p.frameManager.MainFrame().WaitForFunction(fn, opts, args...)
 }
 
 // WaitForLoadState waits for the specified page life cycle event.
 func (p *Page) WaitForLoadState(state string, opts goja.Value) {
-	p.logger.Debugf("Page:WaitForLoadState", "sid:%v state:%q", p.sessionID(), state)
+	p.logger.Debugf("Page:WaitForLoadState", "sid:%v state:%q", p.sessionID, state)
 
 	p.frameManager.MainFrame().WaitForLoadState(state, opts)
 }
 
 // WaitForNavigation waits for the given navigation lifecycle event to happen.
 func (p *Page) WaitForNavigation(opts goja.Value) api.Response {
-	p.logger.Debugf("Page:WaitForNavigation", "sid:%v", p.sessionID())
+	p.logger.Debugf("Page:WaitForNavigation", "sid:%v", p.sessionID)
 
 	return p.frameManager.MainFrame().WaitForNavigation(opts)
 }
@@ -891,15 +891,14 @@ func (p *Page) WaitForResponse(urlOrPredicate, opts goja.Value) api.Response {
 // WaitForSelector waits for the given selector to match the waiting criteria.
 func (p *Page) WaitForSelector(selector string, opts goja.Value) api.ElementHandle {
 	p.logger.Debugf("Page:WaitForSelector",
-		"sid:%v stid:%v ptid:%v selector:%s",
-		p.sessionID(), p.session.TargetID(), p.targetID, selector)
+		"sid:%v ptid:%v selector:%s", p.sessionID, p.targetID, selector)
 
 	return p.frameManager.MainFrame().WaitForSelector(selector, opts)
 }
 
 // WaitForTimeout waits the specified number of milliseconds.
 func (p *Page) WaitForTimeout(timeout int64) {
-	p.logger.Debugf("Page:WaitForTimeout", "sid:%v timeout:%d", p.sessionID(), timeout)
+	p.logger.Debugf("Page:WaitForTimeout", "sid:%v timeout:%d", p.sessionID, timeout)
 
 	p.frameManager.MainFrame().WaitForTimeout(timeout)
 }
@@ -911,13 +910,4 @@ func (p *Page) Workers() []api.Worker {
 		workers = append(workers, w)
 	}
 	return workers
-}
-
-// sessionID returns the Page's session ID.
-// It should be used internally in the Page.
-func (p *Page) sessionID() (sid target.SessionID) {
-	if p != nil && p.session != nil {
-		sid = p.session.ID()
-	}
-	return sid
 }

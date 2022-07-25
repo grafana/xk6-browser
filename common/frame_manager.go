@@ -45,7 +45,7 @@ import (
 // FrameManager manages all frames in a page and their life-cycles, it's a purely internal component.
 type FrameManager struct {
 	ctx             context.Context
-	session         session
+	sessionID       string
 	page            *Page
 	cdpClient       *cdp.Client
 	timeoutSettings *TimeoutSettings
@@ -78,15 +78,15 @@ var frameManagerID int64
 // NewFrameManager creates a new HTML document frame manager.
 func NewFrameManager(
 	ctx context.Context,
-	s session,
+	sessionID string,
 	p *Page,
 	ts *TimeoutSettings,
 	l *log.Logger,
 ) *FrameManager {
-	ctx = cdp.WithSessionID(ctx, string(s.ID()))
+	ctx = cdp.WithSessionID(ctx, sessionID)
 	m := &FrameManager{
 		ctx:              ctx,
-		session:          s,
+		sessionID:        sessionID,
 		page:             p,
 		cdpClient:        p.browserCtx.browser.cdpClient,
 		timeoutSettings:  ts,
@@ -626,7 +626,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	// }
 
 	evtCh, cdpUnsub := m.cdpClient.Subscribe(
-		string(m.session.ID()), frame.ID(),
+		p.ctx, frame.ID(),
 		cdproto.EventPageFrameNavigated,
 		cdproto.EventPageNavigatedWithinDocument,
 		cdproto.EventPageLifecycleEvent)
