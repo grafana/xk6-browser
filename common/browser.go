@@ -470,12 +470,9 @@ func (b *Browser) Close() {
 		}
 	}
 
-	// terminate the browser process early on, then tell the CDP
-	// afterwards. this will take a little bit of time, and CDP
-	// will stop emitting events.
+	b.cdpClient.Disconnect()
 	b.browserProc.GracefulClose()
 	b.browserProc.Terminate()
-	b.conn.Close()
 }
 
 // Contexts returns list of browser contexts.
