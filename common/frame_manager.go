@@ -81,6 +81,7 @@ func NewFrameManager(
 	ts *TimeoutSettings,
 	l *log.Logger,
 ) *FrameManager {
+	ctx = cdp.WithSessionID(ctx, string(s.ID()))
 	m := &FrameManager{
 		ctx:              ctx,
 		session:          s,
