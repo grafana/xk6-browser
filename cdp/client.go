@@ -83,6 +83,11 @@ func (c *Client) Connect(wsURL string) (err error) {
 	return nil
 }
 
+// Disconnect from the browser's CDP API.
+func (c *Client) Disconnect() {
+	c.conn.Close()
+}
+
 // Execute implements cdproto.Executor and performs a synchronous send and
 // receive.
 func (c *Client) Execute(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
