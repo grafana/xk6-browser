@@ -9,6 +9,8 @@ import (
 )
 
 type Target interface {
+	CreateBrowserContext(ctx context.Context, disposeOnDetach bool) (id string, err error)
+	DisposeBrowserContext(ctx context.Context, id string) error
 	SetAutoAttach(ctx context.Context, autoAttach, waitForDebuggerOnStart, flatten bool) error
 }
 
@@ -21,6 +23,25 @@ type target struct {
 // NewTarget returns a new CDP Target domain wrapper.
 func NewTarget(exec cdp.Executor) Target {
 	return &target{exec}
+}
+
+func (t *target) CreateBrowserContext(ctx context.Context, disposeOnDetach bool) (id string, err error) {
+	action := cdpt.CreateBrowserContext().WithDisposeOnDetach(disposeOnDetach)
+	bctxID, err := action.Do(cdp.WithExecutor(ctx, t.exec))
+	if err != nil {
+		return "", err
+	}
+
+	return string(bctxID), nil
+}
+
+func (t *target) DisposeBrowserContext(ctx context.Context, id string) error {
+	action := cdpt.DisposeBrowserContext(cdp.BrowserContextID(id))
+	if err := action.Do(cdp.WithExecutor(ctx, t.exec)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetAutoAttach executes the CDP Target.setAutoAttach command.
