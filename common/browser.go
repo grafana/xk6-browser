@@ -235,6 +235,7 @@ func (b *Browser) initEvents() error {
 			return
 		}
 	}()
+	// TODO: Handle error?
 	b.cdpClient.Target.SetAutoAttach(b.ctx, true, true, true)
 
 	return nil

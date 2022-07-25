@@ -43,7 +43,7 @@ import (
 // FrameManager manages all frames in a page and their life-cycles, it's a purely internal component.
 type FrameManager struct {
 	ctx             context.Context
-	session         session
+	sessionID       string
 	page            *Page
 	cdpClient       *cdp.Client
 	timeoutSettings *TimeoutSettings
@@ -76,15 +76,15 @@ var frameManagerID int64
 // NewFrameManager creates a new HTML document frame manager.
 func NewFrameManager(
 	ctx context.Context,
-	s session,
+	sessionID string,
 	p *Page,
 	ts *TimeoutSettings,
 	l *log.Logger,
 ) *FrameManager {
-	ctx = cdp.WithSessionID(ctx, string(s.ID()))
+	ctx = cdp.WithSessionID(ctx, sessionID)
 	m := &FrameManager{
 		ctx:              ctx,
-		session:          s,
+		sessionID:        sessionID,
 		page:             p,
 		cdpClient:        p.browserCtx.browser.cdpClient,
 		timeoutSettings:  ts,
@@ -628,8 +628,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		fs = frame.page.mainFrameSession
 	}
 
-	newDocumentID, err := m.cdpClient.PageNavigate(
-		url, parsedOpts.Referer, frame.ID(), string(m.session.ID()))
+	newDocumentID, err := m.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
