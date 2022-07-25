@@ -34,6 +34,7 @@ import (
 
 	cdpbrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
@@ -52,7 +53,7 @@ type BrowserContext struct {
 
 	ctx             context.Context
 	browser         *Browser
-	id              cdp.BrowserContextID
+	id              string
 	opts            *BrowserContextOptions
 	timeoutSettings *TimeoutSettings
 	logger          *log.Logger
@@ -63,7 +64,7 @@ type BrowserContext struct {
 
 // NewBrowserContext creates a new browser context.
 func NewBrowserContext(
-	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *BrowserContextOptions, logger *log.Logger,
+	ctx context.Context, browser *Browser, id string, opts *BrowserContextOptions, logger *log.Logger,
 ) *BrowserContext {
 	b := BrowserContext{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
@@ -132,7 +133,7 @@ func (b *BrowserContext) Browser() api.Browser {
 func (b *BrowserContext) ClearCookies() {
 	b.logger.Debugf("BrowserContext:ClearCookies", "bctxid:%v", b.id)
 
-	action := storage.ClearCookies().WithBrowserContextID(b.id)
+	action := storage.ClearCookies().WithBrowserContextID(cdp.BrowserContextID(b.id))
 	if err := action.Do(b.ctx); err != nil {
 		k6ext.Panic(b.ctx, "clearing cookies: %w", err)
 	}
@@ -142,7 +143,7 @@ func (b *BrowserContext) ClearCookies() {
 func (b *BrowserContext) ClearPermissions() {
 	b.logger.Debugf("BrowserContext:ClearPermissions", "bctxid:%v", b.id)
 
-	action := cdpbrowser.ResetPermissions().WithBrowserContextID(b.id)
+	action := cdpbrowser.ResetPermissions().WithBrowserContextID(cdp.BrowserContextID(b.id))
 	if err := action.Do(b.ctx); err != nil {
 		k6ext.Panic(b.ctx, "clearing permissions: %w", err)
 	}
@@ -212,7 +213,7 @@ func (b *BrowserContext) GrantPermissions(permissions []string, opts goja.Value)
 		perms = append(perms, permsToProtocol[p])
 	}
 
-	action := cdpbrowser.GrantPermissions(perms).WithOrigin(origin).WithBrowserContextID(b.id)
+	action := cdpbrowser.GrantPermissions(perms).WithOrigin(origin).WithBrowserContextID(cdpext.BrowserContextID(b.id))
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
 		k6ext.Panic(b.ctx, "internal error while granting browser permissions: %w", err)
 	}
@@ -234,16 +235,16 @@ func (b *BrowserContext) NewPage() api.Page {
 	}
 
 	var (
-		bctxid cdp.BrowserContextID
+		bctxID string
 		ptid   target.ID
 	)
 	if b != nil {
-		bctxid = b.id
+		bctxID = b.id
 	}
 	if p != nil {
 		ptid = p.targetID
 	}
-	b.logger.Debugf("BrowserContext:NewPage:return", "bctxid:%v ptid:%s", bctxid, ptid)
+	b.logger.Debugf("BrowserContext:NewPage:return", "bctxid:%s ptid:%s", bctxID, ptid)
 
 	return p
 }

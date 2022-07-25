@@ -70,7 +70,7 @@ type Browser struct {
 	cdpClient *cdp.Client
 
 	contextsMu     sync.RWMutex
-	contexts       map[cdpext.BrowserContextID]*BrowserContext
+	contexts       map[string]*BrowserContext
 	defaultContext *BrowserContext
 
 	// Cancel function to stop event listening
@@ -122,7 +122,7 @@ func newBrowser(
 		state:               int64(BrowserStateOpen),
 		browserProc:         browserProc,
 		launchOpts:          launchOpts,
-		contexts:            make(map[cdpext.BrowserContextID]*BrowserContext),
+		contexts:            make(map[string]*BrowserContext),
 		pages:               make(map[target.ID]*Page),
 		sessions:            make(map[target.SessionID]*Session),
 		sessionIDtoTargetID: make(map[target.SessionID]target.ID),
@@ -149,11 +149,10 @@ func (b *Browser) connect() (err error) {
 	return b.initEvents()
 }
 
-func (b *Browser) disposeContext(id cdpext.BrowserContextID) error {
+func (b *Browser) disposeContext(id string) error {
 	b.logger.Debugf("Browser:disposeContext", "bctxid:%v", id)
 
-	action := target.DisposeBrowserContext(id)
-	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
+	if err := b.cdpClient.Target.DisposeBrowserContext(b.ctx, id); err != nil {
 		return fmt.Errorf("disposing browser context ID %s: %w", id, err)
 	}
 
@@ -261,7 +260,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 	b.contextsMu.RLock()
 	browserCtx := b.defaultContext
-	bctx, ok := b.contexts[evti.BrowserContextID]
+	bctx, ok := b.contexts[string(evti.BrowserContextID)]
 	if ok {
 		browserCtx = bctx
 	}
@@ -392,7 +391,7 @@ func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
 	}
 }
 
-func (b *Browser) newPageInContext(id cdpext.BrowserContextID) (*Page, error) {
+func (b *Browser) newPageInContext(id string) (*Page, error) {
 	b.contextsMu.RLock()
 	browserCtx, ok := b.contexts[id]
 	b.contextsMu.RUnlock()
@@ -424,7 +423,7 @@ func (b *Browser) newPageInContext(id cdpext.BrowserContextID) (*Page, error) {
 	defer removeEventHandler()
 
 	// create a new page.
-	action := target.CreateTarget("about:blank").WithBrowserContextID(id)
+	action := target.CreateTarget("about:blank").WithBrowserContextID(cdpext.BrowserContextID(id))
 	tid, err := action.Do(cdpext.WithExecutor(ctx, b.conn))
 	if err != nil {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
@@ -517,11 +516,9 @@ func (b *Browser) IsConnected() bool {
 
 // NewContext creates a new incognito-like browser context.
 func (b *Browser) NewContext(opts goja.Value) api.BrowserContext {
-	action := target.CreateBrowserContext().WithDisposeOnDetach(true)
-	browserContextID, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
-	b.logger.Debugf("Browser:NewContext", "bctxid:%v", browserContextID)
+	bctxID, err := b.cdpClient.Target.CreateBrowserContext(b.ctx, true)
 	if err != nil {
-		k6ext.Panic(b.ctx, "creating browser context ID %s: %w", browserContextID, err)
+		k6ext.Panic(b.ctx, "creating a new browser context: %w", err)
 	}
 
 	browserCtxOpts := NewBrowserContextOptions()
@@ -531,8 +528,8 @@ func (b *Browser) NewContext(opts goja.Value) api.BrowserContext {
 
 	b.contextsMu.Lock()
 	defer b.contextsMu.Unlock()
-	browserCtx := NewBrowserContext(b.ctx, b, browserContextID, browserCtxOpts, b.logger)
-	b.contexts[browserContextID] = browserCtx
+	browserCtx := NewBrowserContext(b.ctx, b, bctxID, browserCtxOpts, b.logger)
+	b.contexts[bctxID] = browserCtx
 
 	return browserCtx
 }
