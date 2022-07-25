@@ -1,10 +1,9 @@
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 import { chromium } from 'k6/x/browser';
 
 export default function() {
   const browser = chromium.launch({
     headless: __ENV.XK6_HEADLESS ? true : false,
-    timeout: '10m',
   });
   const context = browser.newContext();
   const page = context.newPage();
@@ -13,7 +12,6 @@ export default function() {
   page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
   const elem = page.$('a[href="/my_messages.php"]');
   elem.click().then(() => {
-    sleep(60);
     // Enter login credentials and login
     page.$('input[name="login"]').type('admin');
     page.$('input[name="password"]').type('123');
