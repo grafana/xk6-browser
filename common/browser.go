@@ -35,8 +35,6 @@ import (
 	k6modules "go.k6.io/k6/js/modules"
 
 	"github.com/chromedp/cdproto"
-	cdpbrowser "github.com/chromedp/cdproto/browser"
-	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
@@ -543,21 +541,21 @@ func (b *Browser) On(event string) *goja.Promise {
 
 // UserAgent returns the controlled browser's user agent string.
 func (b *Browser) UserAgent() string {
-	action := cdpbrowser.GetVersion()
-	_, _, _, ua, _, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
+	_, _, _, ua, _, err := b.cdpClient.Browser.GetVersion(b.ctx)
 	if err != nil {
 		k6ext.Panic(b.ctx, "getting browser user agent: %w", err)
 	}
+
 	return ua
 }
 
 // Version returns the controlled browser's version.
 func (b *Browser) Version() string {
-	action := cdpbrowser.GetVersion()
-	_, product, _, _, _, err := action.Do(cdpext.WithExecutor(b.ctx, b.conn))
+	_, product, _, _, _, err := b.cdpClient.Browser.GetVersion(b.ctx)
 	if err != nil {
 		k6ext.Panic(b.ctx, "getting browser version: %w", err)
 	}
+
 	i := strings.Index(product, "/")
 	if i == -1 {
 		return product

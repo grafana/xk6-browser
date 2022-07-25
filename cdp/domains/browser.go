@@ -9,6 +9,9 @@ import (
 
 type Browser interface {
 	Close(ctx context.Context) error
+	GetVersion(ctx context.Context) (
+		protocolVersion, product, revision, userAgent, jsVersion string, err error,
+	)
 }
 
 var _ Browser = &browser{}
@@ -24,5 +27,12 @@ func NewBrowser(exec cdp.Executor) Browser {
 
 func (b *browser) Close(ctx context.Context) error {
 	action := cdpb.Close()
+	return action.Do(cdp.WithExecutor(ctx, b.exec))
+}
+
+func (b *browser) GetVersion(ctx context.Context) (
+	protocolVersion, product, revision, userAgent, jsVersion string, err error,
+) {
+	action := cdpb.GetVersion()
 	return action.Do(cdp.WithExecutor(ctx, b.exec))
 }
