@@ -10,6 +10,7 @@ import (
 
 type Target interface {
 	CreateBrowserContext(ctx context.Context, disposeOnDetach bool) (id string, err error)
+	CreateTarget(ctx context.Context, url, bctxID string) (id string, err error)
 	DisposeBrowserContext(ctx context.Context, id string) error
 	SetAutoAttach(ctx context.Context, autoAttach, waitForDebuggerOnStart, flatten bool) error
 }
@@ -33,6 +34,16 @@ func (t *target) CreateBrowserContext(ctx context.Context, disposeOnDetach bool)
 	}
 
 	return string(bctxID), nil
+}
+
+func (t *target) CreateTarget(ctx context.Context, url, bctxID string) (id string, err error) {
+	action := cdpt.CreateTarget(url).WithBrowserContextID(cdp.BrowserContextID(bctxID))
+	tid, err := action.Do(cdp.WithExecutor(ctx, t.exec))
+	if err != nil {
+		return "", err
+	}
+
+	return string(tid), nil
 }
 
 func (t *target) DisposeBrowserContext(ctx context.Context, id string) error {

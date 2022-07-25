@@ -79,7 +79,7 @@ type Browser struct {
 	// Needed as the targets map will be accessed from multiple Go routines,
 	// the main VU/JS go routine and the Go routine listening for CDP messages.
 	pagesMu sync.RWMutex
-	pages   map[target.ID]*Page
+	pages   map[string]*Page
 
 	sessionsMu            sync.RWMutex
 	sessions              map[target.SessionID]*Session
@@ -123,7 +123,7 @@ func newBrowser(
 		browserProc:         browserProc,
 		launchOpts:          launchOpts,
 		contexts:            make(map[string]*BrowserContext),
-		pages:               make(map[target.ID]*Page),
+		pages:               make(map[string]*Page),
 		sessions:            make(map[target.SessionID]*Session),
 		sessionIDtoTargetID: make(map[target.SessionID]target.ID),
 		vu:                  k6ext.GetVU(ctx),
@@ -310,7 +310,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 		b.pagesMu.Lock()
 		b.logger.Debugf("Browser:onAttachedToTarget:background_page:addTid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.pages[evti.TargetID] = p
+		b.pages[string(evti.TargetID)] = p
 		b.pagesMu.Unlock()
 
 		b.sessionIDtoTargetIDMu.Lock()
@@ -321,7 +321,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		// Opener is nil for the initial page
 		var opener *Page
 		b.pagesMu.RLock()
-		if t, ok := b.pages[evti.OpenerID]; ok {
+		if t, ok := b.pages[string(evti.OpenerID)]; ok {
 			opener = t
 		}
 		b.pagesMu.RUnlock()
@@ -349,7 +349,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 		b.pagesMu.Lock()
 		b.logger.Debugf("Browser:onAttachedToTarget:page:addTarget", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.pages[evti.TargetID] = p
+		b.pages[string(evti.TargetID)] = p
 		b.pagesMu.Unlock()
 
 		b.sessionIDtoTargetIDMu.Lock()
@@ -383,10 +383,10 @@ func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
 
 	b.pagesMu.Lock()
 	defer b.pagesMu.Unlock()
-	if t, ok := b.pages[targetID]; ok {
+	if t, ok := b.pages[string(targetID)]; ok {
 		b.logger.Debugf("Browser:onDetachedFromTarget:deletePage", "sid:%v tid:%v", ev.SessionID, targetID)
 
-		delete(b.pages, targetID)
+		delete(b.pages, string(targetID))
 		t.didClose()
 	}
 }
@@ -404,7 +404,7 @@ func (b *Browser) newPageInContext(id string) (*Page, error) {
 
 	// buffer of one is for sending the target ID whether an event handler
 	// exists or not.
-	targetID := make(chan target.ID, 1)
+	targetID := make(chan string, 1)
 
 	waitForPage, removeEventHandler := createWaitForEventHandler(
 		ctx,
@@ -417,17 +417,16 @@ func (b *Browser) newPageInContext(id string) (*Page, error) {
 				"tid:%v ptid:%v bctxid:%v", tid, e.(*Page).targetID, id)
 
 			// we are only interested in the new page.
-			return e.(*Page).targetID == tid
+			return string(e.(*Page).targetID) == tid
 		},
 	)
 	defer removeEventHandler()
 
-	// create a new page.
-	action := target.CreateTarget("about:blank").WithBrowserContextID(cdpext.BrowserContextID(id))
-	tid, err := action.Do(cdpext.WithExecutor(ctx, b.conn))
+	tid, err := b.cdpClient.Target.CreateTarget(b.ctx, "about:blank", id)
 	if err != nil {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
+
 	// let the event handler know about the new page.
 	targetID <- tid
 	var page *Page
