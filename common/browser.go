@@ -466,8 +466,7 @@ func (b *Browser) Close() {
 
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
 
-	action := cdpbrowser.Close()
-	if err := action.Do(cdpext.WithExecutor(b.ctx, b.conn)); err != nil {
+	if err := b.cdpClient.Browser.Close(b.ctx); err != nil {
 		if _, ok := err.(*websocket.CloseError); !ok {
 			k6ext.Panic(b.ctx, "closing the browser: %v", err)
 		}
