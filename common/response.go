@@ -150,7 +150,7 @@ func (r *Response) fetchBody() error {
 		return nil
 	}
 	action := network.GetResponseBody(r.request.requestID)
-	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
+	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.page.cdpClient))
 	if err != nil {
 		return fmt.Errorf("fetching response body: %w", err)
 	}

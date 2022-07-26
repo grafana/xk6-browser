@@ -86,8 +86,8 @@ func NewFrame(
 			pfid = parentFrame.ID()
 		}
 		var sid string
-		if m != nil && m.session != nil {
-			sid = string(m.session.ID())
+		if m != nil && m.page != nil {
+			sid = string(m.page.sessionID)
 		}
 		log.Debugf("NewFrame", "sid:%s fid:%s pfid:%s", sid, frameID, pfid)
 	}

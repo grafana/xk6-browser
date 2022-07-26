@@ -62,9 +62,6 @@ type Browser struct {
 	browserProc *BrowserProcess
 	launchOpts  *LaunchOptions
 
-	// Connection to the browser to talk CDP protocol.
-	// A *Connection is saved to this field, see: connect().
-	conn      connection
 	cdpClient *cdp.Client
 
 	contextsMu     sync.RWMutex
@@ -131,11 +128,6 @@ func newBrowser(
 
 func (b *Browser) connect() (err error) {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
-	// TODO: Remove this connection once all CDP calls are moved to the cdp package.
-	if b.conn, err = NewConnection(b.ctx, b.browserProc.WsURL(), b.logger); err != nil {
-		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
-	}
-
 	if err = b.cdpClient.Connect(b.browserProc.WsURL()); err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
@@ -174,45 +166,45 @@ func (b *Browser) getPages() []*Page {
 func (b *Browser) initEvents() error {
 	var cancelCtx context.Context
 	cancelCtx, b.evCancelFn = context.WithCancel(b.ctx)
-	chHandler := make(chan Event)
+	// chHandler := make(chan Event)
 
-	b.conn.on(cancelCtx, []string{
-		cdproto.EventTargetAttachedToTarget,
-		cdproto.EventTargetDetachedFromTarget,
-		EventConnectionClose,
-	}, chHandler)
+	// b.conn.on(cancelCtx, []string{
+	// 	cdproto.EventTargetAttachedToTarget,
+	// 	cdproto.EventTargetDetachedFromTarget,
+	// 	EventConnectionClose,
+	// }, chHandler)
 
-	go func() {
-		defer func() {
-			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
-			b.browserProc.didLoseConnection()
-			if b.cancelFn != nil {
-				b.cancelFn()
-			}
-		}()
-		for {
-			select {
-			case <-cancelCtx.Done():
-				return
-			case event := <-chHandler:
-				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
-					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
-					b.onAttachedToTarget(ev)
-				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
-					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
-					b.onDetachedFromTarget(ev)
-				} else if event.typ == EventConnectionClose {
-					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
-					return
-				}
-			}
-		}
-	}()
+	// go func() {
+	// 	defer func() {
+	// 		b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
+	// 		b.browserProc.didLoseConnection()
+	// 		if b.cancelFn != nil {
+	// 			b.cancelFn()
+	// 		}
+	// 	}()
+	// 	for {
+	// 		select {
+	// 		case <-cancelCtx.Done():
+	// 			return
+	// 		case event := <-chHandler:
+	// 			if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
+	// 				b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
+	// 				b.onAttachedToTarget(ev)
+	// 			} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
+	// 				b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
+	// 				b.onDetachedFromTarget(ev)
+	// 			} else if event.typ == EventConnectionClose {
+	// 				b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
+	// 				return
+	// 			}
+	// 		}
+	// 	}
+	// }()
 
 	evtCh, _ := b.cdpClient.Subscribe(
 		// TODO: Maybe have a separate Subscribe() method for non-session
 		// event subscriptions?
-		"", "",
+		b.ctx, "",
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 	)
@@ -266,7 +258,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	if session == nil {
 		fmt.Printf(">>> creating session ID %s\n", ev.SessionID)
 		b.sessionsMu.Lock()
-		session = NewSession(b.ctx, b.conn.(*Connection), ev.SessionID, evti.TargetID, b.logger)
+		session = NewSession(b.ctx, string(ev.SessionID), evti.TargetID, b.logger)
 		b.logger.Debugf("Browser:onAttachedToTarget", "sid:%v tid:%v url:%q", ev.SessionID, evti.TargetID, evti.URL)
 		b.sessions[ev.SessionID] = session
 		b.sessionsMu.Unlock()
@@ -274,7 +266,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 	switch evti.Type {
 	case "background_page":
-		p, err := NewPage(b.ctx, session, browserCtx, evti.TargetID, nil, false, b.logger)
+		p, err := NewPage(b.ctx, browserCtx, session.id, evti.TargetID, nil, false, b.logger)
 		if err != nil {
 			isRunning := atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
 			if _, ok := err.(*websocket.CloseError); !ok && !isRunning {
@@ -314,7 +306,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 		b.logger.Debugf("Browser:onAttachedToTarget:page", "sid:%v tid:%v opener nil:%t", ev.SessionID, evti.TargetID, opener == nil)
 
-		p, err := NewPage(b.ctx, session, browserCtx, evti.TargetID, opener, true, b.logger)
+		p, err := NewPage(b.ctx, browserCtx, session.id, evti.TargetID, opener, true, b.logger)
 		if err != nil {
 			isRunning := atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
 			if _, ok := err.(*websocket.CloseError); !ok && !isRunning {
@@ -441,9 +433,9 @@ func (b *Browser) getSession(sid target.SessionID) *Session {
 func (b *Browser) closeSession(sid target.SessionID) {
 	b.logger.Debugf("Browser:closeSession", "sid:%v", sid)
 	b.sessionsMu.Lock()
-	if session, ok := b.sessions[sid]; ok {
-		session.close()
-	}
+	// if session, ok := b.sessions[sid]; ok {
+	// 	session.close()
+	// }
 	delete(b.sessions, sid)
 	b.sessionsMu.Unlock()
 }

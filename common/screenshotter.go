@@ -30,10 +30,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
+	"github.com/grafana/xk6-browser/cdp"
 )
 
 type screenshotter struct {
@@ -120,7 +121,7 @@ func (s *screenshotter) restoreViewport(p *Page, originalViewport *Size) error {
 
 //nolint:funlen,cyclop
 func (s *screenshotter) screenshot(
-	sess session, doc, viewport *Rect, format ImageFormat, omitBackground bool, quality int64, path string,
+	cdpClient *cdp.Client, doc, viewport *Rect, format ImageFormat, omitBackground bool, quality int64, path string,
 ) (*[]byte, error) {
 	var (
 		buf  []byte
@@ -131,8 +132,8 @@ func (s *screenshotter) screenshot(
 	shouldSetDefaultBackground := omitBackground && format == "png"
 	if shouldSetDefaultBackground {
 		action := emulation.SetDefaultBackgroundColorOverride().
-			WithColor(&cdp.RGBA{R: 0, G: 0, B: 0, A: 0})
-		if err := action.Do(cdp.WithExecutor(s.ctx, sess)); err != nil {
+			WithColor(&cdpext.RGBA{R: 0, G: 0, B: 0, A: 0})
+		if err := action.Do(cdpext.WithExecutor(s.ctx, cdpClient)); err != nil {
 			return nil, fmt.Errorf("setting screenshot background transparency: %w", err)
 		}
 	}
@@ -149,7 +150,7 @@ func (s *screenshotter) screenshot(
 
 	// Add clip region
 	//nolint:dogsled
-	_, visualViewport, _, _, _, _, err := cdppage.GetLayoutMetrics().Do(cdp.WithExecutor(s.ctx, sess))
+	_, visualViewport, _, _, _, _, err := cdppage.GetLayoutMetrics().Do(cdpext.WithExecutor(s.ctx, cdpClient))
 	if err != nil {
 		return nil, fmt.Errorf("getting layout metrics for screenshot: %w", err)
 	}
@@ -183,14 +184,14 @@ func (s *screenshotter) screenshot(
 	}
 
 	// Capture screenshot
-	buf, err = capture.Do(cdp.WithExecutor(s.ctx, sess))
+	buf, err = capture.Do(cdpext.WithExecutor(s.ctx, cdpClient))
 	if err != nil {
 		return nil, fmt.Errorf("capturing screenshot: %w", err)
 	}
 
 	if shouldSetDefaultBackground {
 		action := emulation.SetDefaultBackgroundColorOverride()
-		if err := action.Do(cdp.WithExecutor(s.ctx, sess)); err != nil {
+		if err := action.Do(cdpext.WithExecutor(s.ctx, cdpClient)); err != nil {
 			return nil, fmt.Errorf("resetting screenshot background color: %w", err)
 		}
 	}
@@ -269,7 +270,7 @@ func (s *screenshotter) screenshotElement(h *ElementHandle, opts *ElementHandleS
 		documentRect.Y += s.ToObject(rt).Get("y").ToFloat()
 	}
 
-	buf, err := s.screenshot(h.frame.page.session, documentRect.enclosingIntRect(), nil, format, opts.OmitBackground, opts.Quality, opts.Path)
+	buf, err := s.screenshot(h.cdpClient, documentRect.enclosingIntRect(), nil, format, opts.OmitBackground, opts.Quality, opts.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +329,7 @@ func (s *screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 			}
 		}
 
-		buf, err := s.screenshot(p.session, documentRect, nil, format, opts.OmitBackground, opts.Quality, opts.Path)
+		buf, err := s.screenshot(p.cdpClient, documentRect, nil, format, opts.OmitBackground, opts.Quality, opts.Path)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +359,7 @@ func (s *screenshotter) screenshotPage(p *Page, opts *PageScreenshotOptions) (*[
 			return nil, fmt.Errorf("trimming clip to size: %w", err)
 		}
 	}
-	return s.screenshot(p.session, nil, viewportRect, format, opts.OmitBackground, opts.Quality, opts.Path)
+	return s.screenshot(p.cdpClient, nil, viewportRect, format, opts.OmitBackground, opts.Quality, opts.Path)
 }
 
 func (s *screenshotter) trimClipToSize(clip *Rect, size *Size) (*Rect, error) {

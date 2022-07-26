@@ -46,7 +46,7 @@ func (h *ElementHandle) boundingBox() (*Rect, error) {
 	var box *dom.BoxModel
 	var err error
 	action := dom.GetBoxModel().WithObjectID(h.remoteObject.ObjectID)
-	if box, err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if box, err = action.Do(cdp.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		return nil, fmt.Errorf("getting bounding box model of DOM node: %w", err)
 	}
 
@@ -159,7 +159,7 @@ func (h *ElementHandle) clickablePoint() (*Position, error) {
 		err   error
 	)
 	getContentQuads := dom.GetContentQuads().WithObjectID(h.remoteObject.ObjectID)
-	if quads, err = getContentQuads.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if quads, err = getContentQuads.Do(cdp.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		return nil, fmt.Errorf("getting node content quads %T: %w", getContentQuads, err)
 	}
 	if len(quads) == 0 {
@@ -169,7 +169,7 @@ func (h *ElementHandle) clickablePoint() (*Position, error) {
 	// Filter out quads that have too small area to click into.
 	var layoutViewport *cdppage.LayoutViewport
 	getLayoutMetrics := cdppage.GetLayoutMetrics()
-	if _, _, _, layoutViewport, _, _, err = getLayoutMetrics.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if _, _, _, layoutViewport, _, _, err = getLayoutMetrics.Do(cdp.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		return nil, fmt.Errorf("getting page layout metrics %T: %w", getLayoutMetrics, err)
 	}
 
@@ -458,7 +458,7 @@ func (h *ElementHandle) ownerFrame(apiCtx context.Context) *Frame {
 
 func (h *ElementHandle) scrollRectIntoViewIfNeeded(apiCtx context.Context, rect *dom.Rect) error {
 	action := dom.ScrollIntoViewIfNeeded().WithObjectID(h.remoteObject.ObjectID).WithRect(rect)
-	err := action.Do(cdp.WithExecutor(apiCtx, h.session))
+	err := action.Do(cdp.WithExecutor(apiCtx, h.cdpClient))
 	if err != nil {
 		if strings.Contains(err.Error(), "Node does not have a layout object") {
 			return errorFromDOMError("error:notvisible")
@@ -762,7 +762,7 @@ func (h *ElementHandle) ContentFrame() api.Frame {
 		err  error
 	)
 	action := dom.DescribeNode().WithObjectID(h.remoteObject.ObjectID)
-	if node, err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if node, err = action.Do(cdp.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		k6ext.Panic(h.ctx, "getting remote node %q: %w", h.remoteObject.ObjectID, err)
 	}
 	if node == nil || node.FrameID == "" {
@@ -996,7 +996,7 @@ func (h *ElementHandle) OwnerFrame() api.Frame {
 
 	var node *cdp.Node
 	action := dom.DescribeNode().WithObjectID(documentHandle.remoteObject.ObjectID)
-	if node, err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if node, err = action.Do(cdp.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		k6ext.Panic(h.ctx, "getting node in frame: %w", err)
 	}
 	if node == nil || node.FrameID == "" {

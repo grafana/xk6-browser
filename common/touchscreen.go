@@ -24,9 +24,10 @@ import (
 	"context"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/input"
 )
 
@@ -38,29 +39,29 @@ var _ api.Touchscreen = &Touchscreen{}
 type Touchscreen struct {
 	BaseEventEmitter
 
-	ctx      context.Context
-	session  session
-	keyboard *Keyboard
+	ctx       context.Context
+	cdpClient *cdp.Client
+	keyboard  *Keyboard
 }
 
 // NewTouchscreen returns a new TouchScreen.
-func NewTouchscreen(ctx context.Context, s session, k *Keyboard) *Touchscreen {
+func NewTouchscreen(ctx context.Context, c *cdp.Client, k *Keyboard) *Touchscreen {
 	return &Touchscreen{
-		ctx:      ctx,
-		session:  s,
-		keyboard: k,
+		ctx:       ctx,
+		cdpClient: c,
+		keyboard:  k,
 	}
 }
 
 func (t *Touchscreen) tap(x float64, y float64) error {
 	action := input.DispatchTouchEvent(input.TouchStart, []*input.TouchPoint{{X: x, Y: y}}).
 		WithModifiers(input.Modifier(t.keyboard.modifiers))
-	if err := action.Do(cdp.WithExecutor(t.ctx, t.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(t.ctx, t.cdpClient)); err != nil {
 		return err
 	}
 	action = input.DispatchTouchEvent(input.TouchEnd, []*input.TouchPoint{}).
 		WithModifiers(input.Modifier(t.keyboard.modifiers))
-	if err := action.Do(cdp.WithExecutor(t.ctx, t.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(t.ctx, t.cdpClient)); err != nil {
 		return err
 	}
 	return nil

@@ -28,13 +28,14 @@ import (
 	"regexp"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
 	k6modules "go.k6.io/k6/js/modules"
 
 	"github.com/chromedp/cdproto"
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/target"
@@ -68,7 +69,7 @@ func (ea evalOptions) String() string {
 type ExecutionContext struct {
 	ctx            context.Context
 	logger         *log.Logger
-	session        session
+	cdpClient      *cdp.Client
 	frame          *Frame
 	id             runtime.ExecutionContextID
 	injectedScript api.JSHandle
@@ -76,30 +77,31 @@ type ExecutionContext struct {
 
 	// Used for logging
 	sid  target.SessionID // Session ID
-	stid cdp.FrameID      // Session TargetID
-	fid  cdp.FrameID      // Frame ID
+	stid cdpext.FrameID   // Session TargetID
+	fid  cdpext.FrameID   // Frame ID
 	furl string           // Frame URL
 }
 
 // NewExecutionContext creates a new JS execution context.
 func NewExecutionContext(
-	ctx context.Context, s session, f *Frame, id runtime.ExecutionContextID, l *log.Logger,
+	ctx context.Context, c *cdp.Client, f *Frame, id runtime.ExecutionContextID, l *log.Logger,
 ) *ExecutionContext {
 	e := &ExecutionContext{
 		ctx:            ctx,
-		session:        s,
+		cdpClient:      c,
 		frame:          f,
 		id:             id,
 		injectedScript: nil,
 		vu:             k6ext.GetVU(ctx),
 		logger:         l,
 	}
-	if s != nil {
-		e.sid = s.ID()
-		e.stid = cdp.FrameID(s.TargetID())
-	}
+	// TODO: Pass Session just for this?
+	// if s != nil {
+	// 	e.sid = s.ID()
+	// 	e.stid = cdpext.FrameID(s.TargetID())
+	// }
 	if f != nil {
-		e.fid = cdp.FrameID(f.ID())
+		e.fid = cdpext.FrameID(f.ID())
 		e.furl = f.URL()
 	}
 	l.Debugf(
@@ -111,7 +113,7 @@ func NewExecutionContext(
 }
 
 // Adopts specified backend node into this execution context from another execution context.
-func (e *ExecutionContext) adoptBackendNodeID(backendNodeID cdp.BackendNodeID) (*ElementHandle, error) {
+func (e *ExecutionContext) adoptBackendNodeID(backendNodeID cdpext.BackendNodeID) (*ElementHandle, error) {
 	e.logger.Debugf(
 		"ExecutionContext:adoptBackendNodeID",
 		"sid:%s stid:%s fid:%s ectxid:%d furl:%q bnid:%d",
@@ -126,25 +128,26 @@ func (e *ExecutionContext) adoptBackendNodeID(backendNodeID cdp.BackendNodeID) (
 		WithBackendNodeID(backendNodeID).
 		WithExecutionContextID(e.id)
 
-	if remoteObj, err = action.Do(cdp.WithExecutor(e.ctx, e.session)); err != nil {
+	if remoteObj, err = action.Do(cdpext.WithExecutor(e.ctx, e.cdpClient)); err != nil {
 		return nil, fmt.Errorf("resolving DOM node: %w", err)
 	}
 
-	return NewJSHandle(e.ctx, e.session, e, e.frame, remoteObj, e.logger).AsElement().(*ElementHandle), nil
+	return NewJSHandle(e.ctx, e, e.cdpClient, e.frame, remoteObj, e.logger).AsElement().(*ElementHandle), nil
 }
 
 // Adopts the specified element handle into this execution context from another execution context.
 func (e *ExecutionContext) adoptElementHandle(eh *ElementHandle) (*ElementHandle, error) {
 	var (
-		efid cdp.FrameID
+		efid cdpext.FrameID
 		esid target.SessionID
 	)
 	if eh.frame != nil {
-		efid = cdp.FrameID(eh.frame.ID())
+		efid = cdpext.FrameID(eh.frame.ID())
 	}
-	if eh.session != nil {
-		esid = eh.session.ID()
-	}
+	// TODO: Get from e.ctx?
+	// if eh.session != nil {
+	// 	esid = eh.session.ID()
+	// }
 	e.logger.Debugf(
 		"ExecutionContext:adoptElementHandle",
 		"sid:%s stid:%s fid:%s ectxid:%d furl:%q ehtid:%s ehsid:%s",
@@ -158,11 +161,11 @@ func (e *ExecutionContext) adoptElementHandle(eh *ElementHandle) (*ElementHandle
 		return nil, errors.New("does not have a frame owner")
 	}
 
-	var node *cdp.Node
+	var node *cdpext.Node
 	var err error
 
 	action := dom.DescribeNode().WithObjectID(eh.remoteObject.ObjectID)
-	if node, err = action.Do(cdp.WithExecutor(e.ctx, e.session)); err != nil {
+	if node, err = action.Do(cdpext.WithExecutor(e.ctx, e.cdpClient)); err != nil {
 		return nil, fmt.Errorf("describing DOM node: %w", err)
 	}
 
@@ -221,7 +224,7 @@ func (e *ExecutionContext) eval(
 		exceptionDetails *runtime.ExceptionDetails
 		err              error
 	)
-	if remoteObject, exceptionDetails, err = action.Do(cdp.WithExecutor(apiCtx, e.session)); err != nil {
+	if remoteObject, exceptionDetails, err = action.Do(cdpext.WithExecutor(apiCtx, e.cdpClient)); err != nil {
 		var cdpe *cdproto.Error
 		if errors.As(err, &cdpe) && cdpe.Code == -32000 {
 			err = errors.New("execution context changed; most likely because of a navigation")
@@ -249,7 +252,7 @@ func (e *ExecutionContext) eval(
 		}
 	} else if remoteObject.ObjectID != "" {
 		// Note: we don't use the passed in apiCtx here as it could be tied to a timeout
-		res = NewJSHandle(e.ctx, e.session, e, e.frame, remoteObject, e.logger)
+		res = NewJSHandle(e.ctx, e, e.cdpClient, e.frame, remoteObject, e.logger)
 	}
 
 	return res, nil

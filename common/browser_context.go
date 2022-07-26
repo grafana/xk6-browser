@@ -214,7 +214,7 @@ func (b *BrowserContext) GrantPermissions(permissions []string, opts goja.Value)
 	}
 
 	action := cdpbrowser.GrantPermissions(perms).WithOrigin(origin).WithBrowserContextID(cdpext.BrowserContextID(b.id))
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
+	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.cdpClient)); err != nil {
 		k6ext.Panic(b.ctx, "internal error while granting browser permissions: %w", err)
 	}
 }
@@ -428,5 +428,5 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 }
 
 func (b *BrowserContext) getSession(id target.SessionID) *Session {
-	return b.browser.conn.getSession(id)
+	return b.browser.getSession(id)
 }

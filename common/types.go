@@ -35,6 +35,10 @@ import (
 	"github.com/dop251/goja"
 )
 
+type Action interface {
+	Do(context.Context) error
+}
+
 // ColorScheme represents a browser color scheme.
 type ColorScheme string
 
