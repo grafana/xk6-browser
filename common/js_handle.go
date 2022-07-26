@@ -25,10 +25,11 @@ import (
 	"fmt"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/dop251/goja"
 )
@@ -44,8 +45,8 @@ var _ jsHandle = &BaseJSHandle{}
 // BaseJSHandle represents a JS object in an execution context.
 type BaseJSHandle struct {
 	ctx          context.Context
+	cdpClient    *cdp.Client
 	logger       *log.Logger
-	session      session
 	execCtx      *ExecutionContext
 	remoteObject *runtime.RemoteObject
 	disposed     bool
@@ -54,15 +55,15 @@ type BaseJSHandle struct {
 // NewJSHandle creates a new JS handle referencing a remote object.
 func NewJSHandle(
 	ctx context.Context,
-	s session,
 	ectx *ExecutionContext,
+	c *cdp.Client,
 	f *Frame,
 	ro *runtime.RemoteObject,
 	l *log.Logger,
 ) jsHandle {
 	eh := &BaseJSHandle{
 		ctx:          ctx,
-		session:      s,
+		cdpClient:    c,
 		execCtx:      ectx,
 		remoteObject: ro,
 		disposed:     false,
@@ -101,7 +102,7 @@ func (h *BaseJSHandle) dispose() error {
 		return nil
 	}
 	act := runtime.ReleaseObject(h.remoteObject.ObjectID)
-	if err := act.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	if err := act.Do(cdpext.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 		return fmt.Errorf("disposing element with ID %s: %w",
 			h.remoteObject.ObjectID, err)
 	}
@@ -149,7 +150,7 @@ func (h *BaseJSHandle) GetProperties() map[string]api.JSHandle {
 // getProperties is like GetProperties, but does not panic.
 func (h *BaseJSHandle) getProperties() (map[string]jsHandle, error) {
 	act := runtime.GetProperties(h.remoteObject.ObjectID).WithOwnProperties(true)
-	result, _, _, _, err := act.Do(cdp.WithExecutor(h.ctx, h.session)) //nolint:dogsled
+	result, _, _, _, err := act.Do(cdpext.WithExecutor(h.ctx, h.cdpClient)) //nolint:dogsled
 	if err != nil {
 		return nil, fmt.Errorf("getting properties for element with ID %s: %w",
 			h.remoteObject.ObjectID, err)
@@ -160,7 +161,7 @@ func (h *BaseJSHandle) getProperties() (map[string]jsHandle, error) {
 		if !r.Enumerable {
 			continue
 		}
-		props[r.Name] = NewJSHandle(h.ctx, h.session, h.execCtx, h.execCtx.Frame(), r.Value, h.logger)
+		props[r.Name] = NewJSHandle(h.ctx, h.execCtx, h.cdpClient, h.execCtx.Frame(), r.Value, h.logger)
 	}
 
 	return props, nil
@@ -180,7 +181,7 @@ func (h *BaseJSHandle) JSONValue() goja.Value {
 			WithReturnByValue(true).
 			WithAwaitPromise(true).
 			WithObjectID(h.remoteObject.ObjectID)
-		if result, _, err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+		if result, _, err = action.Do(cdpext.WithExecutor(h.ctx, h.cdpClient)); err != nil {
 			k6ext.Panic(h.ctx, "getting properties for JS handle: %w", err)
 		}
 		res, err := valueFromRemoteObject(h.ctx, result)

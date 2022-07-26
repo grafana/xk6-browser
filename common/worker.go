@@ -25,8 +25,9 @@ import (
 	"fmt"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
@@ -40,20 +41,18 @@ var _ api.Worker = &Worker{}
 
 type Worker struct {
 	BaseEventEmitter
-
-	ctx     context.Context
-	session session
-
-	targetID target.ID
-	url      string
+	ctx       context.Context
+	cdpClient *cdp.Client
+	targetID  target.ID
+	url       string
 }
 
 // NewWorker creates a new page viewport.
-func NewWorker(ctx context.Context, s session, id target.ID, url string) (*Worker, error) {
+func NewWorker(ctx context.Context, c *cdp.Client, id target.ID, url string) (*Worker, error) {
 	w := Worker{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
 		ctx:              ctx,
-		session:          s,
+		cdpClient:        c,
 		targetID:         id,
 		url:              url,
 	}
@@ -75,7 +74,7 @@ func (w *Worker) initEvents() error {
 		runtime.RunIfWaitingForDebugger(),
 	}
 	for _, action := range actions {
-		if err := action.Do(cdp.WithExecutor(w.ctx, w.session)); err != nil {
+		if err := action.Do(cdpext.WithExecutor(w.ctx, w.cdpClient)); err != nil {
 			return fmt.Errorf("protocol error while initializing worker %T: %w", action, err)
 		}
 	}

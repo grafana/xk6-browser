@@ -25,9 +25,10 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/input"
 	"github.com/dop251/goja"
 )
@@ -38,7 +39,7 @@ var _ api.Mouse = &Mouse{}
 // Mouse represents a mouse input device.
 type Mouse struct {
 	ctx             context.Context
-	session         session
+	cdpClient       *cdp.Client
 	frame           *Frame
 	timeoutSettings *TimeoutSettings
 	keyboard        *Keyboard
@@ -48,10 +49,10 @@ type Mouse struct {
 }
 
 // NewMouse creates a new mouse.
-func NewMouse(ctx context.Context, s session, f *Frame, ts *TimeoutSettings, k *Keyboard) *Mouse {
+func NewMouse(ctx context.Context, c *cdp.Client, f *Frame, ts *TimeoutSettings, k *Keyboard) *Mouse {
 	return &Mouse{
 		ctx:             ctx,
-		session:         s,
+		cdpClient:       c,
 		frame:           f,
 		timeoutSettings: ts,
 		keyboard:        k,
@@ -111,7 +112,7 @@ func (m *Mouse) down(x float64, y float64, opts *MouseDownUpOptions) error {
 		WithButton(input.MouseButton(opts.Button)).
 		WithModifiers(input.Modifier(m.keyboard.modifiers)).
 		WithClickCount(opts.ClickCount)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.cdpClient)); err != nil {
 		return err
 	}
 	return nil
@@ -128,7 +129,7 @@ func (m *Mouse) move(x float64, y float64, opts *MouseMoveOptions) error {
 		action := input.DispatchMouseEvent(input.MouseMoved, x, y).
 			WithButton(m.button).
 			WithModifiers(input.Modifier(m.keyboard.modifiers))
-		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+		if err := action.Do(cdpext.WithExecutor(m.ctx, m.cdpClient)); err != nil {
 			return err
 		}
 	}
@@ -143,7 +144,7 @@ func (m *Mouse) up(x float64, y float64, opts *MouseDownUpOptions) error {
 		WithButton(button).
 		WithModifiers(input.Modifier(m.keyboard.modifiers)).
 		WithClickCount(clickCount)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.cdpClient)); err != nil {
 		return err
 	}
 	return nil
@@ -224,7 +225,7 @@ func (m *Mouse) Up(x float64, y float64, opts goja.Value) {
 		WithModifiers(input.Modifier(m.keyboard.modifiers)).
 		WithDeltaX(deltaX).
 		WithDeltaY(deltaY)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.cdpClient)); err != nil {
 		k6Throw(m.ctx, "mouse down: %w", err)
 	}
 }*/

@@ -29,9 +29,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/xk6-browser/log"
-
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
+	"github.com/grafana/xk6-browser/log"
 
 	k6modules "go.k6.io/k6/js/modules"
 	k6lib "go.k6.io/k6/lib"
@@ -40,7 +40,7 @@ import (
 	k6metrics "go.k6.io/k6/metrics"
 
 	"github.com/chromedp/cdproto"
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
@@ -56,7 +56,6 @@ type NetworkManager struct {
 
 	ctx          context.Context
 	logger       *log.Logger
-	session      session
 	parent       *NetworkManager
 	frameManager *FrameManager
 	credentials  *Credentials
@@ -79,7 +78,7 @@ type NetworkManager struct {
 
 // NewNetworkManager creates a new network manager.
 func NewNetworkManager(
-	ctx context.Context, s session, fm *FrameManager, parent *NetworkManager,
+	ctx context.Context, fm *FrameManager, parent *NetworkManager,
 ) (*NetworkManager, error) {
 	vu := k6ext.GetVU(ctx)
 	state := vu.State()
@@ -95,7 +94,6 @@ func NewNetworkManager(
 		// TODO: Pass an internal logger instead of basing it on k6's logger?
 		// See https://github.com/grafana/xk6-browser/issues/54
 		logger:           log.New(state.Logger, false, nil),
-		session:          s,
 		parent:           parent,
 		frameManager:     fm,
 		resolver:         resolver,
@@ -303,7 +301,7 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 	}
 }
 
-func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdp.MonotonicTime) {
+func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdpext.MonotonicTime) {
 	resp := NewHTTPResponse(m.ctx, req, redirectResponse, timestamp)
 	req.response = resp
 	req.redirectChain = append(req.redirectChain, req)
@@ -329,8 +327,8 @@ func (m *NetworkManager) initDomains() error {
 			fetch.Enable().WithPatterns([]*fetch.RequestPattern{{URLPattern: "*"}}))
 	}
 	for _, action := range actions {
-		fmt.Printf(">>> enabling domain with session ID: %s\n", m.session.ID())
-		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+		fmt.Printf(">>> enabling domain with session ID: %s\n", m.frameManager.page.sessionID)
+		if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 			return fmt.Errorf("initializing networking %T: %w", action, err)
 		}
 	}
@@ -339,8 +337,7 @@ func (m *NetworkManager) initDomains() error {
 }
 
 func (m *NetworkManager) initEvents() {
-	chHandler := make(chan Event)
-	m.session.on(m.ctx, []string{
+	evtCh, _ := m.frameManager.page.cdpClient.Subscribe(m.ctx, "", []cdproto.MethodType{
 		cdproto.EventNetworkLoadingFailed,
 		cdproto.EventNetworkLoadingFinished,
 		cdproto.EventNetworkRequestWillBeSent,
@@ -348,15 +345,15 @@ func (m *NetworkManager) initEvents() {
 		cdproto.EventNetworkResponseReceived,
 		cdproto.EventFetchRequestPaused,
 		cdproto.EventFetchAuthRequired,
-	}, chHandler)
+	}...)
 
 	go func() {
-		for m.handleEvents(chHandler) {
+		for m.handleEvents(evtCh) {
 		}
 	}()
 }
 
-func (m *NetworkManager) handleEvents(in <-chan Event) bool {
+func (m *NetworkManager) handleEvents(in <-chan *cdp.Event) bool {
 	select {
 	case <-m.ctx.Done():
 		return false
@@ -366,7 +363,7 @@ func (m *NetworkManager) handleEvents(in <-chan Event) bool {
 			return false
 		default:
 		}
-		switch ev := event.data.(type) {
+		switch ev := event.Data.(type) {
 		case *network.EventLoadingFailed:
 			m.onLoadingFailed(ev)
 		case *network.EventLoadingFinished:
@@ -476,16 +473,16 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 
 func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) {
 	m.logger.Debugf("NetworkManager:onRequestPaused",
-		"sid:%s url:%v", m.session.ID(), event.Request.URL)
+		"sid:%s url:%v", m.frameManager.page.sessionID, event.Request.URL)
 	defer m.logger.Debugf("NetworkManager:onRequestPaused:return",
-		"sid:%s url:%v", m.session.ID(), event.Request.URL)
+		"sid:%s url:%v", m.frameManager.page.sessionID, event.Request.URL)
 
 	var failErr error
 
 	defer func() {
 		if failErr != nil {
 			action := fetch.FailRequest(event.RequestID, network.ErrorReasonBlockedByClient)
-			if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+			if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 				m.logger.Errorf("NetworkManager:onRequestPaused",
 					"interrupting request: %s", err)
 			} else {
@@ -495,7 +492,7 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) {
 			}
 		}
 		action := fetch.ContinueRequest(event.RequestID)
-		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+		if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 			m.logger.Errorf("NetworkManager:onRequestPaused",
 				"continuing request: %s", err)
 		}
@@ -583,7 +580,7 @@ func (m *NetworkManager) onAuthRequired(event *fetch.EventAuthRequired) {
 			Username: username,
 			Password: password,
 		},
-	).Do(cdp.WithExecutor(m.ctx, m.session))
+	).Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient))
 	if err != nil {
 		m.logger.Debugf("NetworkManager:onAuthRequired", "continueWithAuth url:%q err:%v", event.Request.URL, err)
 	} else {
@@ -621,7 +618,7 @@ func (m *NetworkManager) setRequestInterception(value bool) error {
 
 func (m *NetworkManager) updateProtocolCacheDisabled() error {
 	action := network.SetCacheDisabled(m.userCacheDisabled)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 		errAction := "enabling"
 		if m.userCacheDisabled {
 			errAction = "disabling"
@@ -656,7 +653,7 @@ func (m *NetworkManager) updateProtocolRequestInterception() error {
 		}
 	}
 	for _, action := range actions {
-		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+		if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 			return fmt.Errorf("internal error while updating protocol request interception %T: %w", action, err)
 		}
 	}
@@ -684,7 +681,7 @@ func (m *NetworkManager) ExtraHTTPHeaders() goja.Value {
 // SetExtraHTTPHeaders sets extra HTTP request headers to be sent with every request.
 func (m *NetworkManager) SetExtraHTTPHeaders(headers network.Headers) {
 	action := network.SetExtraHTTPHeaders(headers)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 		k6ext.Panic(m.ctx, "setting extra HTTP headers: %w", err)
 	}
 }
@@ -697,7 +694,7 @@ func (m *NetworkManager) SetOfflineMode(offline bool) {
 	m.offline = offline
 
 	action := network.EmulateNetworkConditions(m.offline, 0, -1, -1)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 		k6ext.Panic(m.ctx, "setting offline mode: %w", err)
 	}
 }
@@ -705,7 +702,7 @@ func (m *NetworkManager) SetOfflineMode(offline bool) {
 // SetUserAgent overrides the browser user agent string.
 func (m *NetworkManager) SetUserAgent(userAgent string) {
 	action := emulation.SetUserAgentOverride(userAgent)
-	if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(m.ctx, m.frameManager.page.cdpClient)); err != nil {
 		k6ext.Panic(m.ctx, "setting user agent: %w", err)
 	}
 }

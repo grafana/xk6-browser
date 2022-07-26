@@ -26,10 +26,11 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/keyboardlayout"
 
-	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/input"
 	"github.com/dop251/goja"
 )
@@ -46,8 +47,8 @@ const (
 // Keyboard represents a keyboard input device.
 // Each Page has a publicly accessible Keyboard.
 type Keyboard struct {
-	ctx     context.Context
-	session session
+	ctx       context.Context
+	cdpClient *cdp.Client
 
 	modifiers   int64          // like shift, alt, ctrl, ...
 	pressedKeys map[int64]bool // tracks keys through down() and up()
@@ -56,10 +57,10 @@ type Keyboard struct {
 }
 
 // NewKeyboard returns a new keyboard with a "us" layout.
-func NewKeyboard(ctx context.Context, s session) *Keyboard {
+func NewKeyboard(ctx context.Context, c *cdp.Client) *Keyboard {
 	return &Keyboard{
 		ctx:         ctx,
-		session:     s,
+		cdpClient:   c,
 		pressedKeys: make(map[int64]bool),
 		layoutName:  "us",
 		layout:      keyboardlayout.GetKeyboardLayout("us"),
@@ -142,7 +143,7 @@ func (k *Keyboard) down(key string) error {
 		WithText(text).
 		WithUnmodifiedText(text).
 		WithAutoRepeat(autoRepeat)
-	if err := action.Do(cdp.WithExecutor(k.ctx, k.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(k.ctx, k.cdpClient)); err != nil {
 		return fmt.Errorf("dispatching key event down: %w", err)
 	}
 
@@ -165,7 +166,7 @@ func (k *Keyboard) up(key string) error {
 		WithWindowsVirtualKeyCode(keyDef.KeyCode).
 		WithCode(keyDef.Code).
 		WithLocation(keyDef.Location)
-	if err := action.Do(cdp.WithExecutor(k.ctx, k.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(k.ctx, k.cdpClient)); err != nil {
 		return fmt.Errorf("dispatching key event up: %w", err)
 	}
 
@@ -174,7 +175,7 @@ func (k *Keyboard) up(key string) error {
 
 func (k *Keyboard) insertText(text string) error {
 	action := input.InsertText(text)
-	if err := action.Do(cdp.WithExecutor(k.ctx, k.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(k.ctx, k.cdpClient)); err != nil {
 		return fmt.Errorf("inserting text: %w", err)
 	}
 	return nil

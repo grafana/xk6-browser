@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
-	"github.com/grafana/xk6-browser/cdp"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -45,9 +44,7 @@ import (
 // FrameManager manages all frames in a page and their life-cycles, it's a purely internal component.
 type FrameManager struct {
 	ctx             context.Context
-	sessionID       string
 	page            *Page
-	cdpClient       *cdp.Client
 	timeoutSettings *TimeoutSettings
 
 	// protects from the data race between:
@@ -78,17 +75,13 @@ var frameManagerID int64
 // NewFrameManager creates a new HTML document frame manager.
 func NewFrameManager(
 	ctx context.Context,
-	sessionID string,
 	p *Page,
 	ts *TimeoutSettings,
 	l *log.Logger,
 ) *FrameManager {
-	ctx = cdp.WithSessionID(ctx, sessionID)
 	m := &FrameManager{
 		ctx:              ctx,
-		sessionID:        sessionID,
 		page:             p,
-		cdpClient:        p.browserCtx.browser.cdpClient,
 		timeoutSettings:  ts,
 		frames:           make(map[cdpext.FrameID]*Frame),
 		inflightRequests: make(map[network.RequestID]bool),
@@ -625,8 +618,8 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	// }
 
-	evtCh, cdpUnsub := m.cdpClient.Subscribe(
-		p.ctx, frame.ID(),
+	evtCh, cdpUnsub := m.page.cdpClient.Subscribe(
+		m.ctx, frame.ID(),
 		cdproto.EventPageFrameNavigated,
 		cdproto.EventPageNavigatedWithinDocument,
 		cdproto.EventPageLifecycleEvent)
@@ -667,7 +660,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	}()
 
 	var err error
-	newDocID, err := m.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
+	newDocID, err := m.page.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}

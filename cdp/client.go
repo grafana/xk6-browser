@@ -138,6 +138,15 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 		Params: buf,
 	}
 
+	// We use different sessions to send messages to "targets"
+	// (browser, page, frame etc.) in CDP.
+	//
+	// If we don't specify a session (a session ID in the JSON message),
+	// it will be a message for the browser target.
+	//
+	// With a session ID set in the context (WithSessionID(ctx)),
+	// it will properly route the CDP message to the correct target
+	// (page, frame, etc.).
 	if sid := GetSessionID(ctx); sid != "" {
 		msg.SessionID = target.SessionID(sid)
 	}
@@ -145,13 +154,47 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 	return c.send(ctx, msg, recvCh, res)
 }
 
+// TODO: Wrap this in a friendlier method
+func (c *Client) ExecuteWithoutExpectationOnReply(ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler) error {
+	sid := GetSessionID(ctx)
+	// c.logger.Debugf("Session:ExecuteWithoutExpectationOnReply", "sid:%v tid:%v method:%q", s.id, s.targetID, method)
+	// Certain methods aren't available to the user directly.
+	if method == target.CommandCloseTarget {
+		return errors.New("to close the target, cancel its context")
+	}
+	// if s.crashed {
+	// 	s.logger.Debugf("Session:ExecuteWithoutExpectationOnReply", "sid:%v tid:%v method:%q, ErrTargetCrashed", s.id, s.targetID, method)
+	// 	return ErrTargetCrashed
+	// }
+
+	// c.logger.Debugf("Session:Execute:s.conn.send", "sid:%v tid:%v method:%q", s.id, s.targetID, method)
+
+	var buf []byte
+	if params != nil {
+		var err error
+		buf, err = easyjson.Marshal(params)
+		if err != nil {
+			// s.logger.Debugf("Session:ExecuteWithoutExpectationOnReply:Marshal", "sid:%v tid:%v method:%q err=%v", s.id, s.targetID, method, err)
+			return err
+		}
+	}
+	msg := &cdproto.Message{
+		ID:        atomic.AddInt64(&c.msgID, 1),
+		SessionID: target.SessionID(sid),
+		Method:    cdproto.MethodType(method),
+		Params:    buf,
+	}
+
+	return c.send(contextWithDoneChan(ctx, c.done), msg, nil, res)
+}
+
 // Subscribe returns a channel that will be notified when the provided CDP
 // events are received for the given session and frame IDs, and a cancellation
 // function that will unsubscribe and close the channel.
 func (c *Client) Subscribe(
-	sessionID, frameID string, events ...cdproto.MethodType,
+	ctx context.Context, frameID string, events ...cdproto.MethodType,
 ) (<-chan *Event, func()) {
-	return c.watcher.subscribe(sessionID, frameID, events...)
+	return c.watcher.subscribe(ctx, frameID, events...)
 }
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {

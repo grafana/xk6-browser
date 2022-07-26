@@ -117,7 +117,7 @@ func NewPage(
 		reducedMotion:    bctx.opts.ReducedMotion,
 		extraHTTPHeaders: bctx.opts.ExtraHTTPHeaders,
 		timeoutSettings:  NewTimeoutSettings(bctx.timeoutSettings),
-		Keyboard:         NewKeyboard(ctx, s), // TODO: Pass cdpClient to Keyboard?
+		Keyboard:         NewKeyboard(ctx, bctx.browser.cdpClient),
 		jsEnabled:        true,
 		frameSessions:    make(map[cdpext.FrameID]*FrameSession),
 		workers:          make(map[target.SessionID]*Worker),
@@ -136,8 +136,8 @@ func NewPage(
 	}
 
 	var err error
-	p.frameManager = NewFrameManager(ctx, s, &p, bctx.timeoutSettings, p.logger)
-	p.mainFrameSession, err = NewFrameSession(ctx, s, &p, nil, tid, p.logger)
+	p.frameManager = NewFrameManager(ctx, &p, bctx.timeoutSettings, p.logger)
+	p.mainFrameSession, err = NewFrameSession(ctx, &p, nil, tid, p.logger)
 	if err != nil {
 		p.logger.Debugf("Page:NewPage:NewFrameSession:return", "sid:%v tid:%v err:%v",
 			p.sessionID, tid, err)
@@ -145,8 +145,8 @@ func NewPage(
 		return nil, err
 	}
 	p.frameSessions[cdpext.FrameID(tid)] = p.mainFrameSession
-	p.Mouse = NewMouse(ctx, s, p.frameManager.MainFrame(), bctx.timeoutSettings, p.Keyboard)
-	p.Touchscreen = NewTouchscreen(ctx, s, p.Keyboard)
+	p.Mouse = NewMouse(ctx, p.cdpClient, p.frameManager.MainFrame(), bctx.timeoutSettings, p.Keyboard)
+	p.Touchscreen = NewTouchscreen(ctx, p.cdpClient, p.Keyboard)
 
 	if err := p.cdpClient.Target.SetAutoAttach(p.ctx, true, true, true); err != nil {
 		return nil, fmt.Errorf("internal error while auto attaching to browser pages: %w", err)
@@ -206,7 +206,8 @@ func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
 
 	parentSession := p.getFrameSession(cdpext.FrameID(parent.ID()))
 	action := dom.GetFrameOwner(cdpext.FrameID(f.ID()))
-	backendNodeId, _, err := action.Do(cdpext.WithExecutor(p.ctx, parentSession.session))
+	// TODO: Confirm this is executed with the correct session ID
+	backendNodeId, _, err := action.Do(cdpext.WithExecutor(parentSession.ctx, p.cdpClient))
 	if err != nil {
 		if strings.Contains(err.Error(), "frame with the given id was not found") {
 			return nil, errors.New("frame has been detached")
@@ -260,7 +261,7 @@ func (p *Page) getOwnerFrame(apiCtx context.Context, h *ElementHandle) cdpext.Fr
 	}
 
 	action := dom.DescribeNode().WithObjectID(documentElement.remoteObject.ObjectID)
-	node, err := action.Do(cdpext.WithExecutor(p.ctx, p.session))
+	node, err := action.Do(cdpext.WithExecutor(p.ctx, p.cdpClient))
 	if err != nil {
 		p.logger.Debugf("Page:getOwnerFrame:DescribeNode:return", "sid:%v err:%v", p.sessionID, err)
 		return ""
@@ -290,7 +291,7 @@ func (p *Page) resetViewport() error {
 	p.logger.Debugf("Page:resetViewport", "sid:%v", p.sessionID)
 
 	action := emulation.SetDeviceMetricsOverride(0, 0, 0, false)
-	return action.Do(cdpext.WithExecutor(p.ctx, p.session))
+	return action.Do(cdpext.WithExecutor(p.ctx, p.cdpClient))
 }
 
 func (p *Page) setEmulatedSize(emulatedSize *EmulatedSize) error {
@@ -383,7 +384,7 @@ func (p *Page) BringToFront() {
 	p.logger.Debugf("Page:BringToFront", "sid:%v", p.sessionID)
 
 	action := cdppage.BringToFront()
-	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.cdpClient)); err != nil {
 		k6ext.Panic(p.ctx, "bringing page to front: %w", err)
 	}
 }
@@ -492,7 +493,7 @@ func (p *Page) EmulateVisionDeficiency(typ string) {
 	}
 
 	action := emulation.SetEmulatedVisionDeficiency(t)
-	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.cdpClient)); err != nil {
 		k6ext.Panic(p.ctx, "setting emulated vision deficiency %q: %w", typ, err)
 	}
 
@@ -697,7 +698,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 	defer evCancelFn() // Remove event handler
 
 	action := cdppage.Reload()
-	if err := action.Do(cdpext.WithExecutor(p.ctx, p.session)); err != nil {
+	if err := action.Do(cdpext.WithExecutor(p.ctx, p.cdpClient)); err != nil {
 		k6ext.Panic(p.ctx, "reloading page: %w", err)
 	}
 

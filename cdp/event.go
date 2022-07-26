@@ -42,12 +42,12 @@ func newEventWatcher(ctx context.Context) *eventWatcher {
 // TODO: Handle event unsubscriptions
 // func (w *eventWatcher) subscribe(sessionID, frameID string, events ...cdproto.MethodType) <-chan *Event {
 func (w *eventWatcher) subscribe(
-	sessionID, frameID string, events ...cdproto.MethodType,
+	ctx context.Context, frameID string, events ...cdproto.MethodType,
 ) (<-chan *Event, func()) {
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
 	evtCh := make(chan *Event, 1)
-	key := subKey{sessionID, frameID}
+	key := subKey{GetSessionID(ctx), frameID}
 	for _, evtName := range events {
 		if _, ok := w.subs[evtName]; !ok {
 			w.subs[evtName] = make(map[subKey]chan *Event)
