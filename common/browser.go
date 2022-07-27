@@ -334,6 +334,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		b.logger.Debugf("Browser:onAttachedToTarget:page:sidToTid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
 		b.sessionIDtoTargetID[ev.SessionID] = evti.TargetID
 		b.sessionIDtoTargetIDMu.Unlock()
+		fmt.Printf(">>> emitting EventBrowserContextPage for target ID %s\n", p.targetID)
 
 		browserCtx.emit(EventBrowserContextPage, p)
 	default:
@@ -404,6 +405,8 @@ func (b *Browser) newPageInContext(id string) (*Page, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
+
+	fmt.Printf(">>> waiting for new page with target ID %s\n", tid)
 
 	// let the event handler know about the new page.
 	targetID <- tid
