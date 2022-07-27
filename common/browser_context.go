@@ -230,7 +230,6 @@ func (b *BrowserContext) NewPage() api.Page {
 	b.logger.Debugf("BrowserContext:NewPage", "bctxid:%v", b.id)
 
 	p, err := b.browser.newPageInContext(b.id)
-	fmt.Printf(">>> got new page: %#+v\n", p)
 	if err != nil {
 		k6ext.Panic(b.ctx, "newPageInContext: %w", err)
 	}

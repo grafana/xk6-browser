@@ -155,11 +155,14 @@ func createWaitForEventHandler(
 	ch := make(chan interface{})
 
 	go func() {
+		fmt.Printf(">>> looping in createWaitForEventHandler\n")
 		for {
 			select {
 			case <-evCancelCtx.Done():
+				fmt.Printf(">>> returning from createWaitForEventHandler\n")
 				return
 			case ev := <-chEvHandler:
+				fmt.Printf(">>> got event in createWaitForEventHandler: %#+v\n", ev)
 				if stringSliceContains(events, ev.typ) {
 					if predicateFn != nil {
 						if predicateFn(ev.data) {
@@ -179,6 +182,7 @@ func createWaitForEventHandler(
 		}
 	}()
 
+	fmt.Printf(">>> registered emitter %T for events %s\n", emitter, events)
 	emitter.on(evCancelCtx, events, chEvHandler)
 	return ch, evCancelFn
 }
