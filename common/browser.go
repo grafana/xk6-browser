@@ -244,6 +244,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	}
 	b.contextsMu.RUnlock()
 
+	fmt.Printf(">>> got browser context ID from browser: %q\n", browserCtx.id)
 	b.logger.Debugf("Browser:onAttachedToTarget", "sid:%v tid:%v bctxid:%v bctx nil:%t",
 		ev.SessionID, evti.TargetID, evti.BrowserContextID, browserCtx == nil)
 
@@ -334,7 +335,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		b.logger.Debugf("Browser:onAttachedToTarget:page:sidToTid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
 		b.sessionIDtoTargetID[ev.SessionID] = evti.TargetID
 		b.sessionIDtoTargetIDMu.Unlock()
-		fmt.Printf(">>> emitting EventBrowserContextPage for target ID %s\n", p.targetID)
+		fmt.Printf(">>> emitting EventBrowserContextPage on browser context ID %q for target ID %s\n", browserCtx.id, p.targetID)
 
 		browserCtx.emit(EventBrowserContextPage, p)
 	default:
@@ -390,7 +391,9 @@ func (b *Browser) newPageInContext(id string) (*Page, error) {
 		browserCtx, // browser context will emit the following event:
 		[]string{EventBrowserContextPage},
 		func(e interface{}) bool {
+			fmt.Printf(">>> waiting for target ID in event handler\n")
 			tid := <-targetID
+			fmt.Printf(">>> got target ID %s in event handler\n", tid)
 
 			b.logger.Debugf("Browser:newPageInContext:createWaitForEventHandler",
 				"tid:%v ptid:%v bctxid:%v", tid, e.(*Page).targetID, id)
@@ -406,10 +409,11 @@ func (b *Browser) newPageInContext(id string) (*Page, error) {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
 
-	fmt.Printf(">>> waiting for new page with target ID %s\n", tid)
+	fmt.Printf(">>> waiting for new page on browser context ID %q with target ID %s\n", id, tid)
 
 	// let the event handler know about the new page.
 	targetID <- tid
+	fmt.Printf(">>> sent event handler the target ID %s\n", tid)
 	var page *Page
 	select {
 	case <-waitForPage:
