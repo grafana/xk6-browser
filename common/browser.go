@@ -210,21 +210,23 @@ func (b *Browser) initEvents() error {
 	)
 	// TODO: Handle session creation (maybe in BrowserContext?)
 	go func() {
-		select {
-		case event := <-evtCh:
-			fmt.Printf(">>> got browser event: %#+v\n", event)
-			if ev, ok := event.Data.(*target.EventAttachedToTarget); ok {
-				b.logger.Debugf("Browser:initEvents:onAttachedToTarget new", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
-				b.onAttachedToTarget(ev)
-			} else if ev, ok := event.Data.(*target.EventDetachedFromTarget); ok {
-				b.logger.Debugf("Browser:initEvents:onDetachedFromTarget new", "sid:%v", ev.SessionID)
-				b.onDetachedFromTarget(ev)
+		for {
+			select {
+			case event := <-evtCh:
+				fmt.Printf(">>> got browser event: %#+v\n", event)
+				if ev, ok := event.Data.(*target.EventAttachedToTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onAttachedToTarget new", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
+					b.onAttachedToTarget(ev)
+				} else if ev, ok := event.Data.(*target.EventDetachedFromTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget new", "sid:%v", ev.SessionID)
+					b.onDetachedFromTarget(ev)
+				}
+			case <-b.browserProc.lostConnection:
+				b.logger.Debugf("Browser:initEvents", "lost browser connection")
+				return
+			case <-cancelCtx.Done():
+				return
 			}
-		case <-b.browserProc.lostConnection:
-			b.logger.Debugf("Browser:initEvents", "lost browser connection")
-			return
-		case <-cancelCtx.Done():
-			return
 		}
 	}()
 	// TODO: Handle error?
