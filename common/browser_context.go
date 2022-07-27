@@ -427,6 +427,6 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 	return nil
 }
 
-func (b *BrowserContext) getSession(id target.SessionID) *Session {
+func (b *BrowserContext) getSession(id string) *Session {
 	return b.browser.getSession(id)
 }

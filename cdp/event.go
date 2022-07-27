@@ -21,8 +21,10 @@ type Event struct {
 	Data interface{}
 }
 
+type EventHandler func(context.Context, *Event)
+
 type subKey struct {
-	sessionID, frameID string
+	sessionID, targetID string
 }
 
 type eventWatcher struct {
@@ -42,12 +44,12 @@ func newEventWatcher(ctx context.Context) *eventWatcher {
 // TODO: Handle event unsubscriptions
 // func (w *eventWatcher) subscribe(sessionID, frameID string, events ...cdproto.MethodType) <-chan *Event {
 func (w *eventWatcher) subscribe(
-	ctx context.Context, frameID string, events ...cdproto.MethodType,
+	ctx context.Context, targetID string, events ...cdproto.MethodType,
 ) (<-chan *Event, func()) {
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
 	evtCh := make(chan *Event, 1)
-	key := subKey{GetSessionID(ctx), frameID}
+	key := subKey{GetSessionID(ctx), targetID}
 	for _, evtName := range events {
 		if _, ok := w.subs[evtName]; !ok {
 			w.subs[evtName] = make(map[subKey]chan *Event)
@@ -77,7 +79,9 @@ func (w *eventWatcher) notify(evt *Event) {
 	}
 
 	for key, ch := range subs {
-		fmt.Printf(">>> notifying subscriber %s of event %s\n", key, evt.Name)
+		// TODO: Check event session and target ID, and select only the
+		// subscription with matching key
+		fmt.Printf(">>> notifying subscriber %s of event %s with data: %#+v\n", key, evt.Name, evt.Data)
 		select {
 		case ch <- evt:
 		case <-w.ctx.Done():
