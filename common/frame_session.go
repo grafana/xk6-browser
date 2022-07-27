@@ -774,7 +774,7 @@ func (fs *FrameSession) onAttachedToTarget(event *target.EventAttachedToTarget) 
 		event.TargetInfo.TargetID, event.TargetInfo.BrowserContextID,
 		event.TargetInfo.Type)
 
-	session := fs.page.browserCtx.getSession(event.SessionID)
+	session := fs.page.browserCtx.getSession(string(event.SessionID))
 	if session == nil {
 		fs.logger.Debugf("FrameSession:onAttachedToTarget:NewFrameSession",
 			"sid:%v tid:%v esid:%v etid:%v ebctxid:%v type:%q err:nil session",

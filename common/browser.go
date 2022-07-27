@@ -35,7 +35,7 @@ import (
 	k6modules "go.k6.io/k6/js/modules"
 
 	"github.com/chromedp/cdproto"
-	"github.com/chromedp/cdproto/target"
+	cdpt "github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
 )
@@ -75,11 +75,12 @@ type Browser struct {
 	// the main VU/JS go routine and the Go routine listening for CDP messages.
 	pagesMu sync.RWMutex
 	pages   map[string]*Page
+	newPage chan *Page
 
 	sessionsMu            sync.RWMutex
-	sessions              map[target.SessionID]*Session
+	sessions              map[string]*Session
 	sessionIDtoTargetIDMu sync.RWMutex
-	sessionIDtoTargetID   map[target.SessionID]target.ID
+	sessionIDtoTargetID   map[string]string
 
 	vu k6modules.VU
 
@@ -119,8 +120,9 @@ func newBrowser(
 		launchOpts:          launchOpts,
 		contexts:            make(map[string]*BrowserContext),
 		pages:               make(map[string]*Page),
-		sessions:            make(map[target.SessionID]*Session),
-		sessionIDtoTargetID: make(map[target.SessionID]target.ID),
+		newPage:             make(chan *Page),
+		sessions:            make(map[string]*Session),
+		sessionIDtoTargetID: make(map[string]string),
 		vu:                  k6ext.GetVU(ctx),
 		logger:              logger,
 	}
@@ -187,10 +189,10 @@ func (b *Browser) initEvents() error {
 	// 		case <-cancelCtx.Done():
 	// 			return
 	// 		case event := <-chHandler:
-	// 			if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
+	// 			if ev, ok := event.data.(*cdpt.EventAttachedToTarget); ok {
 	// 				b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
 	// 				b.onAttachedToTarget(ev)
-	// 			} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
+	// 			} else if ev, ok := event.data.(*cdpt.EventDetachedFromTarget); ok {
 	// 				b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
 	// 				b.onDetachedFromTarget(ev)
 	// 			} else if event.typ == EventConnectionClose {
@@ -214,10 +216,10 @@ func (b *Browser) initEvents() error {
 			select {
 			case event := <-evtCh:
 				fmt.Printf(">>> got browser event: %#+v\n", event)
-				if ev, ok := event.Data.(*target.EventAttachedToTarget); ok {
+				if ev, ok := event.Data.(*cdpt.EventAttachedToTarget); ok {
 					b.logger.Debugf("Browser:initEvents:onAttachedToTarget new", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
 					b.onAttachedToTarget(ev)
-				} else if ev, ok := event.Data.(*target.EventDetachedFromTarget); ok {
+				} else if ev, ok := event.Data.(*cdpt.EventDetachedFromTarget); ok {
 					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget new", "sid:%v", ev.SessionID)
 					b.onDetachedFromTarget(ev)
 				}
@@ -235,7 +237,52 @@ func (b *Browser) initEvents() error {
 	return nil
 }
 
-func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
+func (b *Browser) createPage(
+	bctx *BrowserContext, sessionID, targetID, openerID string, background bool,
+) *Page {
+	var opener *Page
+	if !background {
+		// Opener is nil for the initial page
+		b.pagesMu.RLock()
+		if t, ok := b.pages[openerID]; ok {
+			opener = t
+		}
+		b.pagesMu.RUnlock()
+	}
+
+	page, err := NewPage(b.ctx, bctx, sessionID, cdpt.ID(targetID), opener, background, b.logger)
+	if err != nil {
+		isRunning := atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
+		if _, ok := err.(*websocket.CloseError); !ok && !isRunning {
+			// If we're no longer connected to browser, then ignore WebSocket errors
+			b.logger.Debugf("Browser:createPage:return", "sid:%v tid:%v websocket err:%v", sessionID, targetID, err)
+			return nil
+		}
+		select {
+		case <-b.ctx.Done():
+			b.logger.Debugf("Browser:createPage:return:<-ctx.Done",
+				"sid:%v tid:%v err:%v",
+				sessionID, targetID, b.ctx.Err())
+			return nil // ignore
+		default:
+			k6ext.Panic(b.ctx, "creating a new page: %w", err)
+		}
+	}
+
+	b.pagesMu.Lock()
+	b.logger.Debugf("Browser:onAttachedToTarget:createPage:addTarget", "sid:%v tid:%v", sessionID, targetID)
+	b.pages[targetID] = page
+	b.pagesMu.Unlock()
+
+	b.sessionIDtoTargetIDMu.Lock()
+	b.logger.Debugf("Browser:createPage:sidToTid", "sid:%v tid:%v", sessionID, targetID)
+	b.sessionIDtoTargetID[sessionID] = targetID
+	b.sessionIDtoTargetIDMu.Unlock()
+
+	return page
+}
+
+func (b *Browser) onAttachedToTarget(ev *cdpt.EventAttachedToTarget) {
 	evti := ev.TargetInfo
 
 	b.contextsMu.RLock()
@@ -257,89 +304,25 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		return
 	}
 
-	session := b.getSession(ev.SessionID)
+	session := b.getSession(string(ev.SessionID))
 	if session == nil {
 		fmt.Printf(">>> creating session ID %s\n", ev.SessionID)
 		b.sessionsMu.Lock()
 		session = NewSession(b.ctx, string(ev.SessionID), evti.TargetID, b.logger)
 		b.logger.Debugf("Browser:onAttachedToTarget", "sid:%v tid:%v url:%q", ev.SessionID, evti.TargetID, evti.URL)
-		b.sessions[ev.SessionID] = session
+		b.sessions[string(ev.SessionID)] = session
 		b.sessionsMu.Unlock()
 	}
 
 	switch evti.Type {
 	case "background_page":
-		p, err := NewPage(b.ctx, browserCtx, session.id, evti.TargetID, nil, false, b.logger)
-		if err != nil {
-			isRunning := atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
-			if _, ok := err.(*websocket.CloseError); !ok && !isRunning {
-				// If we're no longer connected to browser, then ignore WebSocket errors
-				b.logger.Debugf("Browser:onAttachedToTarget:background_page:return", "sid:%v tid:%v websocket err:%v",
-					ev.SessionID, evti.TargetID, err)
-				return
-			}
-			select {
-			case <-b.ctx.Done():
-				b.logger.Debugf("Browser:onAttachedToTarget:background_page:return:<-ctx.Done",
-					"sid:%v tid:%v err:%v",
-					ev.SessionID, evti.TargetID, b.ctx.Err())
-				return // ignore
-			default:
-				k6ext.Panic(b.ctx, "creating a new background page: %w", err)
-			}
-		}
-
-		b.pagesMu.Lock()
-		b.logger.Debugf("Browser:onAttachedToTarget:background_page:addTid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.pages[string(evti.TargetID)] = p
-		b.pagesMu.Unlock()
-
-		b.sessionIDtoTargetIDMu.Lock()
-		b.logger.Debugf("Browser:onAttachedToTarget:background_page:addSid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.sessionIDtoTargetID[ev.SessionID] = evti.TargetID
-		b.sessionIDtoTargetIDMu.Unlock()
+		b.createPage(browserCtx, string(ev.SessionID), string(evti.TargetID), string(evti.OpenerID), true)
 	case "page":
-		// Opener is nil for the initial page
-		var opener *Page
-		b.pagesMu.RLock()
-		if t, ok := b.pages[string(evti.OpenerID)]; ok {
-			opener = t
+		p := b.createPage(browserCtx, string(ev.SessionID), string(evti.TargetID), string(evti.OpenerID), false)
+		select {
+		case b.newPage <- p:
+		default:
 		}
-		b.pagesMu.RUnlock()
-
-		b.logger.Debugf("Browser:onAttachedToTarget:page", "sid:%v tid:%v opener nil:%t", ev.SessionID, evti.TargetID, opener == nil)
-
-		p, err := NewPage(b.ctx, browserCtx, session.id, evti.TargetID, opener, true, b.logger)
-		if err != nil {
-			isRunning := atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
-			if _, ok := err.(*websocket.CloseError); !ok && !isRunning {
-				// If we're no longer connected to browser, then ignore WebSocket errors
-				b.logger.Debugf("Browser:onAttachedToTarget:page:return", "sid:%v tid:%v websocket err:", ev.SessionID, evti.TargetID)
-				return
-			}
-			select {
-			case <-b.ctx.Done():
-				b.logger.Debugf("Browser:onAttachedToTarget:page:return:<-ctx.Done",
-					"sid:%v tid:%v err:%v",
-					ev.SessionID, evti.TargetID, b.ctx.Err())
-				return // ignore
-			default:
-				k6ext.Panic(b.ctx, "creating a new page: %w", err)
-			}
-		}
-
-		b.pagesMu.Lock()
-		b.logger.Debugf("Browser:onAttachedToTarget:page:addTarget", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.pages[string(evti.TargetID)] = p
-		b.pagesMu.Unlock()
-
-		b.sessionIDtoTargetIDMu.Lock()
-		b.logger.Debugf("Browser:onAttachedToTarget:page:sidToTid", "sid:%v tid:%v", ev.SessionID, evti.TargetID)
-		b.sessionIDtoTargetID[ev.SessionID] = evti.TargetID
-		b.sessionIDtoTargetIDMu.Unlock()
-		fmt.Printf(">>> emitting EventBrowserContextPage on browser context ID %q for target ID %s\n", browserCtx.id, p.targetID)
-
-		browserCtx.emit(EventBrowserContextPage, p)
 	default:
 		b.logger.Warnf(
 			"Browser:onAttachedToTarget", "sid:%v tid:%v bctxid:%v bctx nil:%t, unknown target type: %q",
@@ -349,9 +332,9 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 // onDetachedFromTarget event can be issued multiple times per target if multiple
 // sessions have been attached to it. So we'll remove the page only once.
-func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
+func (b *Browser) onDetachedFromTarget(ev *cdpt.EventDetachedFromTarget) {
 	b.sessionIDtoTargetIDMu.RLock()
-	targetID, ok := b.sessionIDtoTargetID[ev.SessionID]
+	targetID, ok := b.sessionIDtoTargetID[string(ev.SessionID)]
 
 	b.logger.Debugf("Browser:onDetachedFromTarget", "sid:%v tid:%v", ev.SessionID, targetID)
 	defer b.logger.Debugf("Browser:onDetachedFromTarget:return", "sid:%v tid:%v", ev.SessionID, targetID)
@@ -374,72 +357,68 @@ func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
 }
 
 func (b *Browser) newPageInContext(id string) (*Page, error) {
-	b.contextsMu.RLock()
-	browserCtx, ok := b.contexts[id]
-	b.contextsMu.RUnlock()
-	if !ok {
-		return nil, fmt.Errorf("missing browser context: %s", id)
-	}
-
 	ctx, cancel := context.WithTimeout(b.ctx, b.launchOpts.Timeout)
 	defer cancel()
 
-	// buffer of one is for sending the target ID whether an event handler
-	// exists or not.
-	targetID := make(chan string, 1)
-
-	waitForPage, removeEventHandler := createWaitForEventHandler(
-		ctx,
-		browserCtx, // browser context will emit the following event:
-		[]string{EventBrowserContextPage},
-		func(e interface{}) bool {
-			fmt.Printf(">>> waiting for target ID in event handler\n")
-			tid := <-targetID
-			fmt.Printf(">>> got target ID %s in event handler\n", tid)
-
-			b.logger.Debugf("Browser:newPageInContext:createWaitForEventHandler",
-				"tid:%v ptid:%v bctxid:%v", tid, e.(*Page).targetID, id)
-
-			// we are only interested in the new page.
-			return string(e.(*Page).targetID) == tid
-		},
+	var (
+		page     *Page
+		err      error
+		targetID = make(chan string)
+		wg       sync.WaitGroup
 	)
-	defer removeEventHandler()
 
-	tid, err := b.cdpClient.Target.CreateTarget(b.ctx, "about:blank", id)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var tid string
+		select {
+		case <-ctx.Done():
+			err = &k6ext.UserFriendlyError{
+				Err:     ctx.Err(),
+				Timeout: b.launchOpts.Timeout,
+			}
+			return
+		case tid = <-targetID:
+		}
+
+		for {
+			select {
+			case p := <-b.newPage:
+				// We only care about the specific page we made the CreateTarget
+				// request for.
+				if string(p.targetID) == tid {
+					page = p
+					return
+				}
+			case <-ctx.Done():
+				err = &k6ext.UserFriendlyError{
+					Err:     ctx.Err(),
+					Timeout: b.launchOpts.Timeout,
+				}
+				return
+			}
+		}
+	}()
+
+	tid, err := b.cdpClient.Target.CreateTarget(ctx, "about:blank", id)
 	if err != nil {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
 
-	fmt.Printf(">>> waiting for new page on browser context ID %q with target ID %s\n", id, tid)
-
-	// let the event handler know about the new page.
+	// wait for the new page to be created in onAttachedToTarget
 	targetID <- tid
-	fmt.Printf(">>> sent event handler the target ID %s\n", tid)
-	var page *Page
-	select {
-	case <-waitForPage:
-		b.logger.Debugf("Browser:newPageInContext:<-waitForPage", "tid:%v bctxid:%v", tid, id)
-		b.pagesMu.RLock()
-		page = b.pages[tid]
-		b.pagesMu.RUnlock()
-	case <-ctx.Done():
-		err = &k6ext.UserFriendlyError{
-			Err:     ctx.Err(),
-			Timeout: b.launchOpts.Timeout,
-		}
-		b.logger.Debugf("Browser:newPageInContext:<-ctx.Done", "tid:%v bctxid:%v err:%v", tid, id, err)
-	}
+	wg.Wait()
+
 	return page, err
 }
 
-func (b *Browser) getSession(sid target.SessionID) *Session {
+func (b *Browser) getSession(sid string) *Session {
 	b.sessionsMu.RLock()
 	defer b.sessionsMu.RUnlock()
 	return b.sessions[sid]
 }
 
-func (b *Browser) closeSession(sid target.SessionID) {
+func (b *Browser) closeSession(sid string) {
 	b.logger.Debugf("Browser:closeSession", "sid:%v", sid)
 	b.sessionsMu.Lock()
 	// if session, ok := b.sessions[sid]; ok {
