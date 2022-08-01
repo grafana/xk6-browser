@@ -196,7 +196,8 @@ func (c *Client) ExecuteWithoutExpectationOnReply(ctx context.Context, method st
 func (c *Client) Subscribe(
 	ctx context.Context, frameID string, events ...cdproto.MethodType,
 ) (<-chan *Event, func()) {
-	return c.watcher.subscribe(ctx, frameID, events...)
+	sessionID := GetSessionID(ctx)
+	return c.watcher.subscribe(sessionID, frameID, events...)
 }
 
 func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cdproto.Message, res easyjson.Unmarshaler) error {
