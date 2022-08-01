@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/chromedp/cdproto"
+	cdpext "github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/target"
 )
 
 type LifecycleEvent string
@@ -17,8 +19,10 @@ const (
 )
 
 type Event struct {
-	Name cdproto.MethodType
-	Data interface{}
+	Name      cdproto.MethodType
+	Data      interface{}
+	sessionID target.SessionID
+	frameID   cdpext.FrameID
 }
 
 type EventHandler func(context.Context, *Event)
@@ -40,16 +44,13 @@ func newEventWatcher(ctx context.Context) *eventWatcher {
 	}
 }
 
-// func (w *eventeventWatcher) subscribe(sessionID, frameID string, evt *event) <-chan *event {
-// TODO: Handle event unsubscriptions
-// func (w *eventWatcher) subscribe(sessionID, frameID string, events ...cdproto.MethodType) <-chan *Event {
 func (w *eventWatcher) subscribe(
-	ctx context.Context, targetID string, events ...cdproto.MethodType,
+	ctx context.Context, frameID string, events ...cdproto.MethodType,
 ) (<-chan *Event, func()) {
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
 	evtCh := make(chan *Event, 1)
-	key := subKey{GetSessionID(ctx), targetID}
+	key := subKey{GetSessionID(ctx), frameID}
 	for _, evtName := range events {
 		if _, ok := w.subs[evtName]; !ok {
 			w.subs[evtName] = make(map[subKey]chan *Event)
@@ -78,9 +79,8 @@ func (w *eventWatcher) notify(evt *Event) {
 		return
 	}
 
-	for key, ch := range subs {
-		// TODO: Check event session and target ID, and select only the
-		// subscription with matching key
+	key := subKey{string(evt.sessionID), string(evt.frameID)}
+	if ch, ok := subs[key]; ok {
 		fmt.Printf(">>> notifying subscriber %s of event %s with data: %#+v\n", key, evt.Name, evt.Data)
 		select {
 		case ch <- evt:

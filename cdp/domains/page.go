@@ -37,10 +37,10 @@ func (p *page) Enable(ctx context.Context) error {
 func (p *page) Navigate(ctx context.Context, url, referrer, frameID string) (string, error) {
 	action := cdpp.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frameID))
 
-	_, documentID, errorText, err := action.Do(cdp.WithExecutor(ctx, p.exec))
+	_, loaderID, errorText, err := action.Do(cdp.WithExecutor(ctx, p.exec))
 	if err != nil {
 		err = fmt.Errorf("%s at %q: %w", errorText, url, err)
 	}
 
-	return documentID.String(), err
+	return loaderID.String(), err
 }
