@@ -602,6 +602,7 @@ func (m *NetworkManager) onResponseReceived(event *network.EventResponseReceived
 	}
 	resp := NewHTTPResponse(m.ctx, req, event.Response, event.Timestamp)
 	req.response = resp
+	fmt.Printf(">>> created response for request ID %q\n", event.RequestID)
 	m.frameManager.requestReceivedResponse(resp)
 }
 
