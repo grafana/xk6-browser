@@ -2,6 +2,7 @@ package cdp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
+	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
 	"github.com/grafana/xk6-browser/cdp/domains"
 	"github.com/grafana/xk6-browser/log"
@@ -285,8 +287,17 @@ func (c *Client) recvLoop() {
 				c.logger.Errorf("cdp", "unmarshalling CDP message: %w", err)
 				continue
 			}
-			fmt.Printf(">>> received event %s\n", msg.Method)
-			c.watcher.notify(&Event{msg.Method, evt})
+			// Try to extract the frame ID if it exists
+			var p struct {
+				FrameID cdpext.FrameID `json:"frameId"`
+			}
+			_ = json.Unmarshal(msgParams, &p)
+			c.watcher.notify(&Event{
+				Name:      msg.Method,
+				Data:      evt,
+				sessionID: msg.SessionID,
+				frameID:   p.FrameID,
+			})
 		case msg.ID > 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
 			// TODO: Move this to the watcher?
