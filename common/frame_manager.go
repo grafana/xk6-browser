@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,6 +38,7 @@ import (
 	"github.com/chromedp/cdproto"
 	cdpext "github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
+	cdpnet "github.com/chromedp/cdproto/network"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
 )
@@ -613,75 +615,84 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		fs = frame.page.mainFrameSession
 	}
 
-	// newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
-	// if err != nil {
-	// 	k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
-	// }
+	var (
+		loaderID = make(chan string)
+		errCh    = make(chan error)
+	)
+	go m.waitForLifecycleEvent(timeoutCtx, frame.ID(), parsedOpts.WaitUntil, loaderID, errCh)
 
-	evtCh, cdpUnsub := m.page.cdpClient.Subscribe(
-		m.ctx, frame.ID(),
-		cdproto.EventPageFrameNavigated,
-		cdproto.EventPageNavigatedWithinDocument,
-		cdproto.EventPageLifecycleEvent)
-	defer cdpUnsub()
-
-	// TODO: Abstract this away somehow? I tried passing event handlers to
-	// Subscribe(), but it was messy...
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case evt := <-evtCh:
-				switch e := evt.Data.(type) {
-				case *cdppage.EventLifecycleEvent:
-					// This marshalling won't be needed once WaitUntil is changed to string
-					lcEvt, err := parsedOpts.WaitUntil.MarshalText()
-					if err != nil {
-						m.logger.Error("FrameManager:NavigateFrame",
-							"parsing waitUntil value: %v", err)
-					}
-					if e.Name == string(lcEvt) {
-						return
-					}
-				case *cdppage.EventFrameNavigated:
-					fmt.Printf(">>> full navigation event: %#+v\n", e)
-				case *cdppage.EventNavigatedWithinDocument:
-					fmt.Printf(">>> navigated within document event: %#+v\n", e)
-				}
-			case <-timeoutCtx.Done():
-				if timeoutCtx.Err() == context.DeadlineExceeded {
-					k6ext.Panic(m.ctx, "navigating to %q: %s after %s", url, ErrTimedOut, parsedOpts.Timeout)
-				}
-				return
-			}
-		}
-	}()
-
-	var err error
-	newDocID, err := m.page.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
+	lid, err := m.page.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
 	if err != nil {
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
 
-	fmt.Printf(">>> got newDocID: %s\n", newDocID)
+	if lid == "" {
+		// It's a navigation within the same document (e.g. via anchor links or
+		// the History API), so don't wait for a response nor any lifecycle
+		// events.
+		return nil
+	}
 
-	// if newDocID == "" {
-	// 	// It's a navigation within the same document (e.g. via an anchor link),
-	// 	// so skip waiting for the LifecycleEvent
-	// }
+	fmt.Printf(">>> waiting for response to request (loader) ID %q...\n", lid)
+	// unblock the waitForLifecycleEvent goroutine
+	loaderID <- lid
+	if err := <-errCh; err != nil { // wait for it to finish
+		m.logger.Error("FrameManager:NavigateFrame", "%v", err)
+	}
 
-	wg.Wait()
-
+	// The loader ID is also the request ID.
+	// Note that there's a possible race condition here:
+	// the response is created in
 	var resp *Response
-	// if event.newDocument != nil {
-	// 	req := event.newDocument.request
-	// 	if req != nil && req.response != nil {
-	// 		resp = req.response
-	// 	}
-	// }
+	req := netMgr.requestFromID(cdpnet.RequestID(lid))
+	if req != nil {
+		resp = req.response
+	}
+
+	fmt.Printf(">>> returning response: %#+v\n", resp)
 	return resp
+}
+
+func (m *FrameManager) waitForLifecycleEvent(
+	ctx context.Context, frameID string, waitUntil LifecycleEvent,
+	loaderID <-chan string, errCh chan<- error,
+) {
+	evtCh, cdpUnsub := m.page.cdpClient.Subscribe(
+		m.ctx, frameID,
+		cdproto.EventPageLifecycleEvent)
+	defer cdpUnsub()
+
+	var (
+		lid string
+		err error
+	)
+	defer func() { errCh <- err }()
+
+	select {
+	case <-ctx.Done():
+		if !errors.Is(ctx.Err(), context.Canceled) {
+			err = ctx.Err()
+		}
+		return
+	case lid = <-loaderID:
+	}
+
+	for {
+		select {
+		case evt := <-evtCh:
+			if e, ok := evt.Data.(*cdppage.EventLifecycleEvent); ok {
+				fmt.Printf(">>> got lifecycle event %q, want: %q\n", e.Name, waitUntil.String())
+				if strings.ToLower(e.Name) == waitUntil.String() && e.LoaderID.String() == lid {
+					return
+				}
+			}
+		case <-ctx.Done():
+			if !errors.Is(ctx.Err(), context.Canceled) {
+				err = ctx.Err()
+			}
+			return
+		}
+	}
 }
 
 // Page returns the page that this frame manager belongs to.
