@@ -11,7 +11,7 @@ export default function() {
   const page = context.newPage();
 
   // Goto front page, find login link and click it
-  const resp = page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
+  const resp = page.goto('https://test.k6.io/browser.php', { waitUntil: 'networkidle' });
   console.log('>>> got response:', resp);
   // const elem = page.$('a[href="/my_messages.php"]');
   // elem.click().then(() => {

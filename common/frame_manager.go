@@ -617,9 +617,10 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 
 	var (
 		loaderID = make(chan string)
-		errCh    = make(chan error)
+		respCh   = make(chan lifecycleResponse)
+		ret      lifecycleResponse
 	)
-	go m.waitForLifecycleEvent(timeoutCtx, frame.ID(), parsedOpts.WaitUntil, loaderID, errCh)
+	go m.waitForLifecycleEvent(timeoutCtx, frame.ID(), parsedOpts.WaitUntil, loaderID, respCh)
 
 	lid, err := m.page.cdpClient.Page.Navigate(m.ctx, url, parsedOpts.Referer, frame.ID())
 	if err != nil {
@@ -636,42 +637,40 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	fmt.Printf(">>> waiting for response to request (loader) ID %q...\n", lid)
 	// unblock the waitForLifecycleEvent goroutine
 	loaderID <- lid
-	if err := <-errCh; err != nil { // wait for it to finish
-		m.logger.Error("FrameManager:NavigateFrame", "%v", err)
+	if ret = <-respCh; ret.err != nil { // wait for it to finish
+		m.logger.Error("FrameManager:NavigateFrame", "%v", ret.err)
 	}
 
-	// The loader ID is also the request ID.
-	// Note that there's a possible race condition here:
-	// the response is created in
-	var resp *Response
-	req := netMgr.requestFromID(cdpnet.RequestID(lid))
-	if req != nil {
-		resp = req.response
-	}
+	fmt.Printf(">>> returning response: %#+v\n", ret.response)
+	return ret.response
+}
 
-	fmt.Printf(">>> returning response: %#+v\n", resp)
-	return resp
+type lifecycleResponse struct {
+	response *Response
+	err      error
 }
 
 func (m *FrameManager) waitForLifecycleEvent(
 	ctx context.Context, frameID string, waitUntil LifecycleEvent,
-	loaderID <-chan string, errCh chan<- error,
+	loaderID <-chan string, resp chan<- lifecycleResponse,
 ) {
 	evtCh, cdpUnsub := m.page.cdpClient.Subscribe(
 		m.ctx, frameID,
-		cdproto.EventPageLifecycleEvent)
+		cdproto.EventPageLifecycleEvent,
+		cdproto.EventPageFrameStartedLoading)
 	defer cdpUnsub()
 
 	var (
-		lid string
-		err error
+		lid    string
+		netMgr = m.page.mainFrameSession.getNetworkManager()
+		ret    = lifecycleResponse{}
 	)
-	defer func() { errCh <- err }()
+	defer func() { resp <- ret }()
 
 	select {
 	case <-ctx.Done():
 		if !errors.Is(ctx.Err(), context.Canceled) {
-			err = ctx.Err()
+			ret.err = ctx.Err()
 		}
 		return
 	case lid = <-loaderID:
@@ -680,15 +679,30 @@ func (m *FrameManager) waitForLifecycleEvent(
 	for {
 		select {
 		case evt := <-evtCh:
-			if e, ok := evt.Data.(*cdppage.EventLifecycleEvent); ok {
+			switch e := evt.Data.(type) {
+			case *cdppage.EventLifecycleEvent:
 				fmt.Printf(">>> got lifecycle event %q, want: %q\n", e.Name, waitUntil.String())
 				if strings.ToLower(e.Name) == waitUntil.String() && e.LoaderID.String() == lid {
 					return
 				}
+			case *cdppage.EventFrameStartedLoading:
+				// The loader ID is also the request ID.
+				// Note that there's a possible race condition here:
+				// the response is created in NetworkManager.onResponseReceived,
+				// and the request it's associated to is deleted in
+				// NetworkManager.onLoadingFinished. So this gives us a small
+				// window at the intermediate FrameStartedLoading event to get
+				// the response here, but this should use a more robust method.
+				// Just stick with the internal event system?
+				req := netMgr.requestFromID(cdpnet.RequestID(lid))
+				if req != nil {
+					fmt.Printf(">>> found request ID %s, response: %v\n", lid, req.response)
+					ret.response = req.response
+				}
 			}
 		case <-ctx.Done():
 			if !errors.Is(ctx.Err(), context.Canceled) {
-				err = ctx.Err()
+				ret.err = ctx.Err()
 			}
 			return
 		}
