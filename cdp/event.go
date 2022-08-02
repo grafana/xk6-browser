@@ -56,7 +56,7 @@ func (w *eventWatcher) subscribe(
 			w.subs[evtName] = make(map[subKey]chan *Event)
 		}
 		w.subs[evtName][key] = evtCh
-		fmt.Printf(">>> subscribed to event %s\n", evtName)
+		fmt.Printf(">>> subscribed %s to event %s\n", key, evtName)
 	}
 
 	unsub := func() {
@@ -79,15 +79,25 @@ func (w *eventWatcher) notify(evt *Event) {
 		return
 	}
 
-	key := subKey{string(evt.sessionID), string(evt.frameID)}
-	if ch, ok := subs[key]; ok {
-		fmt.Printf(">>> notifying subscriber %s of event %s with data: %#+v\n", key, evt.Name, evt.Data)
-		select {
-		case ch <- evt:
-		case <-w.ctx.Done():
-			return
-		default:
-			// TODO: Log warning of skipped event
+	// Lookup subscriptions for both the session only and session+frame
+	keys := []subKey{
+		{string(evt.sessionID), ""},
+	}
+	if evt.frameID != "" {
+		keys = append(keys, subKey{string(evt.sessionID), string(evt.frameID)})
+	}
+
+	for _, key := range keys {
+		if ch, ok := subs[key]; ok {
+			fmt.Printf(">>> notifying subscriber %s of event %s with data: %#+v\n", key, evt.Name, evt.Data)
+			select {
+			case ch <- evt:
+			case <-w.ctx.Done():
+				return
+			default:
+				// TODO: Log warning of skipped event
+			}
 		}
 	}
+
 }
