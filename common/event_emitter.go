@@ -22,7 +22,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 )
 
 // Ensure BaseEventEmitter implements the EventEmitter interface.
@@ -187,7 +186,6 @@ func (e *BaseEventEmitter) emit(event string, data interface{}) {
 		}
 		return handlers
 	}
-	fmt.Printf(">>> emitting to %T handlers for event %s: %#+v\n", e, event, e.handlers[event])
 	e.sync(func() {
 		e.handlers[event] = emitTo(e.handlers[event])
 		e.handlersAll = emitTo(e.handlersAll)
