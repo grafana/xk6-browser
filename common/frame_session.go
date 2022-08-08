@@ -217,33 +217,28 @@ func (fs *FrameSession) initEvents() {
 	fs.logger.Debugf("NewFrameSession:initEvents",
 		"sid:%v tid:%v", fs.page.sessionID, fs.targetID)
 
-	events := []cdproto.MethodType{cdproto.EventInspectorTargetCrashed}
-
-	if !fs.isMainFrame() {
-		events = append(events, []cdproto.MethodType{
-			cdproto.EventLogEntryAdded,
-			cdproto.EventPageFileChooserOpened,
-			cdproto.EventPageFrameAttached,
-			cdproto.EventPageFrameDetached,
-			cdproto.EventPageFrameNavigated,
-			cdproto.EventPageFrameRequestedNavigation,
-			cdproto.EventPageFrameStartedLoading,
-			cdproto.EventPageFrameStoppedLoading,
-			cdproto.EventPageJavascriptDialogOpening,
-			cdproto.EventPageLifecycleEvent,
-			cdproto.EventPageNavigatedWithinDocument,
-			cdproto.EventRuntimeConsoleAPICalled,
-			cdproto.EventRuntimeExceptionThrown,
-			cdproto.EventRuntimeExecutionContextCreated,
-			cdproto.EventRuntimeExecutionContextDestroyed,
-			cdproto.EventRuntimeExecutionContextsCleared,
-			cdproto.EventTargetAttachedToTarget,
-			cdproto.EventTargetDetachedFromTarget,
-		}...)
-		// fs.initRendererEvents()
+	events := []cdproto.MethodType{
+		cdproto.EventInspectorTargetCrashed,
+		cdproto.EventLogEntryAdded,
+		cdproto.EventPageFileChooserOpened,
+		cdproto.EventPageFrameAttached,
+		cdproto.EventPageFrameDetached,
+		cdproto.EventPageFrameNavigated,
+		cdproto.EventPageFrameRequestedNavigation,
+		cdproto.EventPageFrameStartedLoading,
+		cdproto.EventPageFrameStoppedLoading,
+		cdproto.EventPageJavascriptDialogOpening,
+		cdproto.EventPageLifecycleEvent,
+		cdproto.EventPageNavigatedWithinDocument,
+		cdproto.EventRuntimeConsoleAPICalled,
+		cdproto.EventRuntimeExceptionThrown,
+		cdproto.EventRuntimeExecutionContextCreated,
+		cdproto.EventRuntimeExecutionContextDestroyed,
+		cdproto.EventRuntimeExecutionContextsCleared,
+		cdproto.EventTargetAttachedToTarget,
+		cdproto.EventTargetDetachedFromTarget,
 	}
-
-	fs.eventCh, _ = fs.page.cdpClient.Subscribe(fs.ctx, "", events...)
+	fs.eventCh, _ = fs.page.cdpClient.Subscribe(fs.ctx, fs.targetID.String(), events...)
 
 	go func() {
 		fs.logger.Debugf("NewFrameSession:initEvents:go",
@@ -326,7 +321,6 @@ func (fs *FrameSession) initFrameTree() error {
 
 	if fs.isMainFrame() {
 		fs.handleFrameTree(frameTree)
-		// fs.initRendererEvents()
 	}
 	return nil
 }
@@ -462,33 +456,6 @@ func (fs *FrameSession) initOptions() error {
 
 	return nil
 }
-
-// func (fs *FrameSession) initRendererEvents() {
-// 	fs.logger.Debugf("NewFrameSession:initEvents:initRendererEvents",
-// 		"sid:%v tid:%v", fs.page.sessionID, fs.targetID)
-
-// 	events := []string{
-// 		cdproto.EventLogEntryAdded,
-// 		cdproto.EventPageFileChooserOpened,
-// 		cdproto.EventPageFrameAttached,
-// 		cdproto.EventPageFrameDetached,
-// 		cdproto.EventPageFrameNavigated,
-// 		cdproto.EventPageFrameRequestedNavigation,
-// 		cdproto.EventPageFrameStartedLoading,
-// 		cdproto.EventPageFrameStoppedLoading,
-// 		cdproto.EventPageJavascriptDialogOpening,
-// 		cdproto.EventPageLifecycleEvent,
-// 		cdproto.EventPageNavigatedWithinDocument,
-// 		cdproto.EventRuntimeConsoleAPICalled,
-// 		cdproto.EventRuntimeExceptionThrown,
-// 		cdproto.EventRuntimeExecutionContextCreated,
-// 		cdproto.EventRuntimeExecutionContextDestroyed,
-// 		cdproto.EventRuntimeExecutionContextsCleared,
-// 		cdproto.EventTargetAttachedToTarget,
-// 		cdproto.EventTargetDetachedFromTarget,
-// 	}
-// 	fs.page.cdpClient.on(fs.ctx, events, fs.eventCh)
-// }
 
 func (fs *FrameSession) isMainFrame() bool {
 	return fs.targetID == fs.page.targetID
