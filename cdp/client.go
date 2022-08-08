@@ -288,16 +288,11 @@ func (c *Client) recvLoop() {
 				c.logger.Errorf("cdp", "unmarshalling CDP message: %w", err)
 				continue
 			}
-			// Try to extract the frame ID if it exists
-			var p struct {
-				FrameID cdpext.FrameID `json:"frameId"`
-			}
-			_ = json.Unmarshal(msgParams, &p)
 			c.watcher.notify(&Event{
 				Name:      msg.Method,
 				Data:      evt,
 				sessionID: msg.SessionID,
-				frameID:   p.FrameID,
+				frameID:   extractFrameID(msgParams),
 			})
 		case msg.ID > 0:
 			fmt.Printf(">>> received message with ID %d\n", msg.ID)
@@ -319,6 +314,36 @@ func (c *Client) recvLoop() {
 			c.logger.Errorf("cdp", "ignoring malformed incoming CDP message (missing id or method): %#v (message: %s)", msg, msg.Error.Message)
 		}
 	}
+}
+
+type frameMsgParams struct {
+	FrameID cdpext.FrameID `json:"frameId"`
+	Context struct {
+		AuxData struct {
+			FrameID cdpext.FrameID `json:"frameId"`
+		} `json:"auxData"`
+	} `json:"context"`
+	Frame struct {
+		ID cdpext.FrameID `json:"id"`
+	} `json:"frame"`
+}
+
+// Try to extract the frame ID if it exists in the CDP message.
+func extractFrameID(msgParams []byte) cdpext.FrameID {
+	var p frameMsgParams
+	_ = json.Unmarshal(msgParams, &p)
+
+	var frameID cdpext.FrameID
+	switch {
+	case p.FrameID != "":
+		frameID = p.FrameID
+	case p.Frame.ID != "":
+		frameID = p.Frame.ID
+	case p.Context.AuxData.FrameID != "":
+		frameID = p.Context.AuxData.FrameID
+	}
+
+	return frameID
 }
 
 func (c *Client) recvMsgLoop() {
