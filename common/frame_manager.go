@@ -626,6 +626,8 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 		k6ext.Panic(m.ctx, "navigating to %q: %v", url, err)
 	}
 
+	fmt.Printf(">>> got newDocumentID: %q\n", newDocumentID)
+
 	if newDocumentID == "" {
 		// It's a navigation within the same document (e.g. via anchor links or
 		// the History API), so don't wait for a response nor any lifecycle

@@ -1872,6 +1872,7 @@ func (f *Frame) evaluate(
 	if ec == nil {
 		return nil, fmt.Errorf("execution context %q not found", world)
 	}
+	fmt.Printf(">>> got execution context %q with ID %d\n", world, ec.ID())
 
 	evalArgs := make([]interface{}, 0, len(args))
 	for _, a := range args {

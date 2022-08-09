@@ -280,9 +280,9 @@ func (c *Client) recvLoop() {
 		}
 
 		msgParams, _ := msg.Params.MarshalJSON()
-		fmt.Printf(">>> got message in Client.recvLoop(): ID: %d, SessionID: %q, Method: %s, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
 		switch {
 		case msg.Method != "":
+			fmt.Printf(">>> got message in Client.recvLoop(): ID: %d, SessionID: %q, Method: %s, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
 			evt, err := cdproto.UnmarshalMessage(msg)
 			if err != nil {
 				// Logging this error as debug to avoid noise when receiving
@@ -299,7 +299,8 @@ func (c *Client) recvLoop() {
 				frameID:   extractFrameID(msgParams),
 			})
 		case msg.ID > 0:
-			fmt.Printf(">>> received message with ID %d\n", msg.ID)
+			result, _ := msg.Result.MarshalJSON()
+			fmt.Printf(">>> got message with no method in Client.recvLoop(): ID: %d, SessionID: %q, Method: %q, Params: %s, Result: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams, result)
 			// TODO: Move this to the watcher?
 			c.msgSubsMu.Lock()
 			ch := c.recvCh
@@ -355,7 +356,8 @@ func (c *Client) recvMsgLoop() {
 		select {
 		case msg := <-c.recvCh:
 			msgParams, _ := msg.Params.MarshalJSON()
-			fmt.Printf(">>> got message in Client.recvMsgLoop(): ID: %d, SessionID: %q, Method: %q, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
+			result, _ := msg.Result.MarshalJSON()
+			fmt.Printf(">>> got message in Client.recvMsgLoop(): ID: %d, SessionID: %q, Method: %q, Params: %s, Result: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams, result)
 		case <-c.ctx.Done():
 			c.logger.Debugf("Client:recvMsgLoop", "returning, ctx.Err: %q", c.ctx.Err())
 			return
@@ -369,7 +371,8 @@ func (c *Client) sendLoop() {
 		fmt.Printf(">>> looping in Client.sendLoop()\n")
 		select {
 		case msg := <-c.sendCh:
-			fmt.Printf(">>> writing message with ID %d in Client.sendLoop()\n", msg.ID)
+			msgParams, _ := msg.Params.MarshalJSON()
+			fmt.Printf(">>> sending message in Client.sendLoop(): ID: %d, SessionID: %q, Method: %q, Params: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams)
 			err := c.conn.writeMessage(msg)
 			if err != nil {
 				fmt.Printf(">>> got err writing message with ID %d in Client.sendLoop()\n", msg.ID)
