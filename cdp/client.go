@@ -285,7 +285,11 @@ func (c *Client) recvLoop() {
 		case msg.Method != "":
 			evt, err := cdproto.UnmarshalMessage(msg)
 			if err != nil {
-				c.logger.Errorf("cdp", "unmarshalling CDP message: %w", err)
+				// Logging this error as debug to avoid noise when receiving
+				// deprecated/removed events from the browser (e.g.
+				// Page.frameScheduledNavigation,
+				// Page.frameClearedScheduledNavigation).
+				c.logger.Debugf("cdp", "error unmarshalling CDP message: %v", err)
 				continue
 			}
 			c.watcher.notify(&Event{
