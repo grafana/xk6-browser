@@ -50,6 +50,10 @@ func (w *eventWatcher) subscribe(
 	w.subsMu.Lock()
 	defer w.subsMu.Unlock()
 	evtCh := make(chan *Event, 1)
+	// FIXME: This has the limitation that there can only be one subscriber
+	// per sessionID/frameID permutation, and matching subscribers will
+	// override previously set ones. Instead, append them to a slice
+	// here and remove them like we do in BaseEventEmitter.
 	key := subKey{sessionID, frameID}
 	for _, evtName := range events {
 		if _, ok := w.subs[evtName]; !ok {
