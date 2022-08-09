@@ -238,7 +238,10 @@ func (fs *FrameSession) initEvents() {
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 	}
-	fs.eventCh, _ = fs.page.cdpClient.Subscribe(fs.ctx, fs.targetID.String(), events...)
+	// Not passing fs.targetID to subscribe only to events of a single frame,
+	// since some events like ExecutionContextsCleared are sent to the session
+	// target, and we'd miss them otherwise.
+	fs.eventCh, _ = fs.page.cdpClient.Subscribe(fs.ctx, "", events...)
 
 	go func() {
 		fs.logger.Debugf("NewFrameSession:initEvents:go",
