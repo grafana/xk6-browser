@@ -109,6 +109,8 @@ func (c *Client) Execute(ctx context.Context, method string, params easyjson.Mar
 			case <-evCancelCtx.Done():
 				c.logger.Debugf("Connection:Execute:<-evCancelCtx.Done()", "wsURL:%q err:%v", c.wsURL, evCancelCtx.Err())
 				return
+				// FIXME: Some responses aren't getting delivered(?).
+				// TestLocator tests are getting stuck in this select.
 			case msg := <-msgCh:
 				select {
 				case <-evCancelCtx.Done():
@@ -232,6 +234,9 @@ func (c *Client) send(ctx context.Context, msg *cdproto.Message, recvCh chan *cd
 	}
 	select {
 	case msg := <-recvCh:
+		result, _ := msg.Result.MarshalJSON()
+		msgParams, _ := msg.Params.MarshalJSON()
+		fmt.Printf(">>> got response message in Client.send(): ID: %d, SessionID: %q, Method: %s, Params: %s, Result: %s\n", msg.ID, msg.SessionID, msg.Method, msgParams, result)
 		switch {
 		case msg == nil:
 			c.logger.Debugf("Connection:send", "wsURL:%q, err:ErrChannelClosed", c.wsURL)
@@ -305,6 +310,7 @@ func (c *Client) recvLoop() {
 			c.msgSubsMu.Lock()
 			ch := c.recvCh
 			if idCh, ok := c.msgSubs[msg.ID]; ok {
+				fmt.Printf(">>> found sub for message ID %d\n", msg.ID)
 				ch = idCh
 				delete(c.msgSubs, msg.ID)
 			}
