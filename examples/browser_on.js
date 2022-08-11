@@ -12,19 +12,16 @@ export default function() {
 
   const handlerCalled = Symbol();
 
-  let p = browser.on('disconnected')
+  browser.on('disconnected').then((val) => {
     // The promise resolve/success handler
-    .then((val) => {
-      check(browser, {
-        'should be disconnected on event': !browser.isConnected(),
-      });
-      return handlerCalled;
-    // The promise reject/failure handler
-    }, (val) => {
-      console.error(`promise rejected: ${val}`);
+    check(browser, {
+      'should be disconnected on event': !browser.isConnected(),
     });
-
-  p.then((val) => {
+    return handlerCalled;
+  }, (val) => {
+    // The promise reject/failure handler
+    console.error(`promise rejected: ${val}`);
+  }).then((val) => {
     check(val, {
       'the browser.on success handler should be called': val === handlerCalled,
     });
@@ -34,6 +31,7 @@ export default function() {
     'should be connected before ending iteration': browser.isConnected(),
   });
 
-  // Disconnect from the browser instance.
+  // Disconnect from the browser instance, and trigger the Promise chain to
+  // resolve.
   browser.close();
 }
