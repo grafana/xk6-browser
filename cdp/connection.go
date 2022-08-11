@@ -386,13 +386,13 @@ func (c *connection) handleIOError(err error) error {
 // 	}
 // }
 
-func (c *connection) Close() {
+func (c *connection) Close() error {
 	code := websocket.CloseGoingAway
 	// if len(args) > 0 {
 	// 	code = int(args[0].ToInteger())
 	// }
 	c.logger.Debugf("connection:Close", "wsURL:%q code:%d", c.wsURL, code)
-	_ = c.close(code)
+	return c.close(code)
 }
 
 // Execute implements cdproto.Executor and performs a synchronous send and receive.

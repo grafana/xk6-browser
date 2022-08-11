@@ -86,8 +86,8 @@ func (c *Client) Connect(wsURL string) (err error) {
 }
 
 // Disconnect from the browser's CDP API.
-func (c *Client) Disconnect() {
-	c.conn.Close()
+func (c *Client) Disconnect() error {
+	return c.conn.Close()
 }
 
 // Execute implements cdproto.Executor and performs a synchronous send and

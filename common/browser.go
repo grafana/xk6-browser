@@ -451,7 +451,10 @@ func (b *Browser) Close() {
 		}
 	}
 
-	b.cdpClient.Disconnect()
+	if err := b.cdpClient.Disconnect(); err != nil {
+		b.logger.Warnf("Browser:Close", "disconnecting from browser: %s", err)
+	}
+	b.browserProc.didLoseConnection()
 	b.browserProc.GracefulClose()
 	b.browserProc.Terminate()
 }
