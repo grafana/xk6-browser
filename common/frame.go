@@ -1850,6 +1850,8 @@ func (f *Frame) WaitForNavigation(opts goja.Value) *goja.Promise {
 		})
 
 	handleTimeoutError := func(err error) error {
+		f.log.Debugf("Frame:WaitForNavigation",
+			"fid:%v furl:%s timeoutCtx done: %v", f.ID(), f.URL(), err)
 		if err != nil {
 			e := &k6ext.UserFriendlyError{
 				Err:     err,
@@ -1857,9 +1859,6 @@ func (f *Frame) WaitForNavigation(opts goja.Value) *goja.Promise {
 			}
 			return fmt.Errorf("waiting for navigation: %w", e)
 		}
-		f.log.Debugf("Frame:WaitForNavigation",
-			"fid:%v furl:%s timeoutCtx done: %v",
-			f.ID(), f.URL(), err)
 
 		return nil
 	}
