@@ -1850,7 +1850,7 @@ func (f *Frame) WaitForNavigation(opts goja.Value) *goja.Promise {
 		})
 
 	handleTimeoutError := func(err error) error {
-		if errors.Is(err, context.DeadlineExceeded) {
+		if err != nil {
 			e := &k6ext.UserFriendlyError{
 				Err:     err,
 				Timeout: parsedOpts.Timeout,
