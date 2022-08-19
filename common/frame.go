@@ -515,11 +515,11 @@ func (f *Frame) setContext(world executionWorld, execCtx frameExecutionContext) 
 		panic(err)
 	}
 
-	if f.executionContexts[world] != nil {
-		f.log.Debugf("Frame:setContext", "fid:%s furl:%q ectxid:%d world:%s, world exists",
-			f.ID(), f.URL(), execCtx.ID(), world)
-		return
-	}
+	// if f.executionContexts[world] != nil {
+	// 	f.log.Debugf("Frame:setContext", "fid:%s furl:%q ectxid:%d world:%s, world exists",
+	// 		f.ID(), f.URL(), execCtx.ID(), world)
+	// 	return
+	// }
 
 	f.executionContexts[world] = execCtx
 	f.log.Debugf("Frame:setContext", "fid:%s furl:%q ectxid:%d world:%s, world set",

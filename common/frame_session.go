@@ -605,20 +605,21 @@ func (fs *FrameSession) onExecutionContextDestroyed(execCtxID cdpruntime.Executi
 }
 
 func (fs *FrameSession) onExecutionContextsCleared() {
-	fs.logger.Debugf("FrameSession:onExecutionContextsCleared",
-		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
+	return
+	// fs.logger.Debugf("FrameSession:onExecutionContextsCleared",
+	// 	"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
-	fs.contextIDToContextMu.Lock()
-	defer fs.contextIDToContextMu.Unlock()
+	// fs.contextIDToContextMu.Lock()
+	// defer fs.contextIDToContextMu.Unlock()
 
-	for _, context := range fs.contextIDToContext {
-		if context.Frame() != nil {
-			context.Frame().nullContext(context.id)
-		}
-	}
-	for k := range fs.contextIDToContext {
-		delete(fs.contextIDToContext, k)
-	}
+	// for _, context := range fs.contextIDToContext {
+	// 	if context.Frame() != nil {
+	// 		context.Frame().nullContext(context.id)
+	// 	}
+	// }
+	// for k := range fs.contextIDToContext {
+	// 	delete(fs.contextIDToContext, k)
+	// }
 }
 
 func (fs *FrameSession) onFrameAttached(frameID cdp.FrameID, parentFrameID cdp.FrameID) {
