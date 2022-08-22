@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -77,6 +78,9 @@ type FrameSession struct {
 	contextIDToContext   map[cdpruntime.ExecutionContextID]*ExecutionContext
 	isolatedWorlds       map[string]bool
 
+	clearWaitChansMu sync.Mutex
+	clearWaitChans   map[string]chan bool
+
 	eventCh chan Event
 
 	childSessions map[cdp.FrameID]*FrameSession
@@ -111,6 +115,7 @@ func NewFrameSession(
 		k6Metrics:            k6ext.GetCustomMetrics(ctx),
 		logger:               l,
 		serializer:           l.ConsoleLogFormatterSerializer(),
+		clearWaitChans:       make(map[string]chan bool),
 	}
 
 	var parentNM *NetworkManager
@@ -498,8 +503,20 @@ func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) (strin
 		"sid:%v tid:%v url:%q referrer:%q",
 		fs.session.ID(), fs.targetID, url, referrer)
 
+	c := make(chan bool)
+	fs.addClearWait(c, frame.ID())
+
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frame.ID()))
 	_, documentID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
+
+	fs.logger.Debugf("FrameSession:navigateFrame", "waiting for chan to close fid:%s", frame.ID())
+	select {
+	case <-time.After(time.Second * 5):
+		fs.logger.Errorf("FrameSession:navigateFrame", "timeout waiting for chan to close fid:%s", frame.ID())
+	case <-c:
+		fs.logger.Debugf("FrameSession:navigateFrame", "wait chan closed fid:%s", frame.ID())
+	}
+
 	if err != nil {
 		if errorText == "" {
 			err = fmt.Errorf("%w", err)
@@ -580,8 +597,56 @@ func (fs *FrameSession) onExecutionContextCreated(event *cdpruntime.EventExecuti
 		fs.logger.Debugf("FrameSession:setContext",
 			"sid:%v fid:%v ectxid:%d",
 			fs.session.ID(), frame.ID(), event.Context.ID)
-		frame.setContext(world, context)
+
+		err := frame.setContext(world, context)
+		if err != nil {
+			// We need to unblock the thread so that
+			// onExecutionContextsCleared can be actioned on,
+			// which is what we're waiting for in waitAndRetrySetContext.
+			go fs.waitAndRetrySetContext(event, frame, context, world)
+			return
+		}
 	}
+
+	fs.contextIDToContextMu.Lock()
+	fs.contextIDToContext[event.Context.ID] = context
+	fs.contextIDToContextMu.Unlock()
+}
+
+func (fs *FrameSession) waitAndRetrySetContext(
+	event *cdpruntime.EventExecutionContextCreated,
+	frame *Frame,
+	context *ExecutionContext,
+	world executionWorld,
+) {
+	frameID := frame.ID()
+
+	fs.logger.Debugf("FrameSession:onExecutionContextCreated",
+		"contexts have not been nulled, retrying fid:%s", frameID)
+
+	c, ok := fs.getClearWaitChan(frameID)
+	if ok {
+		fs.logger.Debugf("FrameSession:onExecutionContextCreated",
+			"waiting for chan to close fid:%s", frameID)
+
+		select {
+		case <-time.After(time.Second * 5):
+			fs.logger.Errorf("FrameSession:onExecutionContextCreated",
+				"timeout waiting for chan to close fid:%s", frameID)
+		case <-c:
+			fs.logger.Debugf("FrameSession:onExecutionContextCreated",
+				"wait chan closed fid:%s", frameID)
+		}
+	}
+
+	err := frame.setContext(world, context)
+	if err != nil {
+		fs.logger.Errorf("FrameSession:onExecutionContextCreated",
+			"contexts still have not been nulled fid:%s", frameID)
+	}
+
+	fs.logger.Debugf("FrameSession:onExecutionContextCreated",
+		"setting context after chan close wait in map fid:%s", frameID)
 	fs.contextIDToContextMu.Lock()
 	fs.contextIDToContext[event.Context.ID] = context
 	fs.contextIDToContextMu.Unlock()
@@ -604,20 +669,68 @@ func (fs *FrameSession) onExecutionContextDestroyed(execCtxID cdpruntime.Executi
 	delete(fs.contextIDToContext, execCtxID)
 }
 
+func (fs *FrameSession) addClearWait(c chan bool, frameID string) {
+	fs.logger.Debugf("FrameSession:addClearWait", "navigateFrame adding wait chan fid:%s", frameID)
+
+	cPrv, ok := fs.getClearWaitChan(frameID)
+
+	if ok {
+		select {
+		case <-cPrv:
+			// onExecutionContextsCleared should be the only thing
+			// closing the channel and is also in charge of deleting
+			// it from the map, so what has closed it without deleting it?
+			fs.logger.Errorf("FrameSession:addClearWait", "channel already closed fid:%s", frameID)
+		case <-time.After(time.Second * 5):
+			// Unknown: Why have we got an open channel which has not been closed?
+			// 			If it's a valid reason then change this to a Debugf.
+			fs.logger.Errorf("FrameSession:addClearWait", "force closing chan fid:%s", frameID)
+			close(cPrv)
+		}
+	}
+
+	fs.clearWaitChansMu.Lock()
+	defer fs.clearWaitChansMu.Unlock()
+
+	fs.clearWaitChans[frameID] = c
+}
+
+func (fs *FrameSession) getClearWaitChan(frameID string) (chan bool, bool) {
+	fs.clearWaitChansMu.Lock()
+	defer fs.clearWaitChansMu.Unlock()
+
+	c, ok := fs.clearWaitChans[frameID]
+
+	return c, ok
+}
+
 func (fs *FrameSession) onExecutionContextsCleared() {
 	fs.logger.Debugf("FrameSession:onExecutionContextsCleared",
 		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
 	fs.contextIDToContextMu.Lock()
-	defer fs.contextIDToContextMu.Unlock()
 
+	var fid string
 	for _, context := range fs.contextIDToContext {
+		fid = context.Frame().ID()
 		if context.Frame() != nil {
 			context.Frame().nullContext(context.id)
 		}
 	}
 	for k := range fs.contextIDToContext {
 		delete(fs.contextIDToContext, k)
+	}
+
+	fs.contextIDToContextMu.Unlock()
+
+	c, ok := fs.getClearWaitChan(fid)
+	if ok {
+		close(c)
+		fs.clearWaitChansMu.Lock()
+		delete(fs.clearWaitChans, fid)
+		fs.clearWaitChansMu.Unlock()
+
+		fs.logger.Debugf("FrameSession:onExecutionContextsCleared", "closed channel fid:%s", fid)
 	}
 }
 

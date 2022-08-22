@@ -503,7 +503,7 @@ func (f *Frame) requestByID(reqID network.RequestID) *Request {
 	return frameSession.networkManager.requestFromID(reqID)
 }
 
-func (f *Frame) setContext(world executionWorld, execCtx frameExecutionContext) {
+func (f *Frame) setContext(world executionWorld, execCtx frameExecutionContext) error {
 	f.executionContextMu.Lock()
 	defer f.executionContextMu.Unlock()
 
@@ -518,12 +518,14 @@ func (f *Frame) setContext(world executionWorld, execCtx frameExecutionContext) 
 	if f.executionContexts[world] != nil {
 		f.log.Debugf("Frame:setContext", "fid:%s furl:%q ectxid:%d world:%s, world exists",
 			f.ID(), f.URL(), execCtx.ID(), world)
-		return
+		return errors.New("context already set")
 	}
 
 	f.executionContexts[world] = execCtx
 	f.log.Debugf("Frame:setContext", "fid:%s furl:%q ectxid:%d world:%s, world set",
 		f.ID(), f.URL(), execCtx.ID(), world)
+
+	return nil
 }
 
 func (f *Frame) setID(id cdp.FrameID) {
@@ -537,7 +539,7 @@ func (f *Frame) waitForExecutionContext(world executionWorld) {
 	f.log.Debugf("Frame:waitForExecutionContext", "fid:%s furl:%q world:%s",
 		f.ID(), f.URL(), world)
 
-	t := time.NewTimer(50 * time.Millisecond)
+	t := time.NewTicker(50 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {
