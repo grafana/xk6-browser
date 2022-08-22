@@ -133,6 +133,9 @@ type Connection struct {
 	shutdownOnce sync.Once
 	msgID        int64
 
+	sr      sync.RWMutex
+	stopped bool
+
 	sessionsMu sync.RWMutex
 	sessions   map[target.SessionID]*Session
 
@@ -192,9 +195,10 @@ func (c *Connection) closeConnection(code int) error {
 			close(c.done)
 		}()
 
+		fmt.Printf(">>> sending CloseMessage to server\n")
 		err = c.conn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
-			time.Now().Add(10*time.Second),
+			time.Now().Add(1*time.Second),
 		)
 
 		c.sessionsMu.Lock()
@@ -283,13 +287,34 @@ func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
 	return s.targetID
 }
 
+func (c *Connection) stopRead() {
+	c.sr.Lock()
+	defer c.sr.Unlock()
+	c.stopped = true
+	// close(c.done)
+}
+
 func (c *Connection) recvLoop() {
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
 	for {
+		// select {
+		// case <-c.done:
+		// 	fmt.Printf(">>> returning from recvLoop: done\n")
+		// 	return
+		// default:
+		// }
+		c.sr.RLock()
+		if c.stopped {
+			c.sr.RUnlock()
+			fmt.Printf(">>> returning from recvLoop: done\n")
+			return
+		}
+		c.sr.RUnlock()
 		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
+			// return
+			c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
 			if !errors.Is(err, net.ErrClosed) {
-				c.logger.Debugf("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
 				c.handleIOError(err)
 			}
 			return

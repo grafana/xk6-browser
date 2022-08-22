@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -420,6 +421,9 @@ func (b *Browser) Close() {
 
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
 
+	// close(b.conn.(*Connection).done)
+	b.conn.(*Connection).stopRead()
+
 	action := cdpbrowser.Close()
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
 		if _, ok := err.(*websocket.CloseError); !ok {
@@ -427,12 +431,14 @@ func (b *Browser) Close() {
 		}
 	}
 
+	time.Sleep(100 * time.Millisecond)
+
+	// b.conn.Close()
 	// terminate the browser process early on, then tell the CDP
 	// afterwards. this will take a little bit of time, and CDP
 	// will stop emitting events.
-	b.browserProc.GracefulClose()
-	b.browserProc.Terminate()
-	b.conn.Close()
+	// b.browserProc.GracefulClose()
+	// b.browserProc.Terminate()
 }
 
 // Contexts returns list of browser contexts.
