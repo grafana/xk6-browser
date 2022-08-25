@@ -25,7 +25,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -312,11 +311,17 @@ func (c *Connection) recvLoop() {
 		c.sr.RUnlock()
 		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
-			// return
-			c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
-			if !errors.Is(err, net.ErrClosed) {
+			if websocket.IsUnexpectedCloseError(err,
+				websocket.CloseNormalClosure,
+				websocket.CloseAbnormalClosure,
+			) {
 				c.handleIOError(err)
 			}
+			// return
+			// c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+			// if !errors.Is(err, net.ErrClosed) {
+			// 	c.handleIOError(err)
+			// }
 			return
 		}
 
