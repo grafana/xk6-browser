@@ -120,8 +120,8 @@ func (f ActionFunc) Do(ctx context.Context) error {
 type Connection struct {
 	BaseEventEmitter
 
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
+	ctx context.Context
+	// ctxCancel    context.CancelFunc
 	wsURL        string
 	logger       *log.Logger
 	conn         *websocket.Conn
@@ -161,22 +161,23 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		return nil, connErr
 	}
 
-	connCtx, connCtxCancel := context.WithCancel(ctx)
+	// connCtx, connCtxCancel := context.WithCancel(ctx)
 	c := Connection{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
-		ctx:              connCtx,
-		ctxCancel:        connCtxCancel,
-		wsURL:            wsURL,
-		logger:           logger,
-		conn:             conn,
-		sendCh:           make(chan *cdproto.Message, 32), // Avoid blocking in Execute
-		recvCh:           make(chan *cdproto.Message),
-		closeCh:          make(chan int),
-		errorCh:          make(chan error),
-		done:             make(chan struct{}),
-		stopRecv:         make(chan struct{}),
-		msgID:            0,
-		sessions:         make(map[target.SessionID]*Session),
+		ctx:              ctx,
+		// ctx:              connCtx,
+		// ctxCancel:        connCtxCancel,
+		wsURL:    wsURL,
+		logger:   logger,
+		conn:     conn,
+		sendCh:   make(chan *cdproto.Message, 32), // Avoid blocking in Execute
+		recvCh:   make(chan *cdproto.Message),
+		closeCh:  make(chan int),
+		errorCh:  make(chan error),
+		done:     make(chan struct{}),
+		stopRecv: make(chan struct{}),
+		msgID:    0,
+		sessions: make(map[target.SessionID]*Session),
 	}
 
 	go c.recvLoop()
@@ -291,60 +292,33 @@ func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
 	return s.targetID
 }
 
-func (c *Connection) stopRead() {
-	// c.sr.Lock()
-	// defer c.sr.Unlock()
-	// c.stopped = true
-	// close(c.done)
-	close(c.stopRecv)
-	// c.ctxCancel()
-}
-
-func (c *Connection) stop() {
-	// c.sr.Lock()
-	// defer c.sr.Unlock()
-	// c.stopped = true
-	// close(c.done)
-	// close(c.stopRecv)
-	c.ctxCancel()
-}
+// stop cancels the connection context to stop the receive and send loops, but
+// leaves the connection open.
+// func (c *Connection) stop() {
+// 	c.ctxCancel()
+// }
 
 func (c *Connection) recvLoop() {
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
 	for {
 		select {
 		case <-c.ctx.Done():
-			fmt.Printf(">>> returning from recvLoop: ctx done\n")
+			c.logger.Debugf("connection:recvLoop", "returning, ctx.Err: %q", c.ctx.Err())
 			return
 		default:
 		}
-		// select {
-		// case <-c.stopRecv:
-		// 	fmt.Printf(">>> returning from recvLoop: done\n")
-		// 	return
-		// default:
-		// }
-		// c.sr.RLock()
-		// if c.stopped {
-		// 	c.sr.RUnlock()
-		// 	fmt.Printf(">>> returning from recvLoop: done\n")
-		// 	return
-		// }
-		// c.sr.RUnlock()
+
 		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err,
-				websocket.CloseNormalClosure,
-				websocket.CloseAbnormalClosure,
-			) {
+			c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 				c.handleIOError(err)
 			}
-			// return
-			// c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+			return
 			// if !errors.Is(err, net.ErrClosed) {
 			// 	c.handleIOError(err)
 			// }
-			return
+			// return
 		}
 
 		c.logger.Tracef("cdp:recv", "<- %s", buf)

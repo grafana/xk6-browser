@@ -420,9 +420,6 @@ func (b *Browser) Close() {
 
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
 
-	// close(b.conn.(*Connection).stopRecv)
-	b.conn.(*Connection).stopRead()
-
 	action := cdpbrowser.Close()
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
 		if _, ok := err.(*websocket.CloseError); !ok {
@@ -430,19 +427,13 @@ func (b *Browser) Close() {
 		}
 	}
 
-	// time.Sleep(100 * time.Millisecond)
-
-	b.conn.(*Connection).stop()
-	b.conn.Close()
-
-	// b.browserProc.didLoseConnection()
 	if b.cancelFn != nil {
+		fmt.Printf(">>> before canceling the browser context...\n")
 		b.cancelFn()
 	}
 
-	// terminate the browser process early on, then tell the CDP
-	// afterwards. this will take a little bit of time, and CDP
-	// will stop emitting events.
+	fmt.Printf(">>> before closing the connection...\n")
+	b.conn.Close()
 	b.browserProc.GracefulClose()
 	b.browserProc.Terminate()
 }
