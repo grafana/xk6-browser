@@ -153,6 +153,7 @@ func (l *Logger) ReportCaller() {
 		}
 	}
 	l.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat:  time.RFC3339,
 		CallerPrettyfier: caller(),
 		FieldMap: logrus.FieldMap{
 			logrus.FieldKeyFile: "caller",
