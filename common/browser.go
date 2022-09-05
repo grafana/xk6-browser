@@ -427,15 +427,18 @@ func (b *Browser) Close() {
 		}
 	}
 
-	if b.cancelFn != nil {
-		fmt.Printf(">>> before canceling the browser context...\n")
-		b.cancelFn()
-	}
+	fmt.Printf(">>> before stopping the connection...\n")
+	b.conn.(*Connection).stop()
+
+	// if b.cancelFn != nil {
+	// 	fmt.Printf(">>> before canceling the browser context...\n")
+	// 	b.cancelFn()
+	// }
 
 	fmt.Printf(">>> before closing the connection...\n")
 	b.conn.Close()
-	b.browserProc.GracefulClose()
-	b.browserProc.Terminate()
+	// b.browserProc.GracefulClose()
+	// b.browserProc.Terminate()
 }
 
 // Contexts returns list of browser contexts.

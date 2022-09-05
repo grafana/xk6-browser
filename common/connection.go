@@ -120,8 +120,8 @@ func (f ActionFunc) Do(ctx context.Context) error {
 type Connection struct {
 	BaseEventEmitter
 
-	ctx context.Context
-	// ctxCancel    context.CancelFunc
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
 	wsURL        string
 	logger       *log.Logger
 	conn         *websocket.Conn
@@ -161,23 +161,23 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		return nil, connErr
 	}
 
-	// connCtx, connCtxCancel := context.WithCancel(ctx)
+	connCtx, connCtxCancel := context.WithCancel(ctx)
 	c := Connection{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
-		ctx:              ctx,
-		// ctx:              connCtx,
-		// ctxCancel:        connCtxCancel,
-		wsURL:    wsURL,
-		logger:   logger,
-		conn:     conn,
-		sendCh:   make(chan *cdproto.Message, 32), // Avoid blocking in Execute
-		recvCh:   make(chan *cdproto.Message),
-		closeCh:  make(chan int),
-		errorCh:  make(chan error),
-		done:     make(chan struct{}),
-		stopRecv: make(chan struct{}),
-		msgID:    0,
-		sessions: make(map[target.SessionID]*Session),
+		// ctx:              ctx,
+		ctx:       connCtx,
+		ctxCancel: connCtxCancel,
+		wsURL:     wsURL,
+		logger:    logger,
+		conn:      conn,
+		sendCh:    make(chan *cdproto.Message, 32), // Avoid blocking in Execute
+		recvCh:    make(chan *cdproto.Message),
+		closeCh:   make(chan int),
+		errorCh:   make(chan error),
+		done:      make(chan struct{}),
+		stopRecv:  make(chan struct{}),
+		msgID:     0,
+		sessions:  make(map[target.SessionID]*Session),
 	}
 
 	go c.recvLoop()
@@ -200,10 +200,11 @@ func (c *Connection) closeConnection(code int) error {
 			close(c.done)
 		}()
 
-		fmt.Printf(">>> sending CloseMessage to server\n")
+		fmt.Printf(">>> sending CloseMessage to server with code %d\n", code)
+		deadline := time.Second
 		err = c.conn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
-			time.Now().Add(1*time.Second),
+			time.Now().Add(deadline),
 		)
 
 		c.sessionsMu.Lock()
@@ -212,6 +213,22 @@ func (c *Connection) closeConnection(code int) error {
 			delete(c.sessions, s.id)
 		}
 		c.sessionsMu.Unlock()
+
+		c.logger.Debugf("Connection:closeConnection", "wsURL:%q, sleeping for %s", c.wsURL, deadline)
+		// XXX: We can't hit the 1s sleep! This delays the overall script
+		// throughput from ~1k iterations in 15m to ~430 iterations. So
+		// make sure we always get the signal that the CloseMessage response
+		// was received, since the closeCh below is not working for some reason.
+		select {
+		// case <-c.ctx.Done():
+		// 	c.logger.Debugf("Connection:closeConnection:<-ctx.Done", "wsURL:%q err:%v", c.wsURL, c.ctx.Err())
+		// 	return
+		// case <-c.normalCloseReceived:
+		case code := <-c.closeCh:
+			fmt.Printf(">>> [%s] got code %d from closeCh\n", time.Now(), code)
+		case <-time.After(deadline):
+		}
+		c.logger.Debugf("Connection:closeConnection", "wsURL:%q, emitting EventConnectionClose", c.wsURL)
 
 		c.emit(EventConnectionClose, nil)
 	})
@@ -247,9 +264,8 @@ func (c *Connection) createSession(info *target.Info) (*Session, error) {
 }
 
 func (c *Connection) handleIOError(err error) {
-	c.logger.Errorf("cdp", "communicating with browser: %v", err)
-
 	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		c.logger.Errorf("cdp", "communicating with browser: %v", err)
 		// Report an unexpected closure
 		select {
 		case c.errorCh <- err:
@@ -294,9 +310,9 @@ func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
 
 // stop cancels the connection context to stop the receive and send loops, but
 // leaves the connection open.
-// func (c *Connection) stop() {
-// 	c.ctxCancel()
-// }
+func (c *Connection) stop() {
+	c.ctxCancel()
+}
 
 func (c *Connection) recvLoop() {
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
@@ -309,11 +325,18 @@ func (c *Connection) recvLoop() {
 		}
 
 		_, buf, err := c.conn.ReadMessage()
+		if c.ctx.Err() != nil {
+			fmt.Printf(">>> context is already done, err: %#+v\n", err)
+			return
+		}
 		if err != nil {
-			c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-				c.handleIOError(err)
-			}
+			fmt.Printf(">>> got err from conn.ReadMessage(): %#+v\n", err)
+			c.handleIOError(err)
+			// if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+			// 	c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+			// 	c.handleIOError(err)
+			// }
+			// Signal the MessageClose waiter that we received a normal closure.
 			return
 			// if !errors.Is(err, net.ErrClosed) {
 			// 	c.handleIOError(err)
