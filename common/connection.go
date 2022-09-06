@@ -120,18 +120,18 @@ func (f ActionFunc) Do(ctx context.Context) error {
 type Connection struct {
 	BaseEventEmitter
 
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
-	wsURL        string
-	logger       *log.Logger
-	conn         *websocket.Conn
-	sendCh       chan *cdproto.Message
-	recvCh       chan *cdproto.Message
-	closeCh      chan int
-	errorCh      chan error
-	done         chan struct{}
-	shutdownOnce sync.Once
-	msgID        int64
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	wsURL         string
+	logger        *log.Logger
+	conn          *websocket.Conn
+	sendCh        chan *cdproto.Message
+	recvCh        chan *cdproto.Message
+	closeCh       chan int
+	errorCh       chan error
+	done, stopped chan struct{}
+	shutdownOnce  sync.Once
+	msgID         int64
 
 	// sr      sync.RWMutex
 	// stopped bool
@@ -175,6 +175,7 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closeCh:   make(chan int),
 		errorCh:   make(chan error),
 		done:      make(chan struct{}),
+		stopped:   make(chan struct{}),
 		stopRecv:  make(chan struct{}),
 		msgID:     0,
 		sessions:  make(map[target.SessionID]*Session),
@@ -220,12 +221,13 @@ func (c *Connection) closeConnection(code int) error {
 		// make sure we always get the signal that the CloseMessage response
 		// was received, since the closeCh below is not working for some reason.
 		select {
-		// case <-c.ctx.Done():
-		// 	c.logger.Debugf("Connection:closeConnection:<-ctx.Done", "wsURL:%q err:%v", c.wsURL, c.ctx.Err())
-		// 	return
-		// case <-c.normalCloseReceived:
-		case code := <-c.closeCh:
-			fmt.Printf(">>> [%s] got code %d from closeCh\n", time.Now(), code)
+		case <-c.ctx.Done():
+			c.logger.Debugf("Connection:closeConnection:<-ctx.Done", "wsURL:%q err:%v", c.wsURL, c.ctx.Err())
+			return
+		case <-c.stopped:
+			c.logger.Debugf("Connection:closeConnection", "wsURL:%q connection stopped", c.wsURL)
+			return
+		// case <-c.closeResponseReceived:
 		case <-time.After(deadline):
 		}
 		c.logger.Debugf("Connection:closeConnection", "wsURL:%q, emitting EventConnectionClose", c.wsURL)
@@ -264,12 +266,22 @@ func (c *Connection) createSession(info *target.Info) (*Session, error) {
 }
 
 func (c *Connection) handleIOError(err error) {
+	fmt.Printf(">>> [%s] handling IO error: %#+v\n", time.Now(), err)
+	if c.isStopped() {
+		c.logger.Debugf("Connection:handleIOError", "connection stopped - returning, wsURL:%q, ctx.Err:%q", c.wsURL, c.ctx.Err())
+		return
+	}
+	// if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) && c.ctx.Err() != nil {
+	// 	fmt.Printf(">>> [%s] got code 1006, but ctx is already done, so ignore...\n", time.Now())
+	// 	return
+	// }
 	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 		c.logger.Errorf("cdp", "communicating with browser: %v", err)
 		// Report an unexpected closure
 		select {
 		case c.errorCh <- err:
 		case <-c.done:
+			fmt.Printf(">>> [%s] returning from handleIOError, c.done is closed\n", time.Now())
 			return
 		}
 	}
@@ -280,6 +292,7 @@ func (c *Connection) handleIOError(err error) {
 	if errors.As(err, &cerr) {
 		code = cerr.Code
 	}
+	fmt.Printf(">>> [%s] sending close code %d to closeCh\n", time.Now(), code)
 	select {
 	case c.closeCh <- code:
 		c.logger.Debugf("cdp", "ending browser communication with code %d", code)
@@ -308,40 +321,47 @@ func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
 	return s.targetID
 }
 
-// stop cancels the connection context to stop the receive and send loops, but
-// leaves the connection open.
+// stop signals that the connection is about to be closed, so that the receive
+// and send loops can gracefully stop.
 func (c *Connection) stop() {
-	c.ctxCancel()
+	close(c.stopped)
+}
+
+func (c *Connection) isStopped() (s bool) {
+	select {
+	case <-c.stopped:
+		s = true
+	case <-c.ctx.Done():
+		s = true
+	default:
+	}
+	return
 }
 
 func (c *Connection) recvLoop() {
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
 	for {
-		select {
-		case <-c.ctx.Done():
-			c.logger.Debugf("connection:recvLoop", "returning, ctx.Err: %q", c.ctx.Err())
+		if c.isStopped() {
+			c.logger.Debugf("Connection:recvLoop", "connection stopped - returning, wsURL:%q, ctx.Err:%q", c.wsURL, c.ctx.Err())
 			return
-		default:
 		}
 
 		_, buf, err := c.conn.ReadMessage()
-		if c.ctx.Err() != nil {
-			fmt.Printf(">>> context is already done, err: %#+v\n", err)
-			return
-		}
 		if err != nil {
 			fmt.Printf(">>> got err from conn.ReadMessage(): %#+v\n", err)
-			c.handleIOError(err)
+			// c.handleIOError(err)
 			// if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 			// 	c.logger.Infof("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
 			// 	c.handleIOError(err)
 			// }
-			// Signal the MessageClose waiter that we received a normal closure.
-			return
-			// if !errors.Is(err, net.ErrClosed) {
-			// 	c.handleIOError(err)
-			// }
 			// return
+			// if !errors.Is(err, net.ErrClosed) {
+			c.handleIOError(err)
+			// } else {
+			// Signal the MessageClose waiter that we received a normal
+			// closure.
+			// }
+			return
 		}
 
 		c.logger.Tracef("cdp:recv", "<- %s", buf)
@@ -532,6 +552,9 @@ func (c *Connection) sendLoop() {
 			return
 		case <-c.ctx.Done():
 			c.logger.Debugf("connection:sendLoop", "returning, ctx.Err: %q", c.ctx.Err())
+			return
+		case <-c.stopped:
+			c.logger.Debugf("connection:sendLoop", "connection stopped - returning")
 			return
 		}
 	}

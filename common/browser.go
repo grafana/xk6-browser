@@ -437,8 +437,8 @@ func (b *Browser) Close() {
 
 	fmt.Printf(">>> before closing the connection...\n")
 	b.conn.Close()
-	// b.browserProc.GracefulClose()
-	// b.browserProc.Terminate()
+	b.browserProc.GracefulClose()
+	b.browserProc.Terminate()
 }
 
 // Contexts returns list of browser contexts.
