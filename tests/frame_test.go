@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFrame_Press(t *testing.T) {
+func TestFramePress(t *testing.T) {
 	tb := newTestBrowser(t)
 
 	p := tb.NewPage(nil)

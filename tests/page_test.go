@@ -684,7 +684,7 @@ func TestPageWaitForNavigationShouldNotPanic(t *testing.T) {
 	require.NotPanics(t, func() { p.WaitForNavigation(nil) })
 }
 
-func TestPage_Press(t *testing.T) {
+func TestPagePress(t *testing.T) {
 	tb := newTestBrowser(t)
 
 	p := tb.NewPage(nil)

@@ -360,7 +360,7 @@ func TestElementHandleWaitForSelector(t *testing.T) {
 	element.Dispose()
 }
 
-func TestElementHandler_Press(t *testing.T) {
+func TestElementHandlePress(t *testing.T) {
 	tb := newTestBrowser(t)
 
 	p := tb.NewPage(nil)

@@ -371,7 +371,7 @@ func TestLocatorElementState(t *testing.T) {
 	}
 }
 
-func TestLocator_Press(t *testing.T) {
+func TestLocatorPress(t *testing.T) {
 	tb := newTestBrowser(t)
 
 	p := tb.NewPage(nil)
