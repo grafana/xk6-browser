@@ -317,8 +317,8 @@ func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *n
 		delete(m.attemptedAuth, req.interceptionID);
 	*/
 
-	m.emit(cdproto.EventNetworkResponseReceived, resp)
-	m.emit(cdproto.EventNetworkLoadingFinished, req)
+	m.emit(m.logger, cdproto.EventNetworkResponseReceived, resp)
+	m.emit(m.logger, cdproto.EventNetworkLoadingFinished, req)
 }
 
 func (m *NetworkManager) initDomains() error {
@@ -340,7 +340,7 @@ func (m *NetworkManager) initDomains() error {
 }
 
 func (m *NetworkManager) initEvents() {
-	chHandler := make(chan Event)
+	chHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	m.session.on(m.ctx, []string{
 		cdproto.EventNetworkLoadingFailed,
 		cdproto.EventNetworkLoadingFinished,

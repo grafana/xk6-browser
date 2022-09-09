@@ -93,7 +93,7 @@ func (s *Session) close() {
 	close(s.done)
 	s.closed = true
 
-	s.emit(EventSessionClosed, nil)
+	s.emit(s.logger, EventSessionClosed, nil)
 }
 
 func (s *Session) markAsCrashed() {
@@ -115,14 +115,14 @@ func (s *Session) readLoop() {
 				// This is most likely an event received from an older
 				// Chrome which a newer cdproto doesn't have, as it is
 				// deprecated. Ignore that error, and emit raw cdproto.Message.
-				s.emit("", msg)
+				s.emit(s.logger, "", msg)
 				continue
 			}
 			if err != nil {
 				s.logger.Debugf("Session:readLoop:<-s.readCh", "sid:%v tid:%v cannot unmarshal: %v", s.id, s.targetID, err)
 				continue
 			}
-			s.emit(string(msg.Method), ev)
+			s.emit(s.logger, string(msg.Method), ev)
 		case <-s.done:
 			s.logger.Debugf("Session:readLoop:<-s.done", "sid:%v tid:%v", s.id, s.targetID)
 			return
@@ -147,7 +147,7 @@ func (s *Session) Execute(ctx context.Context, method string, params easyjson.Ma
 	// Setup event handler used to block for response to message being sent.
 	ch := make(chan *cdproto.Message, 1)
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	chEvHandler := make(chan Event)
+	chEvHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	go func() {
 		for {
 			select {

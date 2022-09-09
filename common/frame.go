@@ -224,16 +224,16 @@ func (f *Frame) recalculateLifecycle() {
 		if f.hasSubtreeLifecycleEventFired(k) {
 			continue
 		}
-		f.emit(EventFrameAddLifecycle, k)
+		f.emit(f.log, EventFrameAddLifecycle, k)
 
 		if f != mainFrame {
 			continue
 		}
 		switch k {
 		case LifecycleEventLoad:
-			f.page.emit(EventPageLoad, nil)
+			f.page.emit(f.log, EventPageLoad, nil)
 		case LifecycleEventDOMContentLoad:
-			f.page.emit(EventPageDOMContentLoaded, nil)
+			f.page.emit(f.log, EventPageDOMContentLoaded, nil)
 		}
 	}
 
@@ -242,7 +242,7 @@ func (f *Frame) recalculateLifecycle() {
 	{
 		for k := range f.subtreeLifecycleEvents {
 			if ok := events[k]; !ok {
-				f.emit(EventFrameRemoveLifecycle, k)
+				f.emit(f.log, EventFrameRemoveLifecycle, k)
 			}
 		}
 	}
@@ -424,7 +424,7 @@ func (f *Frame) navigated(name string, url string, loaderID string) {
 	f.name = name
 	f.url = url
 	f.loaderID = loaderID
-	f.page.emit(EventPageFrameNavigated, f)
+	f.page.emit(f.log, EventPageFrameNavigated, f)
 }
 
 func (f *Frame) nullContext(execCtxID runtime.ExecutionContextID) {

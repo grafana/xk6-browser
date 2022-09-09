@@ -41,7 +41,7 @@ func TestBarrier(t *testing.T) {
 
 	barrier := NewBarrier()
 	barrier.AddFrameNavigation(frame)
-	frame.emit(EventFrameNavigation, "some data")
+	frame.emit(log, EventFrameNavigation, "some data")
 
 	err := barrier.Wait(ctx)
 	require.Nil(t, err)

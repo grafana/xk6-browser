@@ -26,6 +26,8 @@ import (
 
 	"github.com/chromedp/cdproto"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/xk6-browser/log"
 )
 
 func TestEventEmitterSpecificEvent(t *testing.T) {
@@ -51,10 +53,11 @@ func TestEventEmitterSpecificEvent(t *testing.T) {
 		cancelCtx, cancelFn := context.WithCancel(ctx)
 		emitter := NewBaseEventEmitter(cancelCtx)
 		ch := make(chan Event)
+		log := log.NewNullLogger()
 
 		emitter.on(cancelCtx, []string{cdproto.EventTargetTargetCreated}, ch)
 		cancelFn()
-		emitter.emit(cdproto.EventTargetTargetCreated, nil) // Event handlers are removed as part of event emission
+		emitter.emit(log, cdproto.EventTargetTargetCreated, nil) // Event handlers are removed as part of event emission
 
 		emitter.sync(func() {
 			require.Contains(t, emitter.handlers, cdproto.EventTargetTargetCreated)
@@ -66,9 +69,10 @@ func TestEventEmitterSpecificEvent(t *testing.T) {
 		ctx := context.Background()
 		emitter := NewBaseEventEmitter(ctx)
 		ch := make(chan Event, 1)
+		log := log.NewNullLogger()
 
 		emitter.on(ctx, []string{cdproto.EventTargetTargetCreated}, ch)
-		emitter.emit(cdproto.EventTargetTargetCreated, "hello world")
+		emitter.emit(log, cdproto.EventTargetTargetCreated, "hello world")
 		msg := <-ch
 
 		emitter.sync(func() {
@@ -100,10 +104,11 @@ func TestEventEmitterAllEvents(t *testing.T) {
 		emitter := NewBaseEventEmitter(ctx)
 		cancelCtx, cancelFn := context.WithCancel(ctx)
 		ch := make(chan Event)
+		log := log.NewNullLogger()
 
 		emitter.onAll(cancelCtx, ch)
 		cancelFn()
-		emitter.emit(cdproto.EventTargetTargetCreated, nil) // Event handlers are removed as part of event emission
+		emitter.emit(log, cdproto.EventTargetTargetCreated, nil) // Event handlers are removed as part of event emission
 
 		emitter.sync(func() {
 			require.Len(t, emitter.handlersAll, 0)
@@ -114,9 +119,10 @@ func TestEventEmitterAllEvents(t *testing.T) {
 		ctx := context.Background()
 		emitter := NewBaseEventEmitter(ctx)
 		ch := make(chan Event, 1)
+		log := log.NewNullLogger()
 
 		emitter.onAll(ctx, ch)
-		emitter.emit(cdproto.EventTargetTargetCreated, "hello world")
+		emitter.emit(log, cdproto.EventTargetTargetCreated, "hello world")
 		msg := <-ch
 
 		emitter.sync(func() {

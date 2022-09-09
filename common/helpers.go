@@ -151,7 +151,7 @@ func createWaitForEventHandler(
 	chan interface{}, context.CancelFunc,
 ) {
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	chEvHandler := make(chan Event)
+	chEvHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	ch := make(chan interface{})
 
 	go func() {
@@ -193,7 +193,7 @@ func createWaitForEventPredicateHandler(
 	chan interface{}, context.CancelFunc,
 ) {
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	chEvHandler := make(chan Event)
+	chEvHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	ch := make(chan interface{})
 
 	go func() {

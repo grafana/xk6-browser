@@ -370,7 +370,7 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 	}
 
 	evCancelCtx, evCancelFn := context.WithCancel(b.ctx)
-	chEvHandler := make(chan Event)
+	chEvHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	ch := make(chan interface{})
 
 	go func() {

@@ -25,9 +25,10 @@ import (
 	"fmt"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/log"
 
 	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/cdproto/log"
+	clog "github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/target"
@@ -64,13 +65,13 @@ func NewWorker(ctx context.Context, s session, id target.ID, url string) (*Worke
 	return &w, nil
 }
 
-func (w *Worker) didClose() {
-	w.emit(EventWorkerClose, w)
+func (w *Worker) didClose(logger *log.Logger) {
+	w.emit(logger, EventWorkerClose, w)
 }
 
 func (w *Worker) initEvents() error {
 	actions := []Action{
-		log.Enable(),
+		clog.Enable(),
 		network.Enable(),
 		runtime.RunIfWaitingForDebugger(),
 	}

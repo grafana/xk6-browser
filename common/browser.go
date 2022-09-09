@@ -168,7 +168,7 @@ func (b *Browser) getPages() []*Page {
 func (b *Browser) initEvents() error {
 	var cancelCtx context.Context
 	cancelCtx, b.evCancelFn = context.WithCancel(b.ctx)
-	chHandler := make(chan Event)
+	chHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 
 	b.conn.on(cancelCtx, []string{
 		cdproto.EventTargetAttachedToTarget,
@@ -313,7 +313,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		b.sessionIDtoTargetID[ev.SessionID] = evti.TargetID
 		b.sessionIDtoTargetIDMu.Unlock()
 
-		browserCtx.emit(EventBrowserContextPage, p)
+		browserCtx.emit(b.logger, EventBrowserContextPage, p)
 	default:
 		b.logger.Warnf(
 			"Browser:onAttachedToTarget", "sid:%v tid:%v bctxid:%v bctx nil:%t, unknown target type: %q",

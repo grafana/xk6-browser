@@ -204,7 +204,7 @@ func (c *Connection) close(code int) error {
 		}
 		c.sessionsMu.Unlock()
 
-		c.emit(EventConnectionClose, nil)
+		c.emit(c.logger, EventConnectionClose, nil)
 	})
 
 	return err
@@ -368,11 +368,11 @@ func (c *Connection) recvLoop() {
 				c.logger.Errorf("cdp", "%s", err)
 				continue
 			}
-			c.emit(string(msg.Method), ev)
+			c.emit(c.logger, string(msg.Method), ev)
 
 		case msg.ID != 0:
 			c.logger.Debugf("Connection:recvLoop:msg.ID:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
-			c.emit("", &msg)
+			c.emit(c.logger, "", &msg)
 
 		default:
 			c.logger.Errorf("cdp", "ignoring malformed incoming message (missing id or method): %#v (message: %s)", msg, msg.Error.Message)
@@ -505,7 +505,7 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 	// Setup event handler used to block for response to message being sent.
 	ch := make(chan *cdproto.Message, 1)
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
-	chEvHandler := make(chan Event)
+	chEvHandler := make(chan Event, EventListenerDefaultChanBufferSize)
 	go func() {
 		for {
 			select {

@@ -47,6 +47,8 @@ func TestBrowserNewPageInContext(t *testing.T) {
 		// newPageInContext will return this page by searching it by its targetID in the wait event handler.
 		tc.b.pages[targetID] = &Page{targetID: targetID}
 
+		log := log.NewNullLogger()
+
 		tc.b.conn = fakeConn{
 			execute: func(
 				ctx context.Context, method string, params easyjson.Marshaler, res easyjson.Unmarshaler,
@@ -68,7 +70,7 @@ func TestBrowserNewPageInContext(t *testing.T) {
 				// EventBrowserContextPage to be fired. this normally happens when the browser's
 				// onAttachedToTarget event is fired. here, we imitate as if the browser created a target for
 				// the page.
-				tc.bc.emit(EventBrowserContextPage, &Page{targetID: targetID})
+				tc.bc.emit(log, EventBrowserContextPage, &Page{targetID: targetID})
 
 				return nil
 			},

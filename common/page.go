@@ -159,7 +159,7 @@ func (p *Page) closeWorker(sessionID target.SessionID) {
 	p.logger.Debugf("Page:closeWorker", "sid:%v", sessionID)
 
 	if worker, ok := p.workers[sessionID]; ok {
-		worker.didClose()
+		worker.didClose(p.logger)
 		delete(p.workers, sessionID)
 	}
 }
@@ -177,14 +177,14 @@ func (p *Page) didClose() {
 	}
 	p.closedMu.Unlock()
 
-	p.emit(EventPageClose, p)
+	p.emit(p.logger, EventPageClose, p)
 }
 
 func (p *Page) didCrash() {
 	p.logger.Debugf("Page:didCrash", "sid:%v", p.sessionID())
 
 	p.frameManager.dispose()
-	p.emit(EventPageCrash, p)
+	p.emit(p.logger, EventPageCrash, p)
 }
 
 func (p *Page) evaluateOnNewDocument(source string) {

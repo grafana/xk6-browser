@@ -22,6 +22,9 @@ package common
 
 import (
 	"context"
+	"time"
+
+	"github.com/grafana/xk6-browser/log"
 )
 
 // Ensure BaseEventEmitter implements the EventEmitter interface.
@@ -76,6 +79,10 @@ const (
 	// Worker
 
 	EventWorkerClose string = "close"
+
+	// Event listener.
+
+	EventListenerDefaultChanBufferSize int64 = 10
 )
 
 // Event as emitted by an EventEmiter.
@@ -103,7 +110,7 @@ type eventHandler struct {
 
 // EventEmitter that all event emitters need to implement.
 type EventEmitter interface {
-	emit(event string, data interface{})
+	emit(logger *log.Logger, event string, data interface{})
 	on(ctx context.Context, events []string, ch chan Event)
 	onAll(ctx context.Context, ch chan Event)
 }
@@ -164,12 +171,22 @@ func (e *BaseEventEmitter) sync(fn func()) {
 	<-done
 }
 
-func (e *BaseEventEmitter) emit(event string, data interface{}) {
+func (e *BaseEventEmitter) emit(logger *log.Logger, event string, data interface{}) {
 	emitEvent := func(eh eventHandler) {
-		select {
-		case eh.ch <- Event{event, data}:
-		case <-eh.ctx.Done():
-			// TODO: handle the error
+		for {
+			select {
+			case eh.ch <- Event{event, data}:
+				return
+			case <-eh.ctx.Done():
+				// TODO: handle the error
+				return
+			case <-time.After(time.Second):
+				// If this is printed then a handler is deadlocked on something
+				// and the channel (which should be buffered) is full. It might
+				// be that by increasing the buffer size on the channel will help
+				// alleviate the problem.
+				logger.Error("emit timed out waiting for handler to read message")
+			}
 		}
 	}
 	emitTo := func(handlers []eventHandler) (updated []eventHandler) {
@@ -180,7 +197,7 @@ func (e *BaseEventEmitter) emit(event string, data interface{}) {
 				handlers = append(handlers[:i], handlers[i+1:]...)
 				continue
 			default:
-				go emitEvent(handler)
+				emitEvent(handler)
 				i++
 			}
 		}

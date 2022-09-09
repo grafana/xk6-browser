@@ -76,7 +76,7 @@ func TestFrameManagerFrameAbortedNavigationShouldEmitANonNilPendingDocument(t *t
 	fm.frames[frame.id] = frame
 
 	// listen for frame navigation events
-	recv := make(chan Event)
+	recv := make(chan Event, EventListenerDefaultChanBufferSize)
 	frame.on(ctx, []string{EventFrameNavigation}, recv)
 
 	// emit the navigation event

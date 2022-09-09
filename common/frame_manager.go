@@ -157,7 +157,7 @@ func (m *FrameManager) frameAbortedNavigation(frameID cdp.FrameID, errorText, do
 		err:         errors.New(errorText),
 	}
 	frame.pendingDocument = nil
-	frame.emit(EventFrameNavigation, ne)
+	frame.emit(m.logger, EventFrameNavigation, ne)
 }
 
 func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.FrameID) {
@@ -183,7 +183,7 @@ func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.Fram
 		m.logger.Debugf("FrameManager:frameAttached:emit:EventPageFrameAttached",
 			"fmid:%d fid:%v pfid:%v", m.ID(), frameID, parentFrameID)
 
-		m.page.emit(EventPageFrameAttached, frame)
+		m.page.emit(m.logger, EventPageFrameAttached, frame)
 	}
 }
 
@@ -325,7 +325,7 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 		m.ID(), frameID, parentFrameID, documentID, name, url, initial, documentID)
 
 	frame.clearLifecycle()
-	frame.emit(EventFrameNavigation, &NavigationEvent{url: url, name: name, newDocument: frame.currentDocument})
+	frame.emit(m.logger, EventFrameNavigation, &NavigationEvent{url: url, name: name, newDocument: frame.currentDocument})
 
 	// TODO: when we add API support for storage we need to track origins
 	// if !initial {
@@ -357,7 +357,7 @@ func (m *FrameManager) frameNavigatedWithinDocument(frameID cdp.FrameID, url str
 		"fmid:%d fid:%v furl:%s url:%s", m.ID(), frameID, frame.URL(), url)
 
 	frame.setURL(url)
-	frame.emit(EventFrameNavigation, &NavigationEvent{url: url, name: frame.Name()})
+	frame.emit(m.logger, EventFrameNavigation, &NavigationEvent{url: url, name: frame.Name()})
 }
 
 func (m *FrameManager) frameRequestedNavigation(frameID cdp.FrameID, url string, documentID string) error {
@@ -438,7 +438,7 @@ func (m *FrameManager) removeFramesRecursively(frame *Frame) {
 			"fmid:%d fid:%v fname:%s furl:%s",
 			m.ID(), frame.ID(), frame.Name(), frame.URL())
 
-		m.page.emit(EventPageFrameDetached, frame)
+		m.page.emit(m.logger, EventPageFrameDetached, frame)
 	}
 }
 
@@ -446,7 +446,7 @@ func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 	m.logger.Debugf("FrameManager:requestFailed", "fmid:%d rurl:%s", m.ID(), req.URL())
 
 	delete(m.inflightRequests, req.getID())
-	defer m.page.emit(EventPageRequestFailed, req)
+	defer m.page.emit(m.logger, EventPageRequestFailed, req)
 
 	frame := req.getFrame()
 	if frame == nil {
@@ -485,7 +485,7 @@ func (m *FrameManager) requestFinished(req *Request) {
 		m.ID(), req.URL())
 
 	delete(m.inflightRequests, req.getID())
-	defer m.page.emit(EventPageRequestFinished, req)
+	defer m.page.emit(m.logger, EventPageRequestFinished, req)
 
 	frame := req.getFrame()
 	if frame == nil {
@@ -509,7 +509,7 @@ func (m *FrameManager) requestFinished(req *Request) {
 func (m *FrameManager) requestReceivedResponse(res *Response) {
 	m.logger.Debugf("FrameManager:requestReceivedResponse", "fmid:%d rurl:%s", m.ID(), res.URL())
 
-	m.page.emit(EventPageResponse, res)
+	m.page.emit(m.logger, EventPageResponse, res)
 }
 
 func (m *FrameManager) requestStarted(req *Request) {
@@ -517,7 +517,7 @@ func (m *FrameManager) requestStarted(req *Request) {
 
 	m.framesMu.Lock()
 	defer m.framesMu.Unlock()
-	defer m.page.emit(EventPageRequest, req)
+	defer m.page.emit(m.logger, EventPageRequest, req)
 
 	m.inflightRequests[req.getID()] = true
 	frame := req.getFrame()

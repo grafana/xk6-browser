@@ -105,7 +105,7 @@ func NewFrameSession(
 		contextIDToContextMu: sync.Mutex{},
 		contextIDToContext:   make(map[cdpruntime.ExecutionContextID]*ExecutionContext),
 		isolatedWorlds:       make(map[string]bool),
-		eventCh:              make(chan Event),
+		eventCh:              make(chan Event, EventListenerDefaultChanBufferSize),
 		childSessions:        make(map[cdp.FrameID]*FrameSession),
 		vu:                   k6ext.GetVU(ctx),
 		k6Metrics:            k6ext.GetCustomMetrics(ctx),
@@ -543,7 +543,7 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 }
 
 func (fs *FrameSession) onExceptionThrown(event *cdpruntime.EventExceptionThrown) {
-	fs.page.emit(EventPageError, event.ExceptionDetails)
+	fs.page.emit(fs.logger, EventPageError, event.ExceptionDetails)
 }
 
 func (fs *FrameSession) onExecutionContextCreated(event *cdpruntime.EventExecutionContextCreated) {
