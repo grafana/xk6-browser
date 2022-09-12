@@ -40,7 +40,7 @@ func (v *VU) RunLoop(fn func() error) error {
 }
 
 // MoveToVUContext moves the VU to VU context, adding a predefined k6 lib State and nilling the InitEnv
-// to simulate how that is done in the real k6
+// to simulate how that is done in the real k6.
 func (v *VU) MoveToVUContext() {
 	v.VU.StateField = v.toBeState
 	v.VU.InitEnvField = nil
