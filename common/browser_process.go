@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/grafana/xk6-browser/log"
 	"github.com/grafana/xk6-browser/storage"
@@ -84,6 +85,7 @@ func NewBrowserProcess(
 		select {
 		case <-p.processIsGracefullyClosing:
 		default:
+			fmt.Printf(">>> [%s] cancelling context from NewBrowserProcess() goroutine", time.Now().UTC())
 			p.cancel()
 		}
 	}()

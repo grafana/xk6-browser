@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/common"
@@ -217,6 +218,7 @@ func (b *BrowserType) allocate(
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer func() {
 		if rerr != nil {
+			fmt.Printf(">>> [%s] cancelling context from BrowserType.allocate() defer; rerr: %#+v\n", time.Now().UTC(), rerr)
 			cancel()
 		}
 	}()
