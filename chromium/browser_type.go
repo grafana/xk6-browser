@@ -215,11 +215,11 @@ func (b *BrowserType) allocate(
 	flags map[string]interface{}, env []string, dataDir *storage.Dir,
 	logger *log.Logger,
 ) (_ *common.BrowserProcess, rerr error) {
-	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
+	bProcCtx, bProcCtxCancel := context.WithTimeout(ctx, opts.Timeout)
 	defer func() {
 		if rerr != nil {
 			fmt.Printf(">>> [%s] cancelling context from BrowserType.allocate() defer; rerr: %#+v\n", time.Now().UTC(), rerr)
-			cancel()
+			bProcCtxCancel()
 		}
 	}()
 
@@ -233,7 +233,7 @@ func (b *BrowserType) allocate(
 		path = b.ExecutablePath()
 	}
 
-	return common.NewBrowserProcess(ctx, path, args, env, dataDir, cancel, logger)
+	return common.NewBrowserProcess(bProcCtx, path, args, env, dataDir, bProcCtxCancel, logger)
 }
 
 // parseArgs parses command-line arguments and returns them.

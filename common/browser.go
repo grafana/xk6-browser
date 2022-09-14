@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -435,6 +436,16 @@ func (b *Browser) Close() {
 	b.browserProc.GracefulClose()
 	// b.browserProc.Terminate()
 	b.conn.Close()
+
+	// Wait for the process to exit gracefully. Otherwise kill it forcefully
+	// after the timeout.
+	select {
+	case <-b.browserProc.processDone:
+		fmt.Printf(">>> [%s] the browser process is done\n", time.Now().UTC())
+	case <-time.After(5 * time.Second): // TODO: Something lower, make it a constant?
+		fmt.Printf(">>> [%s] killing the browser process after 5s\n", time.Now().UTC())
+		b.browserProc.Terminate()
+	}
 }
 
 // Contexts returns list of browser contexts.
