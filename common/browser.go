@@ -431,7 +431,7 @@ func (b *Browser) Close() {
 	// afterwards. this will take a little bit of time, and CDP
 	// will stop emitting events.
 	b.browserProc.GracefulClose()
-	b.browserProc.Terminate()
+	// b.browserProc.Terminate()
 	b.conn.Close()
 }
 
