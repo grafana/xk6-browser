@@ -72,7 +72,7 @@ type Browser struct {
 	defaultContext *BrowserContext
 
 	// Cancel function to stop event listening
-	evCancelFn context.CancelFunc
+	// evCancelFn context.CancelFunc
 
 	// Needed as the targets map will be accessed from multiple Go routines,
 	// the main VU/JS go routine and the Go routine listening for CDP messages.
@@ -166,27 +166,28 @@ func (b *Browser) getPages() []*Page {
 }
 
 func (b *Browser) initEvents() error {
-	var cancelCtx context.Context
-	cancelCtx, b.evCancelFn = context.WithCancel(b.ctx)
+	// var cancelCtx context.Context
+	// cancelCtx, b.evCancelFn = context.WithCancel(b.ctx)
 	chHandler := make(chan Event)
 
-	b.conn.on(cancelCtx, []string{
+	b.conn.on(b.ctx, []string{
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 		EventConnectionClose,
 	}, chHandler)
 
 	go func() {
-		defer func() {
-			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
-			b.browserProc.didLoseConnection()
-			if b.cancelFn != nil {
-				b.cancelFn()
-			}
-		}()
+		// defer func() {
+		// 	b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
+		// 	b.browserProc.didLoseConnection()
+		// 	if b.cancelFn != nil {
+		// 		fmt.Printf(">>> [%s] cancelling context from Browser.initEvents() goroutine", time.Now().UTC())
+		// 		b.cancelFn()
+		// 	}
+		// }()
 		for {
 			select {
-			case <-cancelCtx.Done():
+			case <-b.ctx.Done():
 				return
 			case event := <-chHandler:
 				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
@@ -197,6 +198,7 @@ func (b *Browser) initEvents() error {
 					b.onDetachedFromTarget(ev)
 				} else if event.typ == EventConnectionClose {
 					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
+					b.browserProc.didLoseConnection()
 					return
 				}
 			}
