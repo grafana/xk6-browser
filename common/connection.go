@@ -25,7 +25,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -121,17 +120,18 @@ func (f ActionFunc) Do(ctx context.Context) error {
 type Connection struct {
 	BaseEventEmitter
 
-	ctx          context.Context
-	wsURL        string
-	logger       *log.Logger
-	conn         *websocket.Conn
-	sendCh       chan *cdproto.Message
-	recvCh       chan *cdproto.Message
-	closeCh      chan int
-	errorCh      chan error
-	done         chan struct{}
-	shutdownOnce sync.Once
-	msgID        int64
+	ctx           context.Context
+	wsURL         string
+	logger        *log.Logger
+	conn          *websocket.Conn
+	sendCh        chan *cdproto.Message
+	recvCh        chan *cdproto.Message
+	closeCh       chan int
+	errorCh       chan error
+	done          chan struct{}
+	normalClosure chan struct{}
+	shutdownOnce  sync.Once
+	msgID         int64
 
 	sessionsMu sync.RWMutex
 	sessions   map[target.SessionID]*Session
@@ -168,6 +168,7 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closeCh:          make(chan int),
 		errorCh:          make(chan error),
 		done:             make(chan struct{}),
+		normalClosure:    make(chan struct{}),
 		msgID:            0,
 		sessions:         make(map[target.SessionID]*Session),
 	}
@@ -192,9 +193,10 @@ func (c *Connection) closeConnection(code int) error {
 			close(c.done)
 		}()
 
+		timeout := 5 * time.Second
 		err = c.conn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
-			time.Now().Add(10*time.Second),
+			time.Now().Add(timeout),
 		)
 
 		c.sessionsMu.Lock()
@@ -203,6 +205,14 @@ func (c *Connection) closeConnection(code int) error {
 			delete(c.sessions, s.id)
 		}
 		c.sessionsMu.Unlock()
+
+		// time.Sleep(500 * time.Millisecond)
+		select {
+		case <-c.normalClosure:
+			fmt.Printf(">>> [%s] c.normalClosure is closed\n", time.Now().UTC())
+		case <-time.After(timeout):
+			fmt.Printf(">>> [%s] closeConnection timed out after %s\n", time.Now().UTC(), timeout)
+		}
 
 		c.emit(EventConnectionClose, nil)
 	})
@@ -238,16 +248,21 @@ func (c *Connection) createSession(info *target.Info) (*Session, error) {
 }
 
 func (c *Connection) handleIOError(err error) {
-	c.logger.Errorf("cdp", "communicating with browser: %v", err)
+	c.logger.Errorf("cdp", "[%s] communicating with browser: %v", time.Now().UTC(), err)
 
-	if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		// Report an unexpected closure
-		select {
-		case c.errorCh <- err:
-		case <-c.done:
-			return
-		}
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		fmt.Printf(">>> [%s] got normal WS close error: %#+v\n", time.Now().UTC(), err)
+		close(c.normalClosure)
+		return
 	}
+	// if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+	// Report an unexpected closure
+	select {
+	case c.errorCh <- err:
+	case <-c.done:
+		return
+	}
+	// }
 	var (
 		cerr *websocket.CloseError
 		code = websocket.CloseGoingAway
@@ -288,10 +303,10 @@ func (c *Connection) recvLoop() {
 	for {
 		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
-			if !errors.Is(err, net.ErrClosed) {
-				c.logger.Debugf("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
-				c.handleIOError(err)
-			}
+			// if !errors.Is(err, net.ErrClosed) {
+			// 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q ioErr:%v", c.wsURL, err)
+			c.handleIOError(err)
+			// }
 			return
 		}
 
