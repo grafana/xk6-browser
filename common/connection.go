@@ -131,6 +131,7 @@ type Connection struct {
 	errorCh       chan error
 	done          chan struct{}
 	normalClosure chan struct{}
+	stopped       chan struct{}
 	shutdownOnce  sync.Once
 	msgID         int64
 
@@ -169,6 +170,7 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closeCh:          make(chan int),
 		errorCh:          make(chan error),
 		done:             make(chan struct{}),
+		stopped:          make(chan struct{}),
 		normalClosure:    make(chan struct{}),
 		msgID:            0,
 		sessions:         make(map[target.SessionID]*Session),
@@ -188,7 +190,7 @@ func (c *Connection) closeConnection(code int) error {
 	var err error
 	c.shutdownOnce.Do(func() {
 		defer func() {
-			c.Stop()
+			close(c.done)
 			_ = c.conn.Close()
 		}()
 
@@ -199,19 +201,27 @@ func (c *Connection) closeConnection(code int) error {
 		}
 		c.sessionsMu.Unlock()
 
-		timeout := 5 * time.Second
+		timeout := time.Second
 		err = c.conn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
 			time.Now().Add(timeout),
 		)
 
+		// According to the WS RFC[1], we might want to wait for a response
+		// Control frame back from the browser here (possibly for the above
+		// timeout duration), but Chrom{e,ium} never sends one, even when
+		// the browser process exits normally after the Browser.close CDP
+		// command. So we don't bother waiting, since it would just needlessly
+		// delay the k6 iteration.
+		// [1]: https://www.rfc-editor.org/rfc/rfc6455#section-1.4
+
 		// time.Sleep(500 * time.Millisecond)
-		select {
-		case <-c.normalClosure:
-			fmt.Printf(">>> [%s] c.normalClosure is closed\n", time.Now().UTC())
-		case <-time.After(timeout):
-			fmt.Printf(">>> [%s] closeConnection timed out after %s\n", time.Now().UTC(), timeout)
-		}
+		// select {
+		// case <-c.normalClosure:
+		// 	fmt.Printf(">>> [%s] c.normalClosure is closed\n", time.Now().UTC())
+		// case <-time.After(timeout):
+		// 	fmt.Printf(">>> [%s] closeConnection timed out after %s\n", time.Now().UTC(), timeout)
+		// }
 
 		c.emit(EventConnectionClose, nil)
 	})
@@ -570,16 +580,12 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 // Stop signals that the connection receive and send loops should be stopped,
 // but doesn't actually close the connection.
 func (c *Connection) Stop() {
-	select {
-	case <-c.done:
-	default:
-		close(c.done)
-	}
+	close(c.stopped)
 }
 
 func (c *Connection) isStopped() (s bool) {
 	select {
-	case <-c.done:
+	case <-c.stopped:
 		s = true
 	default:
 	}

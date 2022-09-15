@@ -87,7 +87,7 @@ func NewBrowserProcess(
 		select {
 		case <-p.processIsGracefullyClosing:
 		default:
-			fmt.Printf(">>> [%s] cancelling context from NewBrowserProcess() goroutine", time.Now().UTC())
+			fmt.Printf(">>> [%s] cancelling context from NewBrowserProcess() goroutine\n", time.Now().UTC())
 			p.cancel()
 		}
 	}()

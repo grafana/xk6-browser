@@ -428,6 +428,8 @@ func (b *Browser) Close() {
 	b.conn.Stop()
 	b.browserProc.GracefulClose()
 
+	// fmt.Printf(">>> [%s] before sending Browser.close\n", time.Now().UTC())
+
 	// This sends the Browser.close CDP command, which triggers the browser
 	// process to exit. The WS connection will also be closed if this succeeds,
 	// so we don't need to do it ourselves here, but note that we *don't*
@@ -440,6 +442,11 @@ func (b *Browser) Close() {
 			k6ext.Panic(b.ctx, "closing the browser: %v", err)
 		}
 	}
+
+	// fmt.Printf(">>> [%s] after sending Browser.close, sleeping for 60s\n", time.Now().UTC())
+	// time.Sleep(60 * time.Second)
+
+	b.conn.Close()
 
 	// Wait for the process to exit gracefully. Otherwise kill it forcefully
 	// after the timeout.
