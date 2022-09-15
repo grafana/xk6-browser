@@ -56,6 +56,7 @@ type executorEmitter interface {
 type connection interface {
 	executorEmitter
 	Close(...goja.Value)
+	Stop()
 	getSession(target.SessionID) *Session
 }
 
@@ -187,17 +188,9 @@ func (c *Connection) closeConnection(code int) error {
 	var err error
 	c.shutdownOnce.Do(func() {
 		defer func() {
+			c.Stop()
 			_ = c.conn.Close()
-
-			// Stop the main control loop
-			close(c.done)
 		}()
-
-		timeout := 5 * time.Second
-		err = c.conn.WriteControl(websocket.CloseMessage,
-			websocket.FormatCloseMessage(code, ""),
-			time.Now().Add(timeout),
-		)
 
 		c.sessionsMu.Lock()
 		for _, s := range c.sessions {
@@ -205,6 +198,12 @@ func (c *Connection) closeConnection(code int) error {
 			delete(c.sessions, s.id)
 		}
 		c.sessionsMu.Unlock()
+
+		timeout := 5 * time.Second
+		err = c.conn.WriteControl(websocket.CloseMessage,
+			websocket.FormatCloseMessage(code, ""),
+			time.Now().Add(timeout),
+		)
 
 		// time.Sleep(500 * time.Millisecond)
 		select {
@@ -248,6 +247,11 @@ func (c *Connection) createSession(info *target.Info) (*Session, error) {
 }
 
 func (c *Connection) handleIOError(err error) {
+	if c.isStopped() {
+		fmt.Printf(">>> [%s] connection is stopped, but got WS error: %#+v\n", time.Now().UTC(), err)
+		return
+	}
+
 	c.logger.Errorf("cdp", "[%s] communicating with browser: %v", time.Now().UTC(), err)
 
 	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
@@ -561,4 +565,24 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 		Params: buf,
 	}
 	return c.send(c.ctx, msg, ch, res)
+}
+
+// Stop signals that the connection receive and send loops should be stopped,
+// but doesn't actually close the connection.
+func (c *Connection) Stop() {
+	select {
+	case <-c.done:
+	default:
+		close(c.done)
+	}
+}
+
+func (c *Connection) isStopped() (s bool) {
+	select {
+	case <-c.done:
+		s = true
+	default:
+	}
+
+	return
 }
