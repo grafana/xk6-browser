@@ -55,7 +55,6 @@ type executorEmitter interface {
 
 type connection interface {
 	executorEmitter
-	Close(...goja.Value)
 	Stop()
 	getSession(target.SessionID) *Session
 }
@@ -180,8 +179,6 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 	return &c, nil
 }
 
-// close cleanly closes the WebSocket connection.
-// Returns an error if sending the close control frame fails.
 func (c *Connection) close(code int) error {
 	c.logger.Debugf("Connection:close", "code:%d", code)
 
@@ -193,12 +190,7 @@ func (c *Connection) close(code int) error {
 			_ = c.conn.Close()
 		}()
 
-		c.sessionsMu.Lock()
-		for _, s := range c.sessions {
-			s.close()
-			delete(c.sessions, s.id)
-		}
-		c.sessionsMu.Unlock()
+		c.closeAllSessions()
 
 		err = c.conn.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(code, ""),
@@ -229,6 +221,17 @@ func (c *Connection) closeSession(sid target.SessionID, tid target.ID) {
 	c.sessionsMu.Unlock()
 }
 
+func (c *Connection) closeAllSessions() {
+	c.logger.Debugf("Connection:closeAllSessions", "wsURL:%v", c.wsURL)
+
+	c.sessionsMu.Lock()
+	for _, s := range c.sessions {
+		s.close()
+		delete(c.sessions, s.id)
+	}
+	c.sessionsMu.Unlock()
+}
+
 func (c *Connection) createSession(info *target.Info) (*Session, error) {
 	c.logger.Debugf("Connection:createSession", "tid:%v bctxid:%v type:%s", info.TargetID, info.BrowserContextID, info.Type)
 
@@ -248,11 +251,15 @@ func (c *Connection) createSession(info *target.Info) (*Session, error) {
 
 func (c *Connection) handleIOError(err error) {
 	// It's either a normal closure initiated by the browser, or we stopped the
-	// connection. In either case, disregard the error.
+	// connection. In either case, disregard the error, but close all sessions
+	// and emit a ConnectionClose event, so that the browser event listener can
+	// be stopped.
 	if stopped := c.isStopped(); websocket.IsCloseError(
 		err, websocket.CloseNormalClosure, websocket.CloseGoingAway,
 	) || stopped {
 		c.logger.Debugf("cdp", "received IO error: %v, connection is stopped: %v", err, stopped)
+		c.closeAllSessions()
+		c.emit(EventConnectionClose, nil)
 		return
 	}
 
@@ -500,6 +507,9 @@ func (c *Connection) sendLoop() {
 	}
 }
 
+// Close cleanly closes the WebSocket connection.
+// It returns an error if sending the Close control frame fails.
+// TODO: Remove this and close(), since nothing calls them anymore.
 func (c *Connection) Close(args ...goja.Value) {
 	code := websocket.CloseGoingAway
 	if len(args) > 0 {
