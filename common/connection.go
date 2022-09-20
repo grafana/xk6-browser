@@ -509,7 +509,6 @@ func (c *Connection) sendLoop() {
 
 // Close cleanly closes the WebSocket connection.
 // It returns an error if sending the Close control frame fails.
-// TODO: Remove this and close(), since nothing calls them anymore.
 func (c *Connection) Close(args ...goja.Value) {
 	code := websocket.CloseGoingAway
 	if len(args) > 0 {
