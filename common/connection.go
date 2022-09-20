@@ -55,7 +55,7 @@ type executorEmitter interface {
 
 type connection interface {
 	executorEmitter
-	Stop()
+	IgnoreIOErrors()
 	getSession(target.SessionID) *Session
 }
 
@@ -129,7 +129,7 @@ type Connection struct {
 	closeCh      chan int
 	errorCh      chan error
 	done         chan struct{}
-	stopped      chan struct{}
+	closing      chan struct{}
 	shutdownOnce sync.Once
 	msgID        int64
 
@@ -168,7 +168,7 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closeCh:          make(chan int),
 		errorCh:          make(chan error),
 		done:             make(chan struct{}),
-		stopped:          make(chan struct{}),
+		closing:          make(chan struct{}),
 		msgID:            0,
 		sessions:         make(map[target.SessionID]*Session),
 	}
@@ -254,10 +254,10 @@ func (c *Connection) handleIOError(err error) {
 	// connection. In either case, disregard the error, but close all sessions
 	// and emit a ConnectionClose event, so that the browser event listener can
 	// be stopped.
-	if stopped := c.isStopped(); websocket.IsCloseError(
+	if closing := c.isClosing(); websocket.IsCloseError(
 		err, websocket.CloseNormalClosure, websocket.CloseGoingAway,
-	) || stopped {
-		c.logger.Debugf("cdp", "received IO error: %v, connection is stopped: %v", err, stopped)
+	) || closing {
+		c.logger.Debugf("cdp", "received IO error: %v, connection is closing: %v", err, closing)
 		c.closeAllSessions()
 		c.emit(EventConnectionClose, nil)
 		return
@@ -569,15 +569,15 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 	return c.send(c.ctx, msg, ch, res)
 }
 
-// Stop signals that the connection will soon be closed, so that any received
-// IO errors can be disregarded.
-func (c *Connection) Stop() {
-	close(c.stopped)
+// IgnoreIOErrors signals that the connection will soon be closed, so that any
+// received IO errors can be disregarded.
+func (c *Connection) IgnoreIOErrors() {
+	close(c.closing)
 }
 
-func (c *Connection) isStopped() (s bool) {
+func (c *Connection) isClosing() (s bool) {
 	select {
-	case <-c.stopped:
+	case <-c.closing:
 		s = true
 	default:
 	}
