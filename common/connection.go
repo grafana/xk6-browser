@@ -56,6 +56,7 @@ type executorEmitter interface {
 type connection interface {
 	executorEmitter
 	IgnoreIOErrors()
+	Close(...goja.Value)
 	getSession(target.SessionID) *Session
 }
 
@@ -259,7 +260,9 @@ func (c *Connection) handleIOError(err error) {
 	) || closing {
 		c.logger.Debugf("cdp", "received IO error: %v, connection is closing: %v", err, closing)
 		c.closeAllSessions()
-		c.emit(EventConnectionClose, nil)
+		if !closing {
+			c.emit(EventConnectionClose, nil)
+		}
 		return
 	}
 
