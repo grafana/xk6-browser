@@ -22,6 +22,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -56,8 +57,9 @@ const (
 type Browser struct {
 	BaseEventEmitter
 
-	ctx      context.Context
-	cancelFn context.CancelFunc
+	ctx           context.Context
+	cancelFn      context.CancelFunc
+	cancelConnCtx context.CancelFunc
 
 	state int64
 
@@ -128,7 +130,11 @@ func newBrowser(
 
 func (b *Browser) connect() error {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
-	conn, err := NewConnection(b.ctx, b.browserProc.WsURL(), b.logger)
+
+	var ctx context.Context
+	ctx, b.cancelConnCtx = context.WithCancel(b.ctx)
+
+	conn, err := NewConnection(ctx, b.browserProc.WsURL(), b.logger)
 	if err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
@@ -420,13 +426,6 @@ func (b *Browser) Close() {
 	}
 
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
-
-	// Signal to the connection and the process that we're gracefully closing.
-	// We ignore any IO errors reading from the WS connection, because the below
-	// CDP Browser.close command ends the connection unexpectedly, which causes
-	// `websocket.ReadMessage()` to return `close 1006 (abnormal closure):
-	// unexpected EOF`.
-	b.conn.IgnoreIOErrors()
 	b.browserProc.GracefulClose()
 
 	// Send the Browser.close CDP command, which triggers the browser process to
@@ -434,14 +433,21 @@ func (b *Browser) Close() {
 	// need to do it ourselves here, but note that we *don't* receive a Close
 	// control frame from Chrom{e,ium} as per the RFC[1].
 	// [1]: https://www.rfc-editor.org/rfc/rfc6455#section-1.4
-	action := cdpbrowser.Close()
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
-		if _, ok := err.(*websocket.CloseError); !ok {
+	if err := cdpbrowser.Close().Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+		var cerr *websocket.CloseError
+		if !errors.As(err, &cerr) {
 			k6ext.Panic(b.ctx, "closing the browser: %v", err)
 		}
 	}
 
-	b.conn.Close()
+	// Signal to the connection and the process that we're gracefully closing.
+	// We ignore any IO errors reading from the WS connection, because the below
+	// CDP Browser.close command ends the connection unexpectedly, which causes
+	// `websocket.ReadMessage()` to return `close 1006 (abnormal closure):
+	// unexpected EOF`.
+	b.cancelConnCtx()
+	// b.conn.Close()
+
 	// Wait for all outstanding events (e.g. Target.detachedFromTarget) to be
 	// processed, and for the process to exit gracefully. Otherwise kill it
 	// forcefully after the timeout.

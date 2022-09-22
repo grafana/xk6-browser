@@ -55,7 +55,6 @@ type executorEmitter interface {
 
 type connection interface {
 	executorEmitter
-	IgnoreIOErrors()
 	Close(...goja.Value)
 	getSession(target.SessionID) *Session
 }
@@ -130,7 +129,6 @@ type Connection struct {
 	closeCh      chan int
 	errorCh      chan error
 	done         chan struct{}
-	closing      chan struct{}
 	shutdownOnce sync.Once
 	msgID        int64
 
@@ -169,7 +167,6 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closeCh:          make(chan int),
 		errorCh:          make(chan error),
 		done:             make(chan struct{}),
-		closing:          make(chan struct{}),
 		msgID:            0,
 		sessions:         make(map[target.SessionID]*Session),
 	}
@@ -255,7 +252,13 @@ func (c *Connection) handleIOError(err error) {
 	// connection. In either case, disregard the error, but close all sessions
 	// and emit a ConnectionClose event, so that the browser event listener can
 	// be stopped.
-	if closing := c.isClosing(); websocket.IsCloseError(
+	var closing bool
+	select {
+	case <-c.ctx.Done():
+		closing = true
+	default:
+	}
+	if websocket.IsCloseError(
 		err, websocket.CloseNormalClosure, websocket.CloseGoingAway,
 	) || closing {
 		c.logger.Debugf("cdp", "received IO error: %v, connection is closing: %v", err, closing)
@@ -570,20 +573,4 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 		Params: buf,
 	}
 	return c.send(c.ctx, msg, ch, res)
-}
-
-// IgnoreIOErrors signals that the connection will soon be closed, so that any
-// received IO errors can be disregarded.
-func (c *Connection) IgnoreIOErrors() {
-	close(c.closing)
-}
-
-func (c *Connection) isClosing() (s bool) {
-	select {
-	case <-c.closing:
-		s = true
-	default:
-	}
-
-	return
 }
