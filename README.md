@@ -393,7 +393,7 @@ export default function () {
 
 ### Running examples in a Docker container
 
-The examples above are also available as standalone files in the [`examples` directory][/examples]. You can run them in a Docker container using Docker Compose with:
+The examples above are also available as standalone files in the [`examples` directory](/examples). You can run them in a Docker container using Docker Compose with:
 
 ```bash
 docker-compose run -T xk6-browser run - <examples/browser_on.js
