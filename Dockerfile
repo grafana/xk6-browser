@@ -8,8 +8,8 @@ FROM debian:bullseye
 
 ARG CHROMIUM_VERSION=106.0.5249.61-1~deb11u1
 
-RUN apt-get update
-RUN apt-get install -y chromium=${CHROMIUM_VERSION}
+RUN apt-get update && \
+    apt-get install -y chromium=${CHROMIUM_VERSION}
 
 COPY --from=builder /tmp/k6 /usr/bin/k6
 
