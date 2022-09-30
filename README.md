@@ -391,6 +391,14 @@ export default function () {
 }
 ```
 
+### Running examples in a docker container
+
+To run examples from this directory inside a Docker container you can use `docker-compose`.
+
+```bash
+docker-compose run -T xk6-browser run - <examples/browser_on.js
+```
+
 ## Status
 
 Currently only Chromium is supported, and the [Playwright API](https://playwright.dev/docs/api/class-playwright) coverage is as follows:
