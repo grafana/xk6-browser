@@ -23,11 +23,12 @@ package common
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"strings"
+	"path/filepath"
+	"time"
 
 	"github.com/grafana/xk6-browser/log"
 	"github.com/grafana/xk6-browser/storage"
@@ -58,12 +59,12 @@ func NewBrowserProcess(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
 ) (*BrowserProcess, error) {
-	cmd, stdout, procDone, err := execute(ctx, path, args, env, dataDir, logger)
+	cmd, procDone, err := execute(ctx, path, args, env, dataDir, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	wsURL, err := parseDevToolsURL(ctx, stdout)
+	wsURL, err := getDevToolsURL(dataDir.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("getting DevTools URL: %w", err)
 	}
@@ -141,15 +142,9 @@ func (p *BrowserProcess) AttachLogger(logger *log.Logger) {
 func execute(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	logger *log.Logger,
-) (*exec.Cmd, io.Reader, chan struct{}, error) {
+) (*exec.Cmd, chan struct{}, error) {
 	cmd := exec.CommandContext(ctx, path, args...)
 	killAfterParent(cmd)
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("%w", err)
-	}
-	cmd.Stderr = cmd.Stdout
 
 	// Set up environment variable for process
 	if len(env) > 0 {
@@ -158,15 +153,15 @@ func execute(
 
 	// We must start the cmd before calling cmd.Wait, as otherwise the two
 	// can run into a data race.
-	err = cmd.Start()
+	err := cmd.Start()
 	if os.IsNotExist(err) {
-		return nil, nil, nil, fmt.Errorf("file does not exist: %s", path)
+		return nil, nil, fmt.Errorf("file does not exist: %s", path)
 	}
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("%w", err)
+		return nil, nil, fmt.Errorf("%w", err)
 	}
 	if ctx.Err() != nil {
-		return nil, nil, nil, fmt.Errorf("%w", ctx.Err())
+		return nil, nil, fmt.Errorf("%w", ctx.Err())
 	}
 
 	done := make(chan struct{})
@@ -186,37 +181,48 @@ func execute(
 		}
 	}()
 
-	return cmd, stdout, done, nil
+	return cmd, done, nil
 }
 
-// parseDevToolsURL grabs the websocket address from chrome's output and returns it.
-func parseDevToolsURL(ctx context.Context, rc io.Reader) (wsURL string, _ error) {
-	type result struct {
-		devToolsURL string
-		err         error
-	}
-	c := make(chan result, 1)
-	go func() {
-		const prefix = "DevTools listening on "
+// getDevToolsURL returns the DevTools WebSocket address by reading the
+// DevToolsActivePort file in the data directory.
+func getDevToolsURL(dataDir string) (wsURL string, rerr error) {
+	var (
+		f                  *os.File
+		fpath              = filepath.Join(dataDir, "DevToolsActivePort")
+		maxReadAttempts    = 10
+		readAttemptDelayMS = 50
+	)
 
-		scanner := bufio.NewScanner(rc)
-		for scanner.Scan() {
-			if s := scanner.Text(); strings.HasPrefix(s, prefix) {
-				c <- result{
-					strings.TrimPrefix(strings.TrimSpace(s), prefix),
-					nil,
-				}
-				return
-			}
+	// The browser might not have created the file yet, so try reading it
+	// multiple times after a slight delay.
+	for readAttempts := 0; readAttempts < maxReadAttempts; readAttempts++ {
+		var err error
+		f, err = os.Open(fpath) //nolint:gosec  // false positive, https://github.com/securego/gosec/issues/439
+		if errors.Is(err, os.ErrNotExist) {
+			time.Sleep(time.Duration(readAttemptDelayMS) * time.Millisecond)
+			continue
 		}
-		if err := scanner.Err(); err != nil {
-			c <- result{"", err}
+		if err != nil {
+			return "", fmt.Errorf("reading %q: %w", fpath, err)
 		}
-	}()
-	select {
-	case r := <-c:
-		return r.devToolsURL, r.err
-	case <-ctx.Done():
-		return "", fmt.Errorf("%w", ctx.Err())
+		defer func() { rerr = f.Close() }()
+
+		break
 	}
+
+	if f == nil {
+		return "", fmt.Errorf("unable to read file %q in %s", fpath,
+			time.Duration(maxReadAttempts*readAttemptDelayMS)*time.Millisecond)
+	}
+
+	fs := bufio.NewScanner(f)
+	fs.Split(bufio.ScanLines)
+	portURI := make([]string, 0, 2)
+
+	for fs.Scan() {
+		portURI = append(portURI, fs.Text())
+	}
+
+	return fmt.Sprintf("ws://127.0.0.1:%s%s", portURI[0], portURI[1]), nil
 }
