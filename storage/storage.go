@@ -26,7 +26,7 @@ type Dir struct {
 // Make creates a new temporary directory in tmpDir, and stores the path to
 // the directory in the Dir field. When the dir argument is not empty, no
 // directory will be created and it will not be deleted if Cleanup is called.
-func (d *Dir) Make(tmpDir string, dir interface{}) error {
+func (d *Dir) Make(tmpDir string, dir any) error {
 	// use the provided dir.
 	if ud, ok := dir.(string); ok && ud != "" {
 		d.Dir = ud

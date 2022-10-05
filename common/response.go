@@ -80,7 +80,7 @@ type Response struct {
 	timing            *network.ResourceTiming
 	vu                k6modules.VU
 
-	cachedJSON interface{}
+	cachedJSON any
 }
 
 // NewHTTPResponse creates a new HTTP response.
@@ -280,7 +280,7 @@ func (r *Response) JSON() goja.Value {
 			k6ext.Panic(r.ctx, "getting response body: %w", err)
 		}
 
-		var v interface{}
+		var v any
 		r.bodyMu.RLock()
 		defer r.bodyMu.RUnlock()
 		if err := json.Unmarshal(r.body, &v); err != nil {

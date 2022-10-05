@@ -593,7 +593,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 	newDocIDCh := make(chan string, 1)
 	navEvtCh, navEvtCancel := createWaitForEventHandler(
 		timeoutCtx, frame, []string{EventFrameNavigation},
-		func(data interface{}) bool {
+		func(data any) bool {
 			newDocID := <-newDocIDCh
 			if evt, ok := data.(*NavigationEvent); ok {
 				return evt.newDocument.documentID == newDocID
@@ -604,7 +604,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, opts goja.Value) 
 
 	lifecycleEvtCh, lifecycleEvtCancel := createWaitForEventPredicateHandler(
 		timeoutCtx, frame, []string{EventFrameAddLifecycle},
-		func(data interface{}) bool {
+		func(data any) bool {
 			if le, ok := data.(LifecycleEvent); ok {
 				return le == parsedOpts.WaitUntil
 			}

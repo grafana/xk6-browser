@@ -174,8 +174,8 @@ func (e *ExecutionContext) adoptElementHandle(eh *ElementHandle) (*ElementHandle
 // eval evaluates the provided JavaScript within this execution context and
 // returns a value or handle.
 func (e *ExecutionContext) eval(
-	apiCtx context.Context, opts evalOptions, js string, args ...interface{},
-) (interface{}, error) {
+	apiCtx context.Context, opts evalOptions, js string, args ...any,
+) (any, error) {
 	e.logger.Debugf(
 		"ExecutionContext:eval",
 		"sid:%s stid:%s fid:%s ectxid:%d furl:%q %s",
@@ -233,7 +233,7 @@ func (e *ExecutionContext) eval(
 	if exceptionDetails != nil {
 		return nil, fmt.Errorf("%s", parseExceptionDetails(exceptionDetails))
 	}
-	var res interface{}
+	var res any
 	if remoteObject == nil {
 		e.logger.Debugf(
 			"ExecutionContext:eval",
@@ -312,12 +312,12 @@ func (e *ExecutionContext) getInjectedScript(apiCtx context.Context) (api.JSHand
 // returns a value or handle.
 func (e *ExecutionContext) Eval(
 	apiCtx context.Context, js goja.Value, args ...goja.Value,
-) (interface{}, error) {
+) (any, error) {
 	opts := evalOptions{
 		forceCallable: true,
 		returnByValue: true,
 	}
-	evalArgs := make([]interface{}, 0, len(args))
+	evalArgs := make([]any, 0, len(args))
 	for _, a := range args {
 		evalArgs = append(evalArgs, a.Export())
 	}
@@ -333,7 +333,7 @@ func (e *ExecutionContext) EvalHandle(
 		forceCallable: true,
 		returnByValue: false,
 	}
-	evalArgs := make([]interface{}, 0, len(args))
+	evalArgs := make([]any, 0, len(args))
 	for _, a := range args {
 		evalArgs = append(evalArgs, a.Export())
 	}

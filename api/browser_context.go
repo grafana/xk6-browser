@@ -54,5 +54,5 @@ type BrowserContext interface {
 	SetOffline(offline bool)
 	StorageState(opts goja.Value)
 	Unroute(url goja.Value, handler goja.Callable)
-	WaitForEvent(event string, optsOrPredicate goja.Value) interface{}
+	WaitForEvent(event string, optsOrPredicate goja.Value) any
 }
