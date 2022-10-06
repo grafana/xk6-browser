@@ -2,7 +2,7 @@ name: Build
 on:
   workflow_dispatch:
     inputs:
-      xk6-browser_version:
+      xk6_browser_version:
         description: 'The version of the release, it must use the semantic versioning format with the v prefix. It is a development release so it is suggested to append a build metadata (e.g. v0.38.0-dev).'
         required: true
       go_version:
@@ -21,14 +21,14 @@ defaults:
     shell: bash
 
 env:
-  APP_NAME: "xxk6-browser-browser"
+  APP_NAME: "xk6-browser"
   DEFAULT_GO_VERSION: "1.19.x"
 
 jobs:
   configure:
     runs-on: ubuntu-latest
     outputs:
-      xk6-browser_version: ${{ steps.get_k6_version.outputs.k6_version }}
+      xk6_browser_version: ${{ steps.get_xk6_browser_version.outputs.xk6_browser_version }}
       go_version: ${{ steps.get_go_version.outputs.go_version }}
     steps:
       - name: Checkout code
@@ -36,11 +36,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Get the xk6-browser version
-        id: get_xk6-browser_version
+        id: get_xk6_browser_version
         run: |
           set -x # Show exactly what commands are executed
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ github.event.inputs.xk6-browser_version }}" != "" ]]; then
-            VERSION="${{ github.event.inputs.xk6-browser_version }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ github.event.inputs.xk6_browser_version }}" != "" ]]; then
+            VERSION="${{ github.event.inputs.xk6_browser_version }}"
             echo "Building custom dev build with version '${VERSION}' from manual workflow_dispatch..."
           elif [[ "${GITHUB_REF}" =~ ^refs/tags/v.+$ ]]; then
             VERSION="${GITHUB_REF##*/}"
@@ -50,7 +50,7 @@ jobs:
             echo "Building a non-version ref '${GITHUB_REF}', use '${VERSION}' as the version instead..."
           fi
           echo "VERSION=${VERSION}"
-          echo "::set-output name=xk6-browser_version::${VERSION}"
+          echo "::set-output name=xk6_browser_version::${VERSION}"
       - name: Get the used Go version
         id: get_go_version
         run: |
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [configure]
     env:
-      VERSION: ${{ needs.configure.outputs.xk6-browser_version }}
+      VERSION: ${{ needs.configure.outputs.xk6_browser_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -133,7 +133,7 @@ jobs:
         shell: pwsh
     needs: [configure, build]
     env:
-      VERSION: ${{ needs.configure.outputs.xk6-browser_version }}
+      VERSION: ${{ needs.configure.outputs.xk6_browser_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -205,7 +205,7 @@ jobs:
     needs: [configure, build, package-windows]
     if: ${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
     env:
-      VERSION: ${{ needs.configure.outputs.xk6-browser_version }}
+      VERSION: ${{ needs.configure.outputs.xk6_browser_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
