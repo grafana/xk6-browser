@@ -24,7 +24,7 @@ jobs:
       - name: Check dependencies
         run: |
             go version
-            test -z "$(go mod tidy && go mod vendor && git status --porcelain)"
+            test -z "$(go mod tidy && git status --porcelain)"
             go mod verify
       - name: Check code generation
         run: |
