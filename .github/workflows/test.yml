@@ -43,7 +43,7 @@ jobs:
             args[1]="1"
             export GOMAXPROCS=1
           fi
-          go test "${args[@]}" -timeout 800s ./...
+          go test "${args[@]}" -timeout 5m ./...
 
   test-tip:
     runs-on: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
           go version
           export GOMAXPROCS=2
           args=("-p" "2" "-race")
-          go test "${args[@]}" -timeout 800s ./...
+          go test "${args[@]}" -timeout 5m ./...
 
   test-current-cov:
     strategy:
@@ -106,7 +106,7 @@ jobs:
                   list=$(echo "$list" | cut -f1 -d ' ' | sort -u | paste -sd, -)
               fi
 
-              go test "${args[@]}" -timeout 800s --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
+              go test "${args[@]}" -timeout 5m --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
           done
           grep -h -v "^mode:" *.coverage >> coverage.txt
           rm -f *.coverage
