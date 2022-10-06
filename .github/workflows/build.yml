@@ -171,7 +171,7 @@ jobs:
           light.exe -ext WixUIExtension xk6-browser.wixobj
 
       - name: Sign Windows binary and .msi package
-        # GH secrets are unavaileble when building from project forks, so this
+        # GH secrets are unavailable when building from project forks, so this
         # will fail for external PRs, even if we wanted to do it. And we don't.
         # We are only going to sign packages that are built from main or a
         # version tag, or manually triggered dev builds, so we have enough
