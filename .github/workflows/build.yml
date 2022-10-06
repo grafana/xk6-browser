@@ -157,7 +157,7 @@ jobs:
       - name: Unzip Windows binary
         run: |
           Expand-Archive -Path ".\dist\xk6-browser-$env:VERSION-windows-amd64.zip" -DestinationPath .\packaging\
-          move .\packaging\xk6-browser-$env:VERSION-windows-amd64\k6.exe .\packaging\
+          move .\packaging\xk6-browser-$env:VERSION-windows-amd64\xk6-browser.exe .\packaging\
           rmdir .\packaging\xk6-browser-$env:VERSION-windows-amd64\
       - name: Add signtool to PATH
         run: echo "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64" | Out-File -FilePath $env:GITHUB_PATH -Append
@@ -183,17 +183,17 @@ jobs:
           [IO.File]::WriteAllBytes("xk6-browser.pfx", $bytes)
 
           # Sign the Windows binary
-          signtool sign /f xk6-browser.pfx /p "${{ secrets.WIN_SIGN_PASS }}" /tr "http://timestamp.digicert.com" /td sha256 /fd sha256 "packaging\k6.exe"
+          signtool sign /f xk6-browser.pfx /p "${{ secrets.WIN_SIGN_PASS }}" /tr "http://timestamp.digicert.com" /td sha256 /fd sha256 "packaging\xk6-browser.exe"
 
           # Sign the MSI package
-          signtool sign /f xk6-browser.pfx /p "${{ secrets.WIN_SIGN_PASS }}" /tr "http://timestamp.digicert.com" /td sha256 /fd sha256 "packaging\k6.msi"
+          signtool sign /f xk6-browser.pfx /p "${{ secrets.WIN_SIGN_PASS }}" /tr "http://timestamp.digicert.com" /td sha256 /fd sha256 "packaging\xk6-browser.msi"
 
           # Cleanup signing artifacts
           del xk6-browser.pfx
 
       - name: Rename MSI package
         # To keep it consistent with the other artifacts
-        run: move "packaging\xk6-browser.msi" "packaging\k6-$env:VERSION-windows-amd64.msi"
+        run: move "packaging\xk6-browser.msi" "packaging\xk6-browser-$env:VERSION-windows-amd64.msi"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
