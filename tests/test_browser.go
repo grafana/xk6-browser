@@ -27,6 +27,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/chromium"
@@ -257,6 +258,26 @@ func (b *testBrowser) runJavaScript(s string, args ...interface{}) (goja.Value, 
 func (b *testBrowser) await(fn func() error) error {
 	b.t.Helper()
 	return b.vu.Loop.Start(fn)
+}
+
+// awaitWithTimeout is the same as await but takes a timeout and times out the function after the time runs out.
+func (b *testBrowser) awaitWithTimeout(timeout time.Duration, fn func() error) error {
+	b.t.Helper()
+	errC := make(chan error)
+	go func() {
+		errC <- b.await(fn)
+	}()
+
+	// use timer instead of time.After to not leak time.After for the duration of the timeout
+	t := time.NewTimer(timeout)
+	defer t.Stop()
+
+	select {
+	case err := <-errC:
+		return err
+	case <-t.C:
+		return fmt.Errorf("test timeouted after %s", timeout)
+	}
 }
 
 // launchOptions provides a way to customize browser type

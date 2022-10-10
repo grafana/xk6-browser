@@ -20,7 +20,7 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 	}
 	t.Parallel()
 
-	var timeout time.Duration = 5000 // interpreted as ms
+	timeout := 5 * time.Second
 
 	testCases := []struct {
 		name, selector string
@@ -34,49 +34,42 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			errc := make(chan error)
-			go func() {
-				tb := newTestBrowser(t, withFileServer())
-				p := tb.NewPage(nil)
+			tb := newTestBrowser(t, withFileServer())
+			tb.awaitWithTimeout(timeout,
+				func() error {
+					p := tb.NewPage(nil)
 
-				resp := p.Goto(tb.staticURL("/nav_in_doc.html"), tb.toGojaValue(&common.FrameGotoOptions{
-					WaitUntil: common.LifecycleEventNetworkIdle,
-					Timeout:   timeout, // interpreted as ms
-				}))
-				require.NotNil(t, resp)
-
-				// Callbacks that are initiated internally by click and WaitForNavigation
-				// need to be called from the event loop itself, otherwise the callback
-				// doesn't work. The await below needs to first return before the callback
-				// will resolve/reject.
-				var wfnPromise, cPromise *goja.Promise
-				err := tb.await(func() error {
-					wfnPromise = p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-						Timeout: timeout, // interpreted as ms
+					resp := p.Goto(tb.staticURL("/nav_in_doc.html"), tb.toGojaValue(&common.FrameGotoOptions{
+						WaitUntil: common.LifecycleEventNetworkIdle,
+						Timeout:   timeout, // interpreted as ms
 					}))
-					cPromise = p.Click(tc.selector, nil)
+					require.NotNil(t, resp)
 
-					assert.Equal(t, goja.PromiseStatePending, wfnPromise.State())
-					assert.Equal(t, goja.PromiseStatePending, cPromise.State())
+					// Callbacks that are initiated internally by click and WaitForNavigation
+					// need to be called from the event loop itself, otherwise the callback
+					// doesn't work. The await below needs to first return before the callback
+					// will resolve/reject.
+					var wfnPromise, cPromise *goja.Promise
+					err := tb.await(func() error {
+						wfnPromise = p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+							Timeout: timeout, // interpreted as ms
+						}))
+						cPromise = p.Click(tc.selector, nil)
+
+						assert.Equal(t, goja.PromiseStatePending, wfnPromise.State())
+						assert.Equal(t, goja.PromiseStatePending, cPromise.State())
+
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+
+					assert.Equal(t, goja.PromiseStateFulfilled, wfnPromise.State())
+					assert.Equal(t, goja.PromiseStateFulfilled, cPromise.State())
 
 					return nil
 				})
-				if err != nil {
-					errc <- err
-				}
-
-				assert.Equal(t, goja.PromiseStateFulfilled, wfnPromise.State())
-				assert.Equal(t, goja.PromiseStateFulfilled, cPromise.State())
-
-				errc <- nil
-			}()
-
-			select {
-			case err := <-errc:
-				assert.NoError(t, err)
-			case <-time.After(time.Duration(int64(timeout)) * time.Millisecond):
-				t.Fatal("Test timed out")
-			}
 		})
 	}
 }
