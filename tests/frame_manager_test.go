@@ -35,7 +35,7 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			tb.awaitWithTimeout(timeout,
+			err := tb.awaitWithTimeout(timeout,
 				func() error {
 					p := tb.NewPage(nil)
 
@@ -70,6 +70,7 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 
 					return nil
 				})
+			require.NoError(t, err)
 		})
 	}
 }
