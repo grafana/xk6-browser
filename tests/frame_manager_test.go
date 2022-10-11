@@ -41,11 +41,11 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 
 					resp := p.Goto(tb.staticURL("/nav_in_doc.html"), tb.toGojaValue(&common.FrameGotoOptions{
 						WaitUntil: common.LifecycleEventNetworkIdle,
-						Timeout:   timeout, // interpreted as ms
+						Timeout:   time.Duration(timeout.Milliseconds()), // interpreted as ms
 					}))
 					require.NotNil(t, resp)
 					wfnPromise := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-						Timeout: timeout, // interpreted as ms
+						Timeout: time.Duration(timeout.Milliseconds()), // interpreted as ms
 					}))
 					cPromise := p.Click(tc.selector, nil)
 					tb.promiseThen(tb.promiseAll(wfnPromise, cPromise), func(_ goja.Value) {
