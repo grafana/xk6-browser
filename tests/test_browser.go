@@ -280,6 +280,42 @@ func (b *testBrowser) awaitWithTimeout(timeout time.Duration, fn func() error) e
 	}
 }
 
+func (b *testBrowser) promiseThen(promise *goja.Promise, onFulfilled, onRejected func(goja.Value)) *goja.Promise {
+	b.t.Helper()
+	rt := b.runtime()
+	val, err := rt.RunString(`(function(promise, onFulfilled, onRejected) { return promise.then(onFulfilled, onRejected) })`)
+	require.NoError(b.t, err)
+	cal, ok := goja.AssertFunction(val)
+	require.True(b.t, ok)
+	if onRejected == nil {
+		val, err = cal(goja.Undefined(), rt.ToValue(promise), rt.ToValue(onFulfilled))
+	} else {
+		val, err = cal(goja.Undefined(), rt.ToValue(promise), rt.ToValue(onFulfilled), rt.ToValue(onRejected))
+	}
+	require.NoError(b.t, err)
+	newPromise, ok := val.Export().(*goja.Promise)
+	require.True(b.t, ok)
+	return newPromise
+}
+
+func (b *testBrowser) promiseAll(promises ...*goja.Promise) *goja.Promise {
+	b.t.Helper()
+	rt := b.runtime()
+	val, err := rt.RunString(`(function(...promises) { return Promise.all(...promises) })`)
+	require.NoError(b.t, err)
+	cal, ok := goja.AssertFunction(val)
+	require.True(b.t, ok)
+	valPromises := make([]goja.Value, len(promises))
+	for i, promise := range promises {
+		valPromises[i] = rt.ToValue(promise)
+	}
+	val, err = cal(goja.Undefined(), rt.ToValue(valPromises))
+	require.NoError(b.t, err)
+	newPromise, ok := val.Export().(*goja.Promise)
+	require.True(b.t, ok)
+	return newPromise
+}
+
 // launchOptions provides a way to customize browser type
 // launch options in tests.
 type launchOptions struct {

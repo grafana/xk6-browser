@@ -44,29 +44,15 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 						Timeout:   timeout, // interpreted as ms
 					}))
 					require.NotNil(t, resp)
-
-					// Callbacks that are initiated internally by click and WaitForNavigation
-					// need to be called from the event loop itself, otherwise the callback
-					// doesn't work. The await below needs to first return before the callback
-					// will resolve/reject.
-					var wfnPromise, cPromise *goja.Promise
-					err := tb.await(func() error {
-						wfnPromise = p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-							Timeout: timeout, // interpreted as ms
-						}))
-						cPromise = p.Click(tc.selector, nil)
-
-						assert.Equal(t, goja.PromiseStatePending, wfnPromise.State())
-						assert.Equal(t, goja.PromiseStatePending, cPromise.State())
-
-						return nil
-					})
-					if err != nil {
-						return err
-					}
-
-					assert.Equal(t, goja.PromiseStateFulfilled, wfnPromise.State())
-					assert.Equal(t, goja.PromiseStateFulfilled, cPromise.State())
+					wfnPromise := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+						Timeout: timeout, // interpreted as ms
+					}))
+					cPromise := p.Click(tc.selector, nil)
+					tb.promiseThen(tb.promiseAll(wfnPromise, cPromise), func(_ goja.Value) {
+						// this is a bit pointless :shrug:
+						assert.Equal(t, goja.PromiseStateFulfilled, wfnPromise.State())
+						assert.Equal(t, goja.PromiseStateFulfilled, cPromise.State())
+					}, func(val goja.Value) { t.Fatal(val) })
 
 					return nil
 				})
