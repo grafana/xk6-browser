@@ -283,7 +283,8 @@ func (b *testBrowser) awaitWithTimeout(timeout time.Duration, fn func() error) e
 func (b *testBrowser) promiseThen(promise *goja.Promise, onFulfilled, onRejected func(goja.Value)) *goja.Promise {
 	b.t.Helper()
 	rt := b.runtime()
-	val, err := rt.RunString(`(function(promise, onFulfilled, onRejected) { return promise.then(onFulfilled, onRejected) })`)
+	val, err := rt.RunString(
+		`(function(promise, onFulfilled, onRejected) { return promise.then(onFulfilled, onRejected) })`)
 	require.NoError(b.t, err)
 	cal, ok := goja.AssertFunction(val)
 	require.True(b.t, ok)
@@ -295,6 +296,7 @@ func (b *testBrowser) promiseThen(promise *goja.Promise, onFulfilled, onRejected
 	require.NoError(b.t, err)
 	newPromise, ok := val.Export().(*goja.Promise)
 	require.True(b.t, ok)
+
 	return newPromise
 }
 
@@ -313,6 +315,7 @@ func (b *testBrowser) promiseAll(promises ...*goja.Promise) *goja.Promise {
 	require.NoError(b.t, err)
 	newPromise, ok := val.Export().(*goja.Promise)
 	require.True(b.t, ok)
+
 	return newPromise
 }
 
