@@ -276,7 +276,7 @@ func (b *testBrowser) awaitWithTimeout(timeout time.Duration, fn func() error) e
 	case err := <-errC:
 		return err
 	case <-t.C:
-		return fmt.Errorf("test timeouted after %s", timeout)
+		return fmt.Errorf("test timed out after %s", timeout)
 	}
 }
 
