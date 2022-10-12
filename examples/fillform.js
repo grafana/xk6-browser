@@ -19,8 +19,7 @@ export default function() {
     return Promise.all([
       page.waitForNavigation(),
       page.locator('a[href="/my_messages.php"]').click(),
-    ])
-
+    ]);
   }).then(() => {
     // Enter login credentials and login
     page.locator('input[name="login"]').type('admin');
