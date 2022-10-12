@@ -371,11 +371,13 @@ func (p *Page) AddInitScript(script goja.Value, arg goja.Value) *goja.Promise {
 	return nil
 }
 
+// AddScriptTag is not implemented.
 func (p *Page) AddScriptTag(opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.addScriptTag(opts) has not been implemented yet")
 	return nil
 }
 
+// AddStyleTag is not implemented.
 func (p *Page) AddStyleTag(opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.addStyleTag(opts) has not been implemented yet")
 	return nil
@@ -452,6 +454,7 @@ func (p *Page) DispatchEvent(selector string, typ string, eventInit goja.Value, 
 	p.MainFrame().DispatchEvent(selector, typ, eventInit, opts)
 }
 
+// DragAndDrop is not implemented.
 func (p *Page) DragAndDrop(source string, target string, opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.DragAndDrop(source, target, opts) has not been implemented yet")
 	return nil
@@ -516,11 +519,13 @@ func (p *Page) EvaluateHandle(pageFunc goja.Value, args ...goja.Value) api.JSHan
 	return p.MainFrame().EvaluateHandle(pageFunc, args...)
 }
 
+// ExposeBinding is not implemented.
 func (p *Page) ExposeBinding(name string, callback goja.Callable, opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.exposeBinding(name, callback) has not been implemented yet")
 	return nil
 }
 
+// ExposeFunction is not implemented.
 func (p *Page) ExposeFunction(name string, callback goja.Callable) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.exposeFunction(name, callback) has not been implemented yet")
 	return nil
@@ -538,6 +543,7 @@ func (p *Page) Focus(selector string, opts goja.Value) {
 	p.MainFrame().Focus(selector, opts)
 }
 
+// Frame is not implemented.
 func (p *Page) Frame(frameSelector goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.frame(frameSelector) has not been implemented yet")
 	return nil
@@ -555,11 +561,13 @@ func (p *Page) GetAttribute(selector string, name string, opts goja.Value) goja.
 	return p.MainFrame().GetAttribute(selector, name, opts)
 }
 
+// GoBack is not implemented.
 func (p *Page) GoBack(opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.goBack(opts) has not been implemented yet")
 	return nil
 }
 
+// GoForward is not implemented.
 func (p *Page) GoForward(opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.goForward(opts) has not been implemented yet")
 	return nil
@@ -660,11 +668,13 @@ func (p *Page) Opener() api.Page {
 	return p.opener
 }
 
+// Pause is not implemented.
 func (p *Page) Pause() *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.pause() has not been implemented yet")
 	return nil
 }
 
+// Pdf is not implemented.
 func (p *Page) Pdf(opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.pdf(opts) has not been implemented yet")
 	return nil
@@ -735,6 +745,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 	return resp
 }
 
+// Route is not implemented.
 func (p *Page) Route(url goja.Value, handler goja.Callable) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.route(url, handler) has not been implemented yet")
 	return nil
@@ -789,6 +800,7 @@ func (p *Page) SetExtraHTTPHeaders(headers map[string]string) {
 	p.updateExtraHTTPHeaders()
 }
 
+// SetInputFiles is not implemented.
 func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.textContent(selector, opts) has not been implemented yet")
 	return nil
@@ -834,6 +846,7 @@ func (p *Page) Type(selector string, text string, opts goja.Value) {
 	p.MainFrame().Type(selector, text, opts)
 }
 
+// Unroute is not implemented.
 func (p *Page) Unroute(url goja.Value, handler goja.Callable) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.unroute(url, handler) has not been implemented yet")
 	return nil
@@ -889,11 +902,13 @@ func (p *Page) WaitForNavigation(opts goja.Value) *goja.Promise {
 	return p.frameManager.MainFrame().WaitForNavigation(opts)
 }
 
+// WaitForRequest is not implemented.
 func (p *Page) WaitForRequest(urlOrPredicate, opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.waitForRequest(urlOrPredicate, opts) has not been implemented yet")
 	return nil
 }
 
+// WaitForResponse is not implemented.
 func (p *Page) WaitForResponse(urlOrPredicate, opts goja.Value) *goja.Promise {
 	k6ext.Panic(p.ctx, "Page.waitForResponse(urlOrPredicate, opts) has not been implemented yet")
 	return nil

@@ -83,6 +83,7 @@ func NewBrowserContext(
 	return &b
 }
 
+// AddCookies is not implemented.
 func (b *BrowserContext) AddCookies(cookies goja.Value) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.addCookies(cookies) has not been implemented yet")
 	return nil
@@ -161,16 +162,19 @@ func (b *BrowserContext) Close() {
 	}
 }
 
+// Cookies is not implemented.
 func (b *BrowserContext) Cookies() *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.cookies() has not been implemented yet")
 	return nil
 }
 
+// ExposeBinding is not implemented.
 func (b *BrowserContext) ExposeBinding(name string, callback goja.Callable, opts goja.Value) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.exposeBinding(name, callback, opts) has not been implemented yet")
 	return nil
 }
 
+// ExposeFunction is not implemented.
 func (b *BrowserContext) ExposeFunction(name string, callback goja.Callable) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.exposeFunction(name, callback) has not been implemented yet")
 	return nil
@@ -260,6 +264,7 @@ func (b *BrowserContext) Pages() []api.Page {
 	return pages
 }
 
+// Route is not implemented.
 func (b *BrowserContext) Route(url goja.Value, handler goja.Callable) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.route(url, handler) has not been implemented yet")
 	return nil
@@ -279,6 +284,7 @@ func (b *BrowserContext) SetDefaultTimeout(timeout int64) {
 	b.timeoutSettings.setDefaultTimeout(timeout)
 }
 
+// SetExtraHTTPHeaders is not implemented.
 func (b *BrowserContext) SetExtraHTTPHeaders(headers map[string]string) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.setExtraHTTPHeaders(headers) has not been implemented yet")
 	return nil
@@ -333,11 +339,13 @@ func (b *BrowserContext) SetOffline(offline bool) {
 	}
 }
 
+// StorageState is not implemented.
 func (b *BrowserContext) StorageState(opts goja.Value) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.storageState(opts) has not been implemented yet")
 	return nil
 }
 
+// Unroute is not implemented.
 func (b *BrowserContext) Unroute(url goja.Value, handler goja.Callable) *goja.Promise {
 	k6ext.Panic(b.ctx, "BrowserContext.unroute(url, handler) has not been implemented yet")
 	return nil
