@@ -64,9 +64,10 @@ func NewBrowserType(vu k6modules.VU) api.BrowserType {
 }
 
 // Connect attaches k6 browser to an existing browser instance.
-func (b *BrowserType) Connect(opts goja.Value) {
+func (b *BrowserType) Connect(opts goja.Value) *goja.Promise {
 	rt := b.vu.Runtime()
 	k6common.Throw(rt, errors.New("BrowserType.connect() has not been implemented yet"))
+	return nil
 }
 
 // ExecutablePath returns the path where the extension expects to find the browser executable.

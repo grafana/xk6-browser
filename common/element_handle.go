@@ -1233,9 +1233,10 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
-func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
+func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) *goja.Promise {
 	// TODO: implement
 	k6ext.Panic(h.ctx, "ElementHandle.setInputFiles() has not been implemented yet")
+	return nil
 }
 
 func (h *ElementHandle) Tap(opts goja.Value) {
