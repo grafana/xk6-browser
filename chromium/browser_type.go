@@ -198,7 +198,7 @@ func (b *BrowserType) launch(ctx context.Context, opts *common.LaunchOptions) (*
 }
 
 // LaunchPersistentContext launches the browser with persistent storage.
-func (b *BrowserType) LaunchPersistentContext(userDataDir string, opts goja.Value) api.Browser {
+func (b *BrowserType) LaunchPersistentContext(userDataDir string, opts goja.Value) *goja.Promise {
 	rt := b.vu.Runtime()
 	k6common.Throw(rt, errors.New("BrowserType.LaunchPersistentContext(userDataDir, opts) has not been implemented yet"))
 	return nil
