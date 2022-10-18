@@ -154,6 +154,10 @@ func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.Fram
 	}
 	if parentFrame, ok := m.frames[parentFrameID]; ok {
 		frame := NewFrame(m.ctx, m, parentFrame, frameID, m.logger)
+
+		events := make(chan Event)
+		go m.listenFrameLifecycleEvents(frame, events)
+
 		// TODO: create a addFrame func
 		m.frames[frameID] = frame
 		parentFrame.addChildFrame(frame)
@@ -162,6 +166,29 @@ func (m *FrameManager) frameAttached(frameID cdp.FrameID, parentFrameID cdp.Fram
 			"fmid:%d fid:%v pfid:%v", m.ID(), frameID, parentFrameID)
 
 		m.page.emit(EventPageFrameAttached, frame)
+	}
+}
+
+func (m *FrameManager) listenFrameLifecycleEvents(f *Frame, events chan Event) {
+	f.on(m.ctx, []string{EventFrameAddLifecycle, EventFrameRemoveLifecycle}, events)
+	for {
+		select {
+		case <-m.ctx.Done():
+			return
+		case ev := <-events:
+			lce, ok := ev.data.(LifecycleEvent)
+			if !ok {
+				continue
+			}
+			f.lifecycleEventsMu.Lock()
+			switch ev.data {
+			case EventFrameAddLifecycle:
+				f.lifecycleEvents[lce] = true
+			case EventFrameRemoveLifecycle:
+				delete(f.lifecycleEvents, lce)
+			}
+			f.lifecycleEventsMu.Unlock()
+		}
 	}
 }
 
@@ -248,6 +275,9 @@ func (m *FrameManager) frameNavigated(frameID cdp.FrameID, parentFrameID cdp.Fra
 
 		// Initial main frame navigation.
 		frame = NewFrame(m.ctx, m, nil, frameID, m.logger)
+		events := make(chan Event)
+		go m.listenFrameLifecycleEvents(frame, events)
+
 		mainFrame = frame
 	} else if isMainFrame && frame.ID() != string(frameID) {
 		m.logger.Debugf("FrameManager:frameNavigated:MainFrame:delete",
@@ -650,6 +680,13 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 	}
 
 	return resp, nil
+}
+
+func (m *FrameManager) callForFrame(fid cdp.FrameID, call func(f *Frame)) {
+	m.framesMu.Lock()
+	defer m.framesMu.Unlock()
+
+	call(m.frames[fid])
 }
 
 // Page returns the page that this frame manager belongs to.
