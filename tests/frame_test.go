@@ -61,16 +61,16 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 	t.Run("doesn't timeout waiting for networkIdle", func(t *testing.T) {
 		t.Parallel()
 
-		tb := newTestBrowser(t, withHTTPServer())
-		p := tb.NewPage(nil)
-
+		var (
+			tb = newTestBrowser(t, withHTTPServer())
+			p  = tb.NewPage(nil)
+		)
 		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, `
 			<html>
 				<head></head>
 				<body>
 					<div id="serverMsg">Waiting...</div>
-					
 					<script src="/ping.js" async></script>
 				</body>
 			</html>
@@ -91,43 +91,15 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 	t.Run("doesn't unblock wait for networkIdle too early", func(t *testing.T) {
 		t.Parallel()
 
-		tb := newTestBrowser(t, withHTTPServer())
-		p := tb.NewPage(nil)
-
-		var counter int64
-
-		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, `
-			<html>
-				<head></head>
-				<body>
-					<div id="prolongNetworkIdleLoad">Waiting...</div>
-					<div id="serverMsg">Waiting...</div>
-
-					<script>
-						var prolongNetworkIdleLoadOutput = document.getElementById("prolongNetworkIdleLoad");
-
-						var p = prolongNetworkIdleLoad();
-						p.then(() => {
-							prolongNetworkIdleLoadOutput.innerText += ' - for loop complete';
-						})
-
-						async function prolongNetworkIdleLoad() {
-							for (var i = 0; i < 4; i++) {
-								await fetch('/ping')
-								.then(response => response.text())
-								.then((data) => {
-									prolongNetworkIdleLoadOutput.innerText = 'Waiting... ' + data;
-								});
-							}
-						}
-					</script>
-					<script src="/ping.js" async></script>
-				</body>
-			</html>
-			`)
+		var (
+			counter int64
+			tb      = newTestBrowser(t, withFileServer())
+			p       = tb.NewPage(nil)
+			ch      = make(chan bool)
+		)
+		tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, tb.staticURL("prolonged_network_idle.html"), http.StatusMovedPermanently)
 		})
-		ch := make(chan bool)
 		tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
 			<-ch
 
@@ -140,7 +112,6 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 				var serverMsgOutput = document.getElementById("serverMsg");
 				serverMsgOutput.innerText = "ping.js loaded from server";
 			`)
-
 			close(ch)
 		})
 		assertHome(tb, p, func() {
@@ -155,39 +126,13 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 	t.Run("doesn't unblock wait on networkIdle early when load and domcontentloaded complete at once", func(t *testing.T) {
 		t.Parallel()
 
-		tb := newTestBrowser(t, withHTTPServer())
-		p := tb.NewPage(nil)
-
-		var counter int64
-
-		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, `
-			<html>
-				<head></head>
-				<body>
-					<div id="prolongNetworkIdleLoad">Waiting...</div>
-
-					<script>
-						var prolongNetworkIdleLoadOutput = document.getElementById("prolongNetworkIdleLoad");
-
-						var p = prolongNetworkIdleLoad();
-						p.then(() => {
-							prolongNetworkIdleLoadOutput.innerText += ' - for loop complete';
-						})
-
-						async function prolongNetworkIdleLoad() {
-							for (var i = 0; i < 10; i++) {
-								await fetch('/ping')
-								.then(response => response.text())
-								.then((data) => {
-									prolongNetworkIdleLoadOutput.innerText = 'Waiting... ' + data;
-								});
-							}
-						}
-					</script>
-				</body>
-			</html>
-			`)
+		var (
+			counter int64
+			tb      = newTestBrowser(t, withFileServer())
+			p       = tb.NewPage(nil)
+		)
+		tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, tb.staticURL("prolonged_network_idle_10.html"), http.StatusMovedPermanently)
 		})
 		tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
 			time.Sleep(time.Millisecond * 50)
