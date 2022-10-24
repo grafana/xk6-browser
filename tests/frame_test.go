@@ -3,7 +3,7 @@ package tests
 import (
 	"fmt"
 	"net/http"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -94,8 +94,7 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 		tb := newTestBrowser(t, withHTTPServer())
 		p := tb.NewPage(nil)
 
-		counterMu := sync.RWMutex{}
-		var counter int
+		var counter int64
 
 		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, `
@@ -132,13 +131,9 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 		tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
 			<-ch
 
-			counterMu.Lock()
-			defer counterMu.Unlock()
-
 			time.Sleep(time.Millisecond * 50)
-
-			counter++
-			fmt.Fprintf(w, "pong %d", counter)
+			atomic.AddInt64(&counter, 1)
+			fmt.Fprintf(w, "pong %d", atomic.LoadInt64(&counter))
 		})
 		tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, `
@@ -163,8 +158,7 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 		tb := newTestBrowser(t, withHTTPServer())
 		p := tb.NewPage(nil)
 
-		counterMu := sync.RWMutex{}
-		var counter int
+		var counter int64
 
 		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, `
@@ -196,13 +190,9 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 			`)
 		})
 		tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
-			counterMu.Lock()
-			defer counterMu.Unlock()
-
 			time.Sleep(time.Millisecond * 50)
-
-			counter++
-			fmt.Fprintf(w, "pong %d", counter)
+			atomic.AddInt64(&counter, 1)
+			fmt.Fprintf(w, "pong %d", atomic.LoadInt64(&counter))
 		})
 		assertHome(tb, p, func() {
 			result := p.TextContent("#prolongNetworkIdleLoad", nil)
