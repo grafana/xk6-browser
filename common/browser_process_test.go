@@ -117,7 +117,7 @@ func TestParseDevToolsURL(t *testing.T) {
 
 			timeout := time.Second
 			timer := time.NewTimer(timeout)
-			t.Cleanup(func() { _ = timer.Stop })
+			t.Cleanup(func() { _ = timer.Stop() })
 
 			var (
 				done  = make(chan struct{})
