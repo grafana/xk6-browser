@@ -10,17 +10,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockCommand struct {
+	*command
+	cancelFn context.CancelFunc
+}
+
 type mockReader struct {
 	lines []string
+	hook  func()
 	err   error
 }
 
 func (r *mockReader) Read(p []byte) (n int, err error) {
+	if r.hook != nil {
+		// Allow some time for the read to be processed
+		time.AfterFunc(100*time.Millisecond, r.hook)
+		r.hook = nil // Ensure the hook only runs once
+	}
 	if len(r.lines) == 0 {
 		return 0, io.EOF
 	}
 	n = copy(p, []byte(r.lines[0]+"\n"))
 	r.lines = r.lines[1:]
+
 	return n, r.err
 }
 
@@ -28,12 +40,11 @@ func TestParseDevToolsURL(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name               string
-		stderr             []string
-		readErr            error
-		prematureCtxCancel bool
-		prematureCmdDone   bool
-		assert             func(t *testing.T, wsURL string, err error)
+		name     string
+		stderr   []string
+		readErr  error
+		readHook func(c *mockCommand)
+		assert   func(t *testing.T, wsURL string, err error)
 	}{
 		{
 			name: "ok/no_error",
@@ -86,9 +97,24 @@ func TestParseDevToolsURL(t *testing.T) {
 			},
 		},
 		{
-			name:             "err/fatal-premature_cmd_done",
-			stderr:           []string{""},
-			prematureCmdDone: true,
+			// Ensure any error found on stderr is returned first.
+			name: "err/fatal-premature_cmd_done-stderr",
+			stderr: []string{
+				`[6497:6497:1013/103521.932979:ERROR:ozone_platform_x11` +
+					`.cc(247)] Missing X server or $DISPLAY` + "\n",
+			},
+			readHook: func(c *mockCommand) { close(c.done) },
+			assert: func(t *testing.T, wsURL string, err error) {
+				t.Helper()
+				require.Empty(t, wsURL)
+				assert.EqualError(t, err, "Missing X server or $DISPLAY")
+			},
+		},
+		{
+			// If there's no error on stderr, return a generic error.
+			name:     "err/fatal-premature_cmd_done-no_stderr",
+			stderr:   []string{""},
+			readHook: func(c *mockCommand) { close(c.done) },
 			assert: func(t *testing.T, wsURL string, err error) {
 				t.Helper()
 				require.Empty(t, wsURL)
@@ -96,9 +122,22 @@ func TestParseDevToolsURL(t *testing.T) {
 			},
 		},
 		{
-			name:               "err/fatal-premature_ctx_cancel",
-			stderr:             []string{""},
-			prematureCtxCancel: true,
+			name: "err/fatal-premature_ctx_cancel-stderr",
+			stderr: []string{
+				`[6497:6497:1013/103521.932979:ERROR:ozone_platform_x11` +
+					`.cc(247)] Missing X server or $DISPLAY` + "\n",
+			},
+			readHook: func(c *mockCommand) { c.cancelFn() },
+			assert: func(t *testing.T, wsURL string, err error) {
+				t.Helper()
+				require.Empty(t, wsURL)
+				assert.EqualError(t, err, "Missing X server or $DISPLAY")
+			},
+		},
+		{
+			name:     "err/fatal-premature_ctx_cancel-no_stderr",
+			stderr:   []string{""},
+			readHook: func(c *mockCommand) { c.cancelFn() },
 			assert: func(t *testing.T, wsURL string, err error) {
 				t.Helper()
 				require.Empty(t, wsURL)
@@ -111,12 +150,16 @@ func TestParseDevToolsURL(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			mr := mockReader{lines: tc.stderr, err: tc.readErr}
-			cmdDone := make(chan struct{})
-			cmd := command{done: cmdDone, stderr: &mr}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			t.Cleanup(cancel)
+
+			var cmd *mockCommand
+			mr := mockReader{lines: tc.stderr, err: tc.readErr}
+			if tc.readHook != nil {
+				mr.hook = func() { tc.readHook(cmd) }
+			}
+			cmd = &mockCommand{&command{done: make(chan struct{}), stderr: &mr}, cancel}
 
 			timeout := time.Second
 			timer := time.NewTimer(timeout)
@@ -129,19 +172,9 @@ func TestParseDevToolsURL(t *testing.T) {
 			)
 
 			go func() {
-				wsURL, err = parseDevToolsURL(ctx, cmd)
+				wsURL, err = parseDevToolsURL(ctx, *cmd.command)
 				close(done)
 			}()
-
-			if tc.prematureCmdDone {
-				time.Sleep(200 * time.Millisecond)
-				close(cmdDone)
-			}
-
-			if tc.prematureCtxCancel {
-				time.Sleep(200 * time.Millisecond)
-				cancel()
-			}
 
 			select {
 			case <-done:
