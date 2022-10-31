@@ -15,10 +15,12 @@ type mockReader struct {
 	err   error
 }
 
-func (r mockReader) Read(p []byte) (n int, err error) {
-	for _, l := range r.lines {
-		n += copy(p, []byte(l+"\n"))
+func (r *mockReader) Read(p []byte) (n int, err error) {
+	if len(r.lines) == 0 {
+		return 0, io.EOF
 	}
+	n = copy(p, []byte(r.lines[0]+"\n"))
+	r.lines = r.lines[1:]
 	return n, r.err
 }
 
@@ -75,6 +77,7 @@ func TestParseDevToolsURL(t *testing.T) {
 		},
 		{
 			name:    "err/fatal-eof-no_stderr",
+			stderr:  []string{""},
 			readErr: io.ErrUnexpectedEOF,
 			assert: func(t *testing.T, wsURL string, err error) {
 				t.Helper()
@@ -110,7 +113,7 @@ func TestParseDevToolsURL(t *testing.T) {
 			t.Parallel()
 			mr := mockReader{lines: tc.stderr, err: tc.readErr}
 			cmdDone := make(chan struct{})
-			cmd := command{done: cmdDone, stderr: mr}
+			cmd := command{done: cmdDone, stderr: &mr}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			t.Cleanup(cancel)
