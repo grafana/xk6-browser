@@ -373,6 +373,211 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 	})
 }
 
+func TestLifecycleLoadWithSubFrame(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_main_frame.html"), http.StatusMovedPermanently)
+	})
+	tb.withHandler("/sub", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				var parentOutputServerMsg = window.parent.document.getElementById('subFramePingJSText');
+
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+				parentOutputServerMsg.innerText = pingJSTextOutput.innerText;
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() {
+		result := p.TextContent("#subFramePingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#subFramePingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
+func TestLifecycleDOMContentLoadedWithSubFrame(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_main_frame.html"), http.StatusMovedPermanently)
+	})
+	tb.withHandler("/sub", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				await new Promise(resolve => setTimeout(resolve, 1000));
+
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				var parentOutputServerMsg = window.parent.document.getElementById('subFramePingJSText');
+
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+				parentOutputServerMsg.innerText = pingJSTextOutput.innerText;
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() {
+		result := p.TextContent("#subFramePingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#subFramePingJSText", nil)
+		assert.EqualValues(t, "Waiting...", result)
+	})
+}
+
+func TestLifecycleNetworkIdleWithSubFrame(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_main_frame.html"), http.StatusMovedPermanently)
+	})
+	tb.withHandler("/sub", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				var parentOutputServerMsg = window.parent.document.getElementById('subFramePingJSText');
+
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+				parentOutputServerMsg.innerText = pingJSTextOutput.innerText;
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+		result := p.TextContent("#subFramePingRequestText", nil)
+		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#subFramePingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
+func TestLifecycleLoad(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
+func TestLifecycleDOMContentLoaded(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				await new Promise(resolve => setTimeout(resolve, 1000));
+
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "Waiting...", result)
+	})
+}
+
 func TestLifecycleNetworkIdle(t *testing.T) {
 	t.Parallel()
 
