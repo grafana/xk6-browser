@@ -14,6 +14,159 @@ import (
 	"github.com/grafana/xk6-browser/common"
 )
 
+func TestLifecycleWaitForNavigationLoad(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() testPromise {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+
+		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+			Timeout:   30 * time.Second,
+			WaitUntil: common.LifecycleEventLoad,
+		}))
+		click := p.Click("#homeLink", nil)
+
+		return tb.promiseAll(waitForNav, click)
+	}, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 20 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
+func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				await new Promise(resolve => setTimeout(resolve, 1000));
+
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() testPromise {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "Waiting...", result)
+
+		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+			Timeout:   30 * time.Second,
+			WaitUntil: common.LifecycleEventDOMContentLoad,
+		}))
+		click := p.Click("#homeLink", nil)
+
+		return tb.promiseAll(waitForNav, click)
+	}, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 20 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "Waiting...", result)
+	})
+}
+
+func TestLifecycleWaitForNavigationNetworkIdle(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+
+		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+			Timeout:   30 * time.Second,
+			WaitUntil: common.LifecycleEventNetworkIdle,
+		}))
+		click := p.Click("#homeLink", nil)
+
+		return tb.promiseAll(waitForNav, click)
+	}, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.EqualValues(t, "Waiting... pong 20 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
 func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 	// Test description
 	//
@@ -56,7 +209,7 @@ func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventLoad
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -65,7 +218,9 @@ func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 
 		// This shouldn't block and return after calling hasLifecycleEventFired.
 		p.WaitForLoadState(waitUntil.String(), nil)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleWaitForLoadStateDOMContentLoaded(t *testing.T) {
@@ -112,7 +267,7 @@ func TestLifecycleWaitForLoadStateDOMContentLoaded(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventDOMContentLoad
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -121,7 +276,9 @@ func TestLifecycleWaitForLoadStateDOMContentLoaded(t *testing.T) {
 
 		// This shouldn't block and return after calling hasLifecycleEventFired.
 		p.WaitForLoadState(waitUntil.String(), nil)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleWaitForLoadStateNetworkIdle(t *testing.T) {
@@ -162,7 +319,7 @@ func TestLifecycleWaitForLoadStateNetworkIdle(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventNetworkIdle
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -171,7 +328,9 @@ func TestLifecycleWaitForLoadStateNetworkIdle(t *testing.T) {
 
 		// This shouldn't block and return after calling hasLifecycleEventFired.
 		p.WaitForLoadState(waitUntil.String(), nil)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleWaitForLoadStateDOMContentLoadedThenNetworkIdle(t *testing.T) {
@@ -212,7 +371,7 @@ func TestLifecycleWaitForLoadStateDOMContentLoadedThenNetworkIdle(t *testing.T) 
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() {
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() testPromise {
 		p.WaitForLoadState(common.LifecycleEventNetworkIdle.String(), nil)
 
 		result := p.TextContent("#pingRequestText", nil)
@@ -220,7 +379,9 @@ func TestLifecycleWaitForLoadStateDOMContentLoadedThenNetworkIdle(t *testing.T) 
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleReloadLoad(t *testing.T) {
@@ -252,7 +413,7 @@ func TestLifecycleReloadLoad(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventLoad
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -270,7 +431,9 @@ func TestLifecycleReloadLoad(t *testing.T) {
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleReloadDOMContentLoaded(t *testing.T) {
@@ -304,7 +467,7 @@ func TestLifecycleReloadDOMContentLoaded(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventDOMContentLoad
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -322,7 +485,9 @@ func TestLifecycleReloadDOMContentLoaded(t *testing.T) {
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "Waiting...", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleReloadNetworkIdle(t *testing.T) {
@@ -352,7 +517,7 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 	})
 
 	waitUntil := common.LifecycleEventNetworkIdle
-	assertHome(t, tb, p, waitUntil, func() {
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -370,7 +535,9 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleLoadWithSubFrame(t *testing.T) {
@@ -407,13 +574,15 @@ func TestLifecycleLoadWithSubFrame(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventLoad, func() {
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() testPromise {
 		result := p.TextContent("#subFramePingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
 		result = p.TextContent("#subFramePingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleDOMContentLoadedWithSubFrame(t *testing.T) {
@@ -452,13 +621,15 @@ func TestLifecycleDOMContentLoadedWithSubFrame(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() {
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() testPromise {
 		result := p.TextContent("#subFramePingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
 		result = p.TextContent("#subFramePingJSText", nil)
 		assert.EqualValues(t, "Waiting...", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleNetworkIdleWithSubFrame(t *testing.T) {
@@ -493,13 +664,15 @@ func TestLifecycleNetworkIdleWithSubFrame(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
 		result := p.TextContent("#subFramePingRequestText", nil)
 		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
 		result = p.TextContent("#subFramePingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleLoad(t *testing.T) {
@@ -530,13 +703,15 @@ func TestLifecycleLoad(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventLoad, func() {
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleDOMContentLoaded(t *testing.T) {
@@ -569,13 +744,15 @@ func TestLifecycleDOMContentLoaded(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() {
+	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "Waiting...", result)
-	})
+
+		return testPromise{}
+	}, nil)
 }
 
 func TestLifecycleNetworkIdle(t *testing.T) {
@@ -605,10 +782,12 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 			`)
 		})
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
 			result := p.TextContent("#pingJSText", nil)
 			assert.EqualValues(t, "ping.js loaded from server", result)
-		})
+
+			return testPromise{}
+		}, nil)
 	})
 
 	t.Run("doesn't unblock wait for networkIdle too early", func(t *testing.T) {
@@ -643,13 +822,15 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 			close(ch)
 		})
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
 			result := p.TextContent("#pingRequestText", nil)
 			assert.EqualValues(t, "Waiting... pong 4 - for loop complete", result)
 
 			result = p.TextContent("#pingJSText", nil)
 			assert.EqualValues(t, "ping.js loaded from server", result)
-		})
+
+			return testPromise{}
+		}, nil)
 	})
 
 	t.Run("doesn't unblock wait on networkIdle early when load and domcontentloaded complete at once", func(t *testing.T) {
@@ -673,10 +854,12 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 			fmt.Fprintf(w, "pong %d", counter)
 		})
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
 			result := p.TextContent("#pingRequestText", nil)
 			assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
-		})
+
+			return testPromise{}
+		}, nil)
 	})
 }
 
@@ -685,7 +868,8 @@ func assertHome(
 	tb *testBrowser,
 	p api.Page,
 	waitUntil common.LifecycleEvent,
-	check func(),
+	check func() testPromise,
+	secondCheck func(),
 ) {
 	t.Helper()
 
@@ -695,15 +879,20 @@ func assertHome(
 			WaitUntil: waitUntil,
 			Timeout:   30 * time.Second,
 		})
-		tb.promise(p.Goto(tb.URL("/home"), opts)).then(
-			func() {
-				check()
+		prm := tb.promise(p.Goto(tb.URL("/home"), opts)).then(
+			func() testPromise {
 				resolved = true
+				return check()
 			},
 			func() {
 				rejected = true
 			},
 		)
+		if secondCheck != nil {
+			prm.then(func() {
+				secondCheck()
+			})
+		}
 
 		return nil
 	})
