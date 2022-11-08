@@ -14,6 +14,70 @@ import (
 	"github.com/grafana/xk6-browser/common"
 )
 
+func TestLifecycleWaitForNavigationTimeout(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the networkidle lifecycle event.
+	// 2. use WaitForNavigation with networkidle.
+	//
+	// Success criteria: Time out reached after navigation completed and
+	//                   wait for lifecycle event set, to signify that
+	//                   WaitForNavigation must be set before we navigate
+	//                   to a new page.
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("prolonged_network_idle_10.html"), http.StatusMovedPermanently)
+	})
+
+	var counterMu sync.Mutex
+	var counter int64
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	waitUntil := common.LifecycleEventNetworkIdle
+	var resolved, rejected bool
+	err := tb.await(func() error {
+		opts := tb.toGojaValue(common.FrameGotoOptions{
+			WaitUntil: waitUntil,
+			Timeout:   30 * time.Second,
+		})
+		prm := tb.promise(p.Goto(tb.URL("/home"), opts)).then(
+			func() testPromise {
+				result := p.TextContent("#pingRequestText", nil)
+				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+				waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+					Timeout:   1000,
+					WaitUntil: waitUntil,
+				}))
+
+				return tb.promise(waitForNav)
+			},
+		)
+		prm.then(
+			func() {
+				resolved = true
+			},
+			func() {
+				rejected = true
+			},
+		)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	assert.False(t, resolved)
+	assert.True(t, rejected)
+}
+
 func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 	// Test description
 	//
