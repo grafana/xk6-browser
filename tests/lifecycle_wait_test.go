@@ -15,6 +15,17 @@ import (
 )
 
 func TestLifecycleWaitForNavigationLoad(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the load lifecycle event.
+	// 2. use WaitForNavigation with load to wait for the event.
+	//
+	// Success criteria: We don't wait for all network requests to
+	//                   complete, but we are interested in waiting
+	//                   for all async scripts to have fully loaded
+	//                   (which is when load is fired). WaitForNavigation
+	//                   must block and wait for the correct event.
+
 	t.Parallel()
 
 	tb := newTestBrowser(t, withFileServer())
@@ -42,7 +53,8 @@ func TestLifecycleWaitForNavigationLoad(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventLoad, func() testPromise {
+	waitUntil := common.LifecycleEventLoad
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -50,8 +62,8 @@ func TestLifecycleWaitForNavigationLoad(t *testing.T) {
 		assert.EqualValues(t, "ping.js loaded from server", result)
 
 		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-			Timeout:   30 * time.Second,
-			WaitUntil: common.LifecycleEventLoad,
+			Timeout:   30000,
+			WaitUntil: waitUntil,
 		}))
 		click := p.Click("#homeLink", nil)
 
@@ -66,6 +78,17 @@ func TestLifecycleWaitForNavigationLoad(t *testing.T) {
 }
 
 func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the domcontentloaded lifecycle event.
+	// 2. use WaitForNavigation with domcontentloaded to wait for the event.
+	//
+	// Success criteria: We don't wait for all network requests or the
+	//                   async scripts to complete, and we're only
+	//                   interested in the html file being loaded.
+	//                   WaitForNavigation must block and wait
+	//                   for the correct event.
+
 	t.Parallel()
 
 	tb := newTestBrowser(t, withFileServer())
@@ -95,7 +118,8 @@ func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventDOMContentLoad, func() testPromise {
+	waitUntil := common.LifecycleEventDOMContentLoad
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -103,8 +127,8 @@ func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
 		assert.EqualValues(t, "Waiting...", result)
 
 		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-			Timeout:   30 * time.Second,
-			WaitUntil: common.LifecycleEventDOMContentLoad,
+			Timeout:   30000,
+			WaitUntil: waitUntil,
 		}))
 		click := p.Click("#homeLink", nil)
 
@@ -119,6 +143,16 @@ func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
 }
 
 func TestLifecycleWaitForNavigationNetworkIdle(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the networkidle lifecycle event.
+	// 2. use WaitForNavigation with networkidle to wait for the event.
+	//
+	// Success criteria: We wait for all network requests and the
+	//                   async scripts to complete, as well as the
+	//                   html file being loaded. WaitForNavigation
+	//                   must block and wait for the correct event.
+
 	t.Parallel()
 
 	tb := newTestBrowser(t, withFileServer())
@@ -144,7 +178,8 @@ func TestLifecycleWaitForNavigationNetworkIdle(t *testing.T) {
 			`)
 	})
 
-	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() testPromise {
+	waitUntil := common.LifecycleEventNetworkIdle
+	assertHome(t, tb, p, waitUntil, func() testPromise {
 		result := p.TextContent("#pingRequestText", nil)
 		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -152,8 +187,8 @@ func TestLifecycleWaitForNavigationNetworkIdle(t *testing.T) {
 		assert.EqualValues(t, "ping.js loaded from server", result)
 
 		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
-			Timeout:   30 * time.Second,
-			WaitUntil: common.LifecycleEventNetworkIdle,
+			Timeout:   30000,
+			WaitUntil: waitUntil,
 		}))
 		click := p.Click("#homeLink", nil)
 
@@ -165,6 +200,68 @@ func TestLifecycleWaitForNavigationNetworkIdle(t *testing.T) {
 		result = p.TextContent("#pingJSText", nil)
 		assert.EqualValues(t, "ping.js loaded from server", result)
 	})
+}
+
+func TestLifecycleWaitForNavigationTimeout(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the networkidle lifecycle event.
+	// 2. use WaitForNavigation with networkidle.
+	//
+	// Success criteria: Time out reached after navigation completed and
+	//                   wait for lifecycle event set.
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("prolonged_network_idle_10.html"), http.StatusMovedPermanently)
+	})
+
+	var counterMu sync.Mutex
+	var counter int64
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	waitUntil := common.LifecycleEventNetworkIdle
+	var resolved, rejected bool
+	err := tb.await(func() error {
+		opts := tb.toGojaValue(common.FrameGotoOptions{
+			WaitUntil: waitUntil,
+			Timeout:   30 * time.Second,
+		})
+		prm := tb.promise(p.Goto(tb.URL("/home"), opts)).then(
+			func() testPromise {
+				result := p.TextContent("#pingRequestText", nil)
+				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+				waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+					Timeout:   1000,
+					WaitUntil: waitUntil,
+				}))
+
+				return tb.promise(waitForNav)
+			},
+		)
+		prm.then(
+			func() {
+				resolved = true
+			},
+			func() {
+				rejected = true
+			},
+		)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	assert.False(t, resolved)
+	assert.True(t, rejected)
 }
 
 func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
