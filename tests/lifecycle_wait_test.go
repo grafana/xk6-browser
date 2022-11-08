@@ -14,6 +14,69 @@ import (
 	"github.com/grafana/xk6-browser/common"
 )
 
+func TestLifecycleWaitForNavigationLoad(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home and wait for the load lifecycle event.
+	// 2. click on a link that navigates to a page, at the same time
+	//    set WaitForNavigation with load.
+	//
+	// Success criteria: The initial navigation must succeed followed
+	//                   by the second navigation where we also set a
+	//                   WaitForNavigation on load; this should also
+	//                   succeed and unblock.
+
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+			`)
+	})
+
+	waitUntil := common.LifecycleEventLoad
+	assertHome(t, tb, p, waitUntil, func() testPromise {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+
+		waitForNav := p.WaitForNavigation(tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+			Timeout:   30000,
+			WaitUntil: waitUntil,
+		}))
+		click := p.Click("#homeLink", nil)
+
+		return tb.promiseAll(waitForNav, click)
+	}, func() {
+		result := p.TextContent("#pingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 20 - for loop complete", result)
+
+		result = p.TextContent("#pingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
 func TestLifecycleWaitForNavigationDOMContentLoaded(t *testing.T) {
 	// Test description
 	//
