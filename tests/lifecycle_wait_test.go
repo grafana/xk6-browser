@@ -373,6 +373,58 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 	})
 }
 
+func TestLifecycleNetworkIdleWithSubFrame(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home (which also has a iframe) and wait for the
+	//    networkidle lifecycle event.
+	//
+	// Success criteria: Once main and subframe (iframe) have both
+	//                   loaded the html, async scripts and all other
+	//                   network requests, it should unblock. We
+	//                   assert that the sub frame has amended the
+	//                   main frame's DOM.
+
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_main_frame.html"), http.StatusMovedPermanently)
+	})
+	tb.withHandler("/sub", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+
+				var parentOutputServerMsg = window.parent.document.getElementById('subFramePingJSText');
+				parentOutputServerMsg.innerText = pingJSTextOutput.innerText;
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
+		result := p.TextContent("#subFramePingRequestText", nil)
+		assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#subFramePingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
 func TestLifecycleLoad(t *testing.T) {
 	// Test description
 	//
