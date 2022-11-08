@@ -373,6 +373,60 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 	})
 }
 
+func TestLifecycleLoadWithSubFrame(t *testing.T) {
+	// Test description
+	//
+	// 1. goto /home (which also has a iframe) and wait for the
+	//    load lifecycle event.
+	//
+	// Success criteria: Once main and subframe (iframe) have both
+	//                   loaded the html and the async scripts it
+	//                   should unblock. We don't wait for the
+	//                   other network requests to complete. We assert
+	//                   that the sub frame has amended the main
+	//                   frame's DOM.
+
+	t.Parallel()
+
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_main_frame.html"), http.StatusMovedPermanently)
+	})
+	tb.withHandler("/sub", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL("lifecycle_subframe.html"), http.StatusMovedPermanently)
+	})
+
+	var counter int64
+	var counterMu sync.Mutex
+	tb.withHandler("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		counterMu.Lock()
+		defer counterMu.Unlock()
+
+		time.Sleep(time.Millisecond * 100)
+
+		counter++
+		fmt.Fprintf(w, "pong %d", counter)
+	})
+
+	tb.withHandler("/ping.js", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, `
+				var pingJSTextOutput = document.getElementById("pingJSText");
+				var parentOutputServerMsg = window.parent.document.getElementById('subFramePingJSText');
+				pingJSTextOutput.innerText = "ping.js loaded from server";
+				parentOutputServerMsg.innerText = pingJSTextOutput.innerText;
+			`)
+	})
+
+	assertHome(t, tb, p, common.LifecycleEventLoad, func() {
+		result := p.TextContent("#subFramePingRequestText", nil)
+		assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
+
+		result = p.TextContent("#subFramePingJSText", nil)
+		assert.EqualValues(t, "ping.js loaded from server", result)
+	})
+}
+
 func TestLifecycleDOMContentLoadedWithSubFrame(t *testing.T) {
 	// Test description
 	//
