@@ -32,10 +32,8 @@ func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "wait_for_nav_lifecycle.html")
 	withPingHandler(t, tb, time.Millisecond*100, nil)
 	withPingJSHandler(t, tb, false, nil)
 
@@ -70,10 +68,8 @@ func TestLifecycleWaitForLoadStateDOMContentLoaded(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "wait_for_nav_lifecycle.html")
 	withPingHandler(t, tb, time.Millisecond*100, nil)
 	withPingJSHandler(t, tb, true, nil)
 
@@ -106,10 +102,8 @@ func TestLifecycleWaitForLoadStateNetworkIdle(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "wait_for_nav_lifecycle.html")
 	withPingHandler(t, tb, 0, nil)
 	withPingJSHandler(t, tb, false, nil)
 
@@ -141,10 +135,8 @@ func TestLifecycleWaitForLoadStateDOMContentLoadedThenNetworkIdle(t *testing.T) 
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("wait_for_nav_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "wait_for_nav_lifecycle.html")
 	withPingHandler(t, tb, time.Millisecond*100, nil)
 	withPingJSHandler(t, tb, false, nil)
 
@@ -164,10 +156,8 @@ func TestLifecycleReloadLoad(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("reload_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "reload_lifecycle.html")
 	withPingHandler(t, tb, time.Millisecond*100, nil)
 	withPingJSHandler(t, tb, false, nil)
 
@@ -198,10 +188,8 @@ func TestLifecycleReloadDOMContentLoaded(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("reload_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "reload_lifecycle.html")
 	withPingHandler(t, tb, time.Millisecond*100, nil)
 	withPingJSHandler(t, tb, true, nil)
 
@@ -232,10 +220,8 @@ func TestLifecycleReloadNetworkIdle(t *testing.T) {
 
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
-	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, tb.staticURL("reload_lifecycle.html"), http.StatusMovedPermanently)
-	})
 
+	withHomeHandler(t, tb, "reload_lifecycle.html")
 	withPingHandler(t, tb, 0, nil)
 	withPingJSHandler(t, tb, false, nil)
 
@@ -294,10 +280,8 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 
 		tb := newTestBrowser(t, withFileServer())
 		p := tb.NewPage(nil)
-		tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, tb.staticURL("prolonged_network_idle.html"), http.StatusMovedPermanently)
-		})
 
+		withHomeHandler(t, tb, "prolonged_network_idle.html")
 		ch := make(chan bool)
 		withPingHandler(t, tb, time.Millisecond*50, ch)
 		withPingJSHandler(t, tb, false, ch)
@@ -316,16 +300,22 @@ func TestLifecycleNetworkIdle(t *testing.T) {
 
 		tb := newTestBrowser(t, withFileServer())
 		p := tb.NewPage(nil)
-		tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, tb.staticURL("prolonged_network_idle_10.html"), http.StatusMovedPermanently)
-		})
 
+		withHomeHandler(t, tb, "prolonged_network_idle_10.html")
 		withPingHandler(t, tb, time.Millisecond*50, nil)
 
 		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() {
 			result := p.TextContent("#pingRequestText", nil)
 			assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 		})
+	})
+}
+
+func withHomeHandler(t *testing.T, tb *testBrowser, htmlFile string) {
+	t.Helper()
+
+	tb.withHandler("/home", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, tb.staticURL(htmlFile), http.StatusMovedPermanently)
 	})
 }
 
