@@ -14,6 +14,25 @@ import (
 	"github.com/grafana/xk6-browser/common"
 )
 
+// General guidelines on lifecycle events:
+//
+// - load: This lifecycle event is emitted by the browser once:
+//            1. The HTML is loaded;
+//            2. The async scripts have loaded;
+//         It does not wait for the other network requests to
+//         complete.
+//
+// - domcontentloaded: This lifecycle event is emitted by the
+//                     browser once:
+//                         1. The HTML is loaded;
+//                     It does not wait for the async scripts or
+//                     the other network requests to complete.
+//
+// - networkidle: This lifecycle event is emitted by the browser once:
+//            1. The HTML is loaded;
+//            2. The async scripts have loaded;
+//            3. All other network requests have completed;
+
 func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 	// Test description
 	//
@@ -27,7 +46,6 @@ func TestLifecycleWaitForLoadStateLoad(t *testing.T) {
 	//                   (which is when load is fired). We also want
 	//                   to ensure that the load event is stored
 	//                   internally, and we don't block on WaitForLoadState.
-
 	t.Parallel()
 
 	tb := newTestBrowser(t, withFileServer())
