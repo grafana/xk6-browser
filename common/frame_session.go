@@ -25,6 +25,7 @@ import (
 	cdplog "github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/network"
 	cdppage "github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/performancetimeline"
 	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/security"
 	"github.com/chromedp/cdproto/target"
@@ -259,6 +260,8 @@ func (fs *FrameSession) initEvents() {
 					fs.onAttachedToTarget(ev)
 				case *target.EventDetachedFromTarget:
 					fs.onDetachedFromTarget(ev)
+				case *performancetimeline.EventTimelineEventAdded:
+					fs.onEventTimelineEventAdded(ev)
 				}
 			}
 		}
@@ -430,6 +433,17 @@ func (fs *FrameSession) initRendererEvents() {
 	fs.logger.Debugf("NewFrameSession:initEvents:initRendererEvents",
 		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
+	// entryTypes: https://w3c.github.io/timing-entrytypes-registry/#registry
+	//             "layout-shift" and "largest-contentful-paint" are the only two that work.
+	action := performancetimeline.Enable([]string{
+		"layout-shift",
+		"largest-contentful-paint",
+	})
+	err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
+	if err != nil {
+		panic(fmt.Sprintf("Exp-#650: failed to enable PerformanceTimeline '%v'", err))
+	}
+
 	events := []string{
 		cdproto.EventLogEntryAdded,
 		cdproto.EventPageFileChooserOpened,
@@ -449,6 +463,7 @@ func (fs *FrameSession) initRendererEvents() {
 		cdproto.EventRuntimeExecutionContextsCleared,
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
+		cdproto.EventPerformanceTimelineTimelineEventAdded,
 	}
 	fs.session.on(fs.ctx, events, fs.eventCh)
 }
@@ -521,6 +536,38 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 		l.Error()
 	default:
 		l.Debug()
+	}
+}
+
+func (fs *FrameSession) onEventTimelineEventAdded(event *performancetimeline.EventTimelineEventAdded) {
+	fs.logger.Debugf("FrameSession:onEventTimelineEventAdded",
+		"sid:%v tid:%v",
+		fs.session.ID(), fs.targetID)
+
+	// When we use something similar in JS, the same metric returns `startTime`, which we don't get via CDP.
+
+	bb, _ := event.MarshalJSON()
+	fmt.Println("Exp-#650: ", string(bb))
+
+	fmt.Printf("Exp-#650: Perf Timeline Event fid:%v time:%v duration:%v\n",
+		event.Event.FrameID, event.Event.Time.Time().UnixMilli(), event.Event.Duration)
+
+	if event.Event.LcpDetails != nil {
+		fmt.Printf("Exp-#650: It's LCP url:%v renderTime:%v loadTime:%v\n",
+			event.Event.LcpDetails.URL,
+			event.Event.LcpDetails.RenderTime.Time().UnixMilli(),
+			event.Event.LcpDetails.LoadTime.Time().UnixMilli())
+
+		frame := fs.manager.getFrameByID(event.Event.FrameID)
+		if frame == nil {
+			return
+		}
+
+		frame.emitMetric(fs.k6Metrics.BrowserLargestContentfulPaint, event.Event.LcpDetails.RenderTime.Time())
+	}
+
+	if event.Event.LayoutShiftDetails != nil {
+		fmt.Printf("Exp-#650: It's LS score:%v\n", event.Event.LayoutShiftDetails.Value)
 	}
 }
 

@@ -4,11 +4,12 @@ import k6metrics "go.k6.io/k6/metrics"
 
 // CustomMetrics are the custom k6 metrics used by xk6-browser.
 type CustomMetrics struct {
-	BrowserDOMContentLoaded     *k6metrics.Metric
-	BrowserFirstPaint           *k6metrics.Metric
-	BrowserFirstContentfulPaint *k6metrics.Metric
-	BrowserFirstMeaningfulPaint *k6metrics.Metric
-	BrowserLoaded               *k6metrics.Metric
+	BrowserDOMContentLoaded       *k6metrics.Metric
+	BrowserFirstPaint             *k6metrics.Metric
+	BrowserFirstContentfulPaint   *k6metrics.Metric
+	BrowserFirstMeaningfulPaint   *k6metrics.Metric
+	BrowserLoaded                 *k6metrics.Metric
+	BrowserLargestContentfulPaint *k6metrics.Metric
 }
 
 // RegisterCustomMetrics creates and registers our custom metrics with the k6
@@ -25,5 +26,7 @@ func RegisterCustomMetrics(registry *k6metrics.Registry) *CustomMetrics {
 			"browser_first_meaningful_paint", k6metrics.Trend, k6metrics.Time),
 		BrowserLoaded: registry.MustNewMetric(
 			"browser_loaded", k6metrics.Trend, k6metrics.Time),
+		BrowserLargestContentfulPaint: registry.MustNewMetric(
+			"browser_largest_contentful_paint", k6metrics.Trend, k6metrics.Time),
 	}
 }
