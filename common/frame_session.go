@@ -25,6 +25,7 @@ import (
 	cdplog "github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/network"
 	cdppage "github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/performance"
 	"github.com/chromedp/cdproto/performancetimeline"
 	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/security"
@@ -262,6 +263,8 @@ func (fs *FrameSession) initEvents() {
 					fs.onDetachedFromTarget(ev)
 				case *performancetimeline.EventTimelineEventAdded:
 					fs.onEventTimelineEventAdded(ev)
+				case *performance.EventMetrics:
+					fs.onEventMetrics(ev)
 				}
 			}
 		}
@@ -444,6 +447,12 @@ func (fs *FrameSession) initRendererEvents() {
 		panic(fmt.Sprintf("Exp-#650: failed to enable PerformanceTimeline '%v'", err))
 	}
 
+	action2 := performance.Enable()
+	err = action2.Do(cdp.WithExecutor(fs.ctx, fs.session))
+	if err != nil {
+		panic(fmt.Sprintf("Exp-#650: failed to enable PerformanceMetrics '%v'", err))
+	}
+
 	events := []string{
 		cdproto.EventLogEntryAdded,
 		cdproto.EventPageFileChooserOpened,
@@ -464,6 +473,7 @@ func (fs *FrameSession) initRendererEvents() {
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 		cdproto.EventPerformanceTimelineTimelineEventAdded,
+		cdproto.EventPerformanceMetrics,
 	}
 	fs.session.on(fs.ctx, events, fs.eventCh)
 }
@@ -539,6 +549,14 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 	}
 }
 
+func (fs *FrameSession) onEventMetrics(event *performance.EventMetrics) {
+	fs.logger.Debugf("FrameSession:onEventMetrics",
+		"sid:%v tid:%v",
+		fs.session.ID(), fs.targetID)
+
+	fmt.Printf("Exp-#650: Perf Event %v\n", event)
+}
+
 func (fs *FrameSession) onEventTimelineEventAdded(event *performancetimeline.EventTimelineEventAdded) {
 	fs.logger.Debugf("FrameSession:onEventTimelineEventAdded",
 		"sid:%v tid:%v",
@@ -568,6 +586,17 @@ func (fs *FrameSession) onEventTimelineEventAdded(event *performancetimeline.Eve
 
 	if event.Event.LayoutShiftDetails != nil {
 		fmt.Printf("Exp-#650: It's LS score:%v\n", event.Event.LayoutShiftDetails.Value)
+	}
+
+	action := performance.GetMetrics()
+	metrics, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
+	if err != nil {
+		panic(fmt.Sprintf("Exp-#650: failed to enable PerformanceMetrics '%v'", err))
+	}
+
+	for _, m := range metrics {
+		bb, _ := m.MarshalJSON()
+		fmt.Println("Exp-#650: ", string(bb))
 	}
 }
 
