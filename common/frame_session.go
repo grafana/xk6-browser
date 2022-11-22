@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -508,6 +510,15 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 			handleParseRemoteObjectErr(fs.ctx, err, l)
 		}
 		parsedObjects = append(parsedObjects, i)
+
+		dontPrint, err := fs.parseAndRecordWebVitalMetric(robj)
+		if err != nil {
+			fs.logger.Errorf("FrameSession:onConsoleAPICalled", "%v", err)
+			return
+		}
+		if dontPrint {
+			return
+		}
 	}
 
 	l = l.WithField("objects", parsedObjects)
@@ -522,6 +533,90 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 	default:
 		l.Debug()
 	}
+}
+
+type WebVitalMetric struct {
+	ID             string
+	Name           string
+	Value          json.Number
+	Rating         string
+	Delta          json.Number
+	NumEntries     json.Number
+	NavigationType string
+}
+
+func (fs *FrameSession) parseAndRecordWebVitalMetric(robj *cdpruntime.RemoteObject) (bool, error) {
+	if robj.Type != "string" {
+		return false, nil
+	}
+
+	if !bytes.Contains(robj.Value, []byte("xk6-browser.web.vital.metric=")) {
+		return false, nil
+	}
+
+	s := bytes.Index(robj.Value, []byte("{"))
+	e := bytes.Index(robj.Value, []byte("}"))
+	bb := robj.Value[s : e+1]
+	bb = bytes.ReplaceAll(bb, []byte("\\"), []byte(""))
+
+	var w WebVitalMetric
+	err := json.Unmarshal(bb, &w)
+	if err != nil {
+		return false, Error(fmt.Sprintf("failed to parse web vital '%s'", bb))
+	}
+
+	switch w.Name {
+	case "FID":
+		fallthrough
+	case "TTFB":
+		fallthrough
+	case "LCP":
+		fallthrough
+	case "CLS":
+		fallthrough
+	case "INP":
+		fallthrough
+	case "FCP":
+		err = fs.emitMetric(
+			fs.k6Metrics.WebVitals[w.Name],
+			fs.k6Metrics.WebVitals[w.Name+":"+w.Rating],
+			w.Value,
+		)
+	default:
+		err = Error(fmt.Sprintf("web vital type not found '%s'", bb))
+	}
+
+	return err == nil, err
+}
+
+func (fs *FrameSession) emitMetric(m *k6metrics.Metric, mRating *k6metrics.Metric, n json.Number) error {
+	fs.logger.Debugf("FrameSession:emitMetric", "m:%s v:%f", m.Name, n)
+
+	f, err := n.Float64()
+	if err != nil {
+		return Error(fmt.Sprintf("failed to parse web vital value '%v'", n))
+	}
+
+	state := fs.vu.State()
+	tags := state.Tags.GetCurrentValues().Tags
+
+	now := time.Now()
+	k6metrics.PushIfNotDone(fs.ctx, state.Samples, k6metrics.ConnectedSamples{
+		Samples: []k6metrics.Sample{
+			{
+				TimeSeries: k6metrics.TimeSeries{Metric: m, Tags: tags},
+				Value:      f,
+				Time:       now,
+			},
+			{
+				TimeSeries: k6metrics.TimeSeries{Metric: mRating, Tags: tags},
+				Value:      1,
+				Time:       now,
+			},
+		},
+	})
+
+	return nil
 }
 
 func (fs *FrameSession) onExceptionThrown(event *cdpruntime.EventExceptionThrown) {
@@ -710,10 +805,10 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 	}
 
 	eventToMetric := map[string]*k6metrics.Metric{
-		"load":                 fs.k6Metrics.BrowserLoaded,
-		"DOMContentLoaded":     fs.k6Metrics.BrowserDOMContentLoaded,
-		"firstPaint":           fs.k6Metrics.BrowserFirstPaint,
-		"firstContentfulPaint": fs.k6Metrics.BrowserFirstContentfulPaint,
+		"load":             fs.k6Metrics.BrowserLoaded,
+		"DOMContentLoaded": fs.k6Metrics.BrowserDOMContentLoaded,
+		"firstPaint":       fs.k6Metrics.BrowserFirstPaint,
+		// "firstContentfulPaint": fs.k6Metrics.BrowserFirstContentfulPaint,
 		"firstMeaningfulPaint": fs.k6Metrics.BrowserFirstMeaningfulPaint,
 	}
 

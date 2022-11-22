@@ -232,6 +232,10 @@ func (b *BrowserContext) NewPage() api.Page {
 	}
 	b.logger.Debugf("BrowserContext:NewPage:return", "bctxid:%v ptid:%s", bctxid, ptid)
 
+	for _, s := range b.evaluateOnNewDocumentSources {
+		p.evaluateOnNewDocument(s)
+	}
+
 	return p
 }
 
