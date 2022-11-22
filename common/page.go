@@ -17,6 +17,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/page"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
@@ -168,8 +169,16 @@ func (p *Page) didCrash() {
 	p.emit(EventPageCrash, p)
 }
 
-func (p *Page) evaluateOnNewDocument(source string) {
-	// TODO: implement
+func (p *Page) evaluateOnNewDocument(source string) error {
+	p.logger.Debugf("Page:evaluateOnNewDocument", "sid:%v frame:nil", p.sessionID())
+
+	action := page.AddScriptToEvaluateOnNewDocument(source)
+	_, err := action.Do(cdp.WithExecutor(p.ctx, p.session))
+	if err != nil {
+		return fmt.Errorf("failed to add script to page: %w", err)
+	}
+
+	return nil
 }
 
 func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
