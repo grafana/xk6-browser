@@ -565,6 +565,7 @@ type WebVitalMetric struct {
 	Delta          json.Number
 	NumEntries     json.Number
 	NavigationType string
+	URL            string
 }
 
 func (fs *FrameSession) parseAndRecordWebVitalMetric(robj *cdpruntime.RemoteObject) (bool, error) {
@@ -603,6 +604,7 @@ func (fs *FrameSession) parseAndRecordWebVitalMetric(robj *cdpruntime.RemoteObje
 			fs.k6Metrics.WebVitals[w.Name],
 			fs.k6Metrics.WebVitals[w.Name+":"+w.Rating],
 			w.Value,
+			w.URL,
 		)
 	default:
 		err = Error(fmt.Sprintf("web vital type not found '%s'", bb))
@@ -611,8 +613,8 @@ func (fs *FrameSession) parseAndRecordWebVitalMetric(robj *cdpruntime.RemoteObje
 	return err == nil, err
 }
 
-func (fs *FrameSession) emitMetric(m *k6metrics.Metric, mRating *k6metrics.Metric, n json.Number) error {
-	fs.logger.Debugf("FrameSession:emitMetric", "m:%s v:%f", m.Name, n)
+func (fs *FrameSession) emitMetric(m *k6metrics.Metric, mRating *k6metrics.Metric, n json.Number, url string) error {
+	fs.logger.Debugf("FrameSession:emitMetric", "m:%s v:%s url:%s", m.Name, n.String(), url)
 
 	f, err := n.Float64()
 	if err != nil {
@@ -621,7 +623,7 @@ func (fs *FrameSession) emitMetric(m *k6metrics.Metric, mRating *k6metrics.Metri
 
 	state := fs.vu.State()
 	tags := state.Tags.GetCurrentValues().Tags
-
+	tags = tags.With("url", url)
 	now := time.Now()
 	k6metrics.PushIfNotDone(fs.ctx, state.Samples, k6metrics.ConnectedSamples{
 		Samples: []k6metrics.Sample{
