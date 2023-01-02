@@ -39,6 +39,14 @@ func NewBrowserProcess(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
 ) (*BrowserProcess, error) {
+	if wsURL, ok := os.LookupEnv("CHROME_DEVTOOLS_URL"); ok {
+		return &BrowserProcess{
+			ctx:    ctx,
+			cancel: ctxCancel,
+			wsURL:  wsURL,
+		}, nil
+	}
+
 	cmd, err := execute(ctx, ctxCancel, path, args, env, dataDir, logger)
 	if err != nil {
 		return nil, err
@@ -79,10 +87,18 @@ func NewBrowserProcess(
 }
 
 func (p *BrowserProcess) didLoseConnection() {
+	if p.lostConnection == nil {
+		return
+	}
+
 	close(p.lostConnection)
 }
 
 func (p *BrowserProcess) isConnected() bool {
+	if p.lostConnection == nil {
+		return true
+	}
+
 	var ok bool
 	select {
 	case _, ok = <-p.lostConnection:
@@ -94,6 +110,10 @@ func (p *BrowserProcess) isConnected() bool {
 
 // GracefulClose triggers a graceful closing of the browser process.
 func (p *BrowserProcess) GracefulClose() {
+	if p.processIsGracefullyClosing == nil {
+		return
+	}
+
 	p.logger.Debugf("Browser:GracefulClose", "")
 	close(p.processIsGracefullyClosing)
 }
@@ -111,6 +131,10 @@ func (p *BrowserProcess) WsURL() string {
 
 // Pid returns the browser process ID.
 func (p *BrowserProcess) Pid() int {
+	if p.process == nil {
+		return -1
+	}
+
 	return p.process.Pid
 }
 

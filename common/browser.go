@@ -392,6 +392,11 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 
 // Close shuts down the browser.
 func (b *Browser) Close() {
+	if b.browserProc.Pid() < 0 { // we don't own browser process
+		b.logger.Debugf("Ignoring Browser:Close as it has not been started by xk6-browser", "")
+		return
+	}
+
 	defer func() {
 		if err := b.browserProc.userDataDir.Cleanup(); err != nil {
 			b.logger.Errorf("Browser:Close", "cleaning up the user data directory: %v", err)
