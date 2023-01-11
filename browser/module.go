@@ -2,12 +2,14 @@
 package browser
 
 import (
+	"context"
 	"errors"
 	"os"
 
 	"github.com/dop251/goja"
 
 	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/k6ext"
 
 	k6common "go.k6.io/k6/js/common"
 	k6modules "go.k6.io/k6/js/modules"
@@ -33,6 +35,20 @@ type (
 	}
 )
 
+// moduleVU carries module specific VU information.
+//
+// Currently, it is used to carry the VU object to the
+// inner objects and promises.
+type moduleVU struct {
+	k6modules.VU
+}
+
+func (vu moduleVU) Context() context.Context {
+	// promises and inner objects need the VU object to be
+	// able to use k6-core specific functionality.
+	return k6ext.WithVU(vu.VU.Context(), vu.VU)
+}
+
 var (
 	_ k6modules.Module   = &RootModule{}
 	_ k6modules.Instance = &ModuleInstance{}
@@ -57,7 +73,7 @@ func (*RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 
 	return &ModuleInstance{
 		mod: &JSModule{
-			Chromium: mapBrowserToGoja(vu),
+			Chromium: mapBrowserToGoja(moduleVU{vu}),
 			Devices:  common.GetDevices(),
 			Version:  version,
 		},
