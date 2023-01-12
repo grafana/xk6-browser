@@ -2,7 +2,6 @@
 package browser
 
 import (
-	"context"
 	"errors"
 	"os"
 
@@ -35,20 +34,6 @@ type (
 	}
 )
 
-// moduleVU carries module specific VU information.
-//
-// Currently, it is used to carry the VU object to the
-// inner objects and promises.
-type moduleVU struct {
-	k6modules.VU
-}
-
-func (vu moduleVU) Context() context.Context {
-	// promises and inner objects need the VU object to be
-	// able to use k6-core specific functionality.
-	return k6ext.WithVU(vu.VU.Context(), vu.VU)
-}
-
 var (
 	_ k6modules.Module   = &RootModule{}
 	_ k6modules.Instance = &ModuleInstance{}
@@ -71,17 +56,14 @@ func (*RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 		k6common.Throw(vu.Runtime(), errors.New(msg))
 	}
 
-	// using our custom VU so that we can be ready for the future
-	// changes to the k6-core VU code. And we can have a fine-grained
-	// control over it, now and in the future.
-	//
-	// this puts the VU object in the context so that it can be
-	// used by inner objects such as k6ext.Promise.
-	vu = moduleVU{vu}
+	// promises and inner objects need the VU object to be
+	// able to use k6-core specific functionality.
+	// vu = moduleVU{vu, k6ext.WithVU(vu.Context(), vu)}
+	ctx := k6ext.WithVU(vu.Context(), vu)
 
 	return &ModuleInstance{
 		mod: &JSModule{
-			Chromium: mapBrowserToGoja(vu.Context(), vu),
+			Chromium: mapBrowserToGoja(ctx, vu),
 			Devices:  common.GetDevices(),
 			Version:  version,
 		},
