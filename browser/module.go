@@ -71,9 +71,17 @@ func (*RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 		k6common.Throw(vu.Runtime(), errors.New(msg))
 	}
 
+	// using our custom VU so that we can be ready for the future
+	// changes to the k6-core VU code. And we can have a fine-grained
+	// control over it, now and in the future.
+	//
+	// this puts the VU object in the context so that it can be
+	// used by inner objects such as k6ext.Promise.
+	vu = moduleVU{vu}
+
 	return &ModuleInstance{
 		mod: &JSModule{
-			Chromium: mapBrowserToGoja(moduleVU{vu}),
+			Chromium: mapBrowserToGoja(vu.Context(), vu),
 			Devices:  common.GetDevices(),
 			Version:  version,
 		},
