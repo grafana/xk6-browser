@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/common"
 )
 
@@ -76,15 +75,17 @@ func TestBrowserContextOptionsExtraHTTPHeaders(t *testing.T) {
 	t.Cleanup(bctx.Close)
 	p := bctx.NewPage()
 
-	err := tb.awaitWithTimeout(time.Second*5, func() error {
-		tb.promise(p.Goto(tb.URL("/get"), nil)).then(func(resp api.Response) {
-			require.NotNil(t, resp)
-			var body struct{ Headers map[string][]string }
-			require.NoError(t, json.Unmarshal(resp.Body().Bytes(), &body))
-			h := body.Headers["Some-Header"]
-			require.NotEmpty(t, h)
-			assert.Equal(t, "Some-Value", h[0])
-		})
+	resp, err := p.Goto(tb.URL("/get"), nil)
+	require.Nil(t, err)
+	require.NotNil(t, resp)
+	err = tb.awaitWithTimeout(time.Second*5, func() error {
+		var body struct{ Headers map[string][]string }
+		require.NoError(t, json.Unmarshal(resp.Body().Bytes(), &body))
+
+		h := body.Headers["Some-Header"]
+		require.NotEmpty(t, h)
+		assert.Equal(t, "Some-Value", h[0])
+
 		return nil
 	})
 	require.NoError(t, err)

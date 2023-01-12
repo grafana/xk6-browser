@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/chromium"
+	"github.com/grafana/xk6-browser/k6ext"
 
 	k6common "go.k6.io/k6/js/common"
 	k6modules "go.k6.io/k6/js/modules"
@@ -95,6 +96,9 @@ func mapRequest(vu k6modules.VU, r api.Request) mapping {
 
 // mapResponse to the JS module.
 func mapResponse(vu k6modules.VU, r api.Response) mapping {
+	if r == nil {
+		return nil
+	}
 	rt := vu.Runtime()
 	maps := mapping{
 		"allHeaders": r.AllHeaders,
@@ -211,7 +215,10 @@ func mapElementHandle(vu k6modules.VU, eh api.ElementHandle) mapping {
 //
 //nolint:funlen
 func mapFrame(vu k6modules.VU, f api.Frame) mapping {
-	rt := vu.Runtime()
+	var (
+		rt  = vu.Runtime()
+		ctx = vu.Context()
+	)
 	maps := mapping{
 		"addScriptTag": f.AddScriptTag,
 		"addStyleTag":  f.AddStyleTag,
@@ -239,22 +246,56 @@ func mapFrame(vu k6modules.VU, f api.Frame) mapping {
 			return rt.ToValue(eh).ToObject(rt)
 		},
 		"getAttribute": f.GetAttribute,
-		"goto":         f.Goto,
-		"hover":        f.Hover,
-		"innerHTML":    f.InnerHTML,
-		"innerText":    f.InnerText,
-		"inputValue":   f.InputValue,
-		"isChecked":    f.IsChecked,
-		"isDetached":   f.IsDetached,
-		"isDisabled":   f.IsDisabled,
-		"isEditable":   f.IsEditable,
-		"isEnabled":    f.IsEnabled,
-		"isHidden":     f.IsHidden,
-		"isVisible":    f.IsVisible,
-		"iD":           f.ID,
-		"loaderID":     f.LoaderID,
-		"locator":      f.Locator,
-		"name":         f.Name,
+		// 👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀
+		//
+		// Psst, Ankur! Look here! 😄
+		//
+		// I hope you can now see why we need to pass VU in the context.
+		//
+		// I already shared this code in detail in
+		// https://github.com/grafana/xk6-browser/pull/702. I guess it
+		// makes it easier for you to see in the code, so be it :)
+		//
+		// The following code moves the promise handling to the mapping
+		// layer.
+		//
+		// Benefits:
+		// 1- This allows us to map the Response.
+		// 2- It's clearer, more manageable, and less error-prone
+		//    to have all the promise handling in one place
+		//    (in the mapping layer).
+		// 3- Tests are getting clearer (free from the promise
+		//    handling). See TestBrowserContextOptionsExtraHTTPHeaders
+		//    in browser_context_options_test.go.
+		//
+		//
+		"goto": func(url string, opts goja.Value) *goja.Promise {
+			return k6ext.Promise(ctx, func() (any, error) {
+				resp, err := f.Goto(url, opts)
+				if err != nil {
+					return nil, err //nolint:wrapcheck
+				}
+
+				return mapResponse(vu, resp), nil
+			})
+		},
+		//
+		// 👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀👀
+		"hover":      f.Hover,
+		"innerHTML":  f.InnerHTML,
+		"innerText":  f.InnerText,
+		"inputValue": f.InputValue,
+		"isChecked":  f.IsChecked,
+		"isDetached": f.IsDetached,
+		"isDisabled": f.IsDisabled,
+		"isEditable": f.IsEditable,
+		"isEnabled":  f.IsEnabled,
+		"isHidden":   f.IsHidden,
+		"isVisible":  f.IsVisible,
+		"iD":         f.ID,
+		"loaderID":   f.LoaderID,
+		"locator":    f.Locator,
+		"name":       f.Name,
 		"page": func() *goja.Object {
 			mp := mapPage(vu, f.Page())
 			return rt.ToValue(mp).ToObject(rt)
@@ -307,7 +348,10 @@ func mapFrame(vu k6modules.VU, f api.Frame) mapping {
 //
 //nolint:funlen
 func mapPage(vu k6modules.VU, p api.Page) mapping {
-	rt := vu.Runtime()
+	var (
+		rt  = vu.Runtime()
+		ctx = vu.Context()
+	)
 	maps := mapping{
 		"addInitScript":           p.AddInitScript,
 		"addScriptTag":            p.AddScriptTag,
@@ -343,19 +387,28 @@ func mapPage(vu k6modules.VU, p api.Page) mapping {
 		"getAttribute": p.GetAttribute,
 		"goBack":       p.GoBack,
 		"goForward":    p.GoForward,
-		"goto":         p.Goto,
-		"hover":        p.Hover,
-		"innerHTML":    p.InnerHTML,
-		"innerText":    p.InnerText,
-		"inputValue":   p.InputValue,
-		"isChecked":    p.IsChecked,
-		"isClosed":     p.IsClosed,
-		"isDisabled":   p.IsDisabled,
-		"isEditable":   p.IsEditable,
-		"isEnabled":    p.IsEnabled,
-		"isHidden":     p.IsHidden,
-		"isVisible":    p.IsVisible,
-		"locator":      p.Locator,
+		"goto": func(url string, opts goja.Value) *goja.Promise {
+			return k6ext.Promise(ctx, func() (any, error) {
+				resp, err := p.Goto(url, opts)
+				if err != nil {
+					return nil, err //nolint:wrapcheck
+				}
+
+				return mapResponse(vu, resp), nil
+			})
+		},
+		"hover":      p.Hover,
+		"innerHTML":  p.InnerHTML,
+		"innerText":  p.InnerText,
+		"inputValue": p.InputValue,
+		"isChecked":  p.IsChecked,
+		"isClosed":   p.IsClosed,
+		"isDisabled": p.IsDisabled,
+		"isEditable": p.IsEditable,
+		"isEnabled":  p.IsEnabled,
+		"isHidden":   p.IsHidden,
+		"isVisible":  p.IsVisible,
+		"locator":    p.Locator,
 		"mainFrame": func() *goja.Object {
 			mf := mapFrame(vu, p.MainFrame())
 			return rt.ToValue(mf).ToObject(rt)
