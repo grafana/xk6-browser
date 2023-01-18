@@ -2,6 +2,7 @@ package browser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dop251/goja"
@@ -533,9 +534,11 @@ func mapBrowserType(ctx context.Context, vu k6modules.VU, bt api.BrowserType) ma
 		"executablePath":          bt.ExecutablePath,
 		"launchPersistentContext": bt.LaunchPersistentContext,
 		"name":                    bt.Name,
-		"launch": func(opts goja.Value) *goja.Object {
-			m := mapBrowser(ctx, vu, bt.Launch(opts))
-			return rt.ToValue(m).ToObject(rt)
+		"launch": func(opts goja.Value) (*goja.Object, error) {
+			b, err := bt.Launch(opts)
+			err = errors.New("some error, oh no!")
+			m := mapBrowser(ctx, vu, b)
+			return rt.ToValue(m).ToObject(rt), err
 		},
 	}
 }

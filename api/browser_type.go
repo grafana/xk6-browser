@@ -8,7 +8,7 @@ import (
 type BrowserType interface {
 	Connect(opts goja.Value) *goja.Promise
 	ExecutablePath() string
-	Launch(opts goja.Value) Browser
+	Launch(opts goja.Value) (Browser, error)
 	LaunchPersistentContext(userDataDir string, opts goja.Value) *goja.Promise
 	Name() string
 }

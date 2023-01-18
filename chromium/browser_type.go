@@ -119,7 +119,7 @@ func (b *BrowserType) initContext() context.Context {
 
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,
 // which can be used for controlling the Chrome browser.
-func (b *BrowserType) Launch(opts goja.Value) api.Browser {
+func (b *BrowserType) Launch(opts goja.Value) (api.Browser, error) {
 	ctx := b.initContext()
 
 	var err error
@@ -138,10 +138,10 @@ func (b *BrowserType) Launch(opts goja.Value) api.Browser {
 			Err:     err,
 			Timeout: launchOpts.Timeout,
 		}
-		k6ext.Panic(ctx, "%w", err)
+		// k6ext.Panic(ctx, "%w", err)
 	}
 
-	return bp
+	return bp, err
 }
 
 func (b *BrowserType) launch(ctx context.Context, opts *common.LaunchOptions) (*common.Browser, error) {
