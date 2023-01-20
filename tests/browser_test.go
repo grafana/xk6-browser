@@ -72,10 +72,7 @@ func TestBrowserOn(t *testing.T) {
 		b := newTestBrowser(t)
 		require.NoError(t, b.vu.Runtime().Set("b", b.Browser))
 
-		err := b.await(func() error {
-			_, err := b.runJavaScript(script, "wrongevent")
-			return err
-		})
+		_, err := b.runJavaScript(script, "wrongevent")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, `unknown browser event: "wrongevent", must be "disconnected"`)
 	})
@@ -92,11 +89,8 @@ func TestBrowserOn(t *testing.T) {
 		require.NoError(t, rt.Set("b", b.Browser))
 		require.NoError(t, rt.Set("log", func(s string) { log = append(log, s) }))
 
-		err := b.await(func() error {
-			time.AfterFunc(100*time.Millisecond, b.Browser.Close)
-			_, err := b.runJavaScript(script, "disconnected")
-			return err
-		})
+		time.AfterFunc(100*time.Millisecond, b.Browser.Close)
+		_, err := b.runJavaScript(script, "disconnected")
 		require.NoError(t, err)
 		assert.Contains(t, log, "true")
 	})
@@ -114,11 +108,8 @@ func TestBrowserOn(t *testing.T) {
 		require.NoError(t, rt.Set("b", b.Browser))
 		require.NoError(t, rt.Set("log", func(s string) { log = append(log, s) }))
 
-		err := b.await(func() error {
-			time.AfterFunc(100*time.Millisecond, cancel)
-			_, err := b.runJavaScript(script, "disconnected")
-			return err
-		})
+		time.AfterFunc(100*time.Millisecond, cancel)
+		_, err := b.runJavaScript(script, "disconnected")
 		assert.ErrorContains(t, err, "browser.on promise rejected: context canceled")
 	})
 }
