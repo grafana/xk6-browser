@@ -62,7 +62,9 @@ func TestTmpDirCleanup(t *testing.T) {
 func TestBrowserOn(t *testing.T) {
 	t.Parallel()
 
-	script := `b.on('%s').then(log).catch(log);`
+	script := `
+	const result = b.on('%s')
+	log(result);`
 
 	t.Run("err_wrong_event", func(t *testing.T) {
 		t.Parallel()
@@ -117,8 +119,7 @@ func TestBrowserOn(t *testing.T) {
 			_, err := b.runJavaScript(script, "disconnected")
 			return err
 		})
-		require.NoError(t, err)
-		assert.Contains(t, log, "browser.on promise rejected: context canceled")
+		assert.ErrorContains(t, err, "browser.on promise rejected: context canceled")
 	})
 }
 
