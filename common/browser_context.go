@@ -149,10 +149,10 @@ func (b *BrowserContext) parseFuncInitScript(script goja.Value, arg goja.Value,
 		if err != nil {
 			return "", fmt.Errorf("marshaling arg: %v", err)
 		}
-		return fmt.Sprintf("(%s)(%s);", script.ToString().String(), string(input)), nil
+		return fmt.Sprintf("(%s)(%s);", script.ToString(), string(input)), nil
 	}
 
-	return fmt.Sprintf("(%s)();", script.ToString().String()), nil
+	return fmt.Sprintf("(%s)();", script.ToString()), nil
 }
 
 // Browser returns the browser instance that this browser context belongs to.
