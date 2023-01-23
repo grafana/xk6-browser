@@ -131,7 +131,7 @@ func (b *BrowserContext) parseObjectInitScript(script goja.Value) (string, error
 			path := obj.Get(k).String()
 			source, err := readFile(path)
 			if err != nil {
-				return "", fmt.Errorf("can't read script from path '%s': %w", path, err)
+				return "", fmt.Errorf("reading file: %v", err)
 			}
 			// See sourcemaps (https://developer.chrome.com/blog/sourcemaps/).
 			return fmt.Sprint(source, "\n//# sourceURL=", path), nil
