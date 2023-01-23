@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -79,9 +80,9 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	if !gojaValueExists(script) {
 		return errors.New("parsing init script: invalid script")
 	}
-	if gojaValueExists(arg) {
-		return errors.New("parsing init script: arguments are not supported")
-	}
+
+	_, isCallable := goja.AssertFunction(script)
+	hasArgs := gojaValueExists(arg)
 
 	var err error
 	var source string
@@ -91,12 +92,20 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 		source = script.String()
 	case reflect.Map, reflect.Struct:
 		source, err = b.parseObjectInitScript(script)
+	case reflect.Func:
+		source, err = b.parseFuncInitScript(script, arg, isCallable, hasArgs)
 	default:
 		return errors.New("parsing init script: invalid script type")
 	}
 
 	if err != nil {
 		return fmt.Errorf("parsing init script: %w", err)
+	}
+	// Argument is only supported if script is passed as function.
+	if !isCallable && hasArgs {
+		return errors.New(
+			"parsing init script: arguments are only supported when passing script as function",
+		)
 	}
 
 	b.evaluateOnNewDocumentSources = append(b.evaluateOnNewDocumentSources, source)
@@ -127,6 +136,20 @@ func (b *BrowserContext) parseObjectInitScript(script goja.Value) (string, error
 	}
 
 	return "", errors.New("content or path properties must be set for script as object")
+}
+
+func (b *BrowserContext) parseFuncInitScript(script goja.Value, arg goja.Value,
+	isCallable, hasArgs bool,
+) (string, error) {
+	if isCallable && hasArgs {
+		input, err := json.Marshal(arg.Export())
+		if err != nil {
+			return "", fmt.Errorf("can't marshal arg: %w", err)
+		}
+		return fmt.Sprintf("(%s)(%s);", script.ToString().String(), string(input)), nil
+	}
+
+	return fmt.Sprintf("(%s)();", script.ToString().String()), nil
 }
 
 // Browser returns the browser instance that this browser context belongs to.
