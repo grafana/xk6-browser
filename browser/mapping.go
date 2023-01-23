@@ -535,11 +535,7 @@ func mapBrowser(ctx context.Context, vu k6modules.VU, b api.Browser) mapping {
 		"isConnected": b.IsConnected,
 		"on": func(event string) *goja.Promise {
 			return k6ext.Promise(ctx, func() (result any, reason error) {
-				res, err := b.On(event)
-				if err != nil {
-					return nil, err //nolint:wrapcheck
-				}
-				return res, nil
+				return b.On(event) //nolint:wrapcheck
 			})
 		},
 		"userAgent": b.UserAgent,
