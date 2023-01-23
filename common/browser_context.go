@@ -98,7 +98,7 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	case reflect.Func:
 		source, err = b.parseFuncInitScript(script, arg, isCallable, hasArgs)
 	default:
-		return errors.New("parsing init script: invalid script type")
+		err = errors.New("parsing init script: invalid script type")
 	}
 
 	if err != nil {
