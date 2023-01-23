@@ -84,8 +84,11 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	_, isCallable := goja.AssertFunction(script)
 	hasArgs := gojaValueExists(arg)
 
-	var err error
-	var source string
+	var (
+		err    error
+		source string
+	)
+
 	//nolint:exhaustive
 	switch script.ExportType().Kind() {
 	case reflect.String:
