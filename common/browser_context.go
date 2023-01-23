@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -75,33 +76,23 @@ func (b *BrowserContext) AddCookies(cookies goja.Value) *goja.Promise {
 func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error {
 	b.logger.Debugf("BrowserContext:AddInitScript", "bctxid:%v", b.id)
 
-	rt := b.vu.Runtime()
+	if !gojaValueExists(script) {
+		return errors.New("parsing init script: invalid script")
+	}
+	if gojaValueExists(arg) {
+		return errors.New("parsing init script: arguments are not supported")
+	}
 
-	source := ""
-	if script != nil && !goja.IsUndefined(script) && !goja.IsNull(script) {
-		switch script.ExportType() {
-		case reflect.TypeOf(string("")):
-			source = script.String()
-		case reflect.TypeOf(goja.Object{}):
-			opts := script.ToObject(rt)
-			for _, k := range opts.Keys() {
-				switch k {
-				case "content":
-					source = opts.Get(k).String()
-				}
-			}
-		default:
-			_, isCallable := goja.AssertFunction(script)
-			if !isCallable {
-				source = fmt.Sprintf("(%s);", script.ToString().String())
-			} else {
-				source = fmt.Sprintf("(%s)(...args);", script.ToString().String())
-			}
-		}
+	var source string
+	//nolint:exhaustive
+	switch script.ExportType().Kind() {
+	case reflect.String:
+		source = script.String()
+	default:
+		return errors.New("parsing init script: invalid script type")
 	}
 
 	b.evaluateOnNewDocumentSources = append(b.evaluateOnNewDocumentSources, source)
-
 	for _, p := range b.browser.getPages() {
 		if err := p.evaluateOnNewDocument(source); err != nil {
 			return fmt.Errorf("adding init script: %w", err)

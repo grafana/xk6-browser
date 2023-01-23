@@ -23,8 +23,10 @@ import (
 )
 
 // Ensure page implements the EventEmitter, Target and Page interfaces.
-var _ EventEmitter = &Page{}
-var _ api.Page = &Page{}
+var (
+	_ EventEmitter = &Page{}
+	_ api.Page     = &Page{}
+)
 
 // Page stores Page/tab related context.
 type Page struct {
@@ -166,8 +168,20 @@ func (p *Page) didCrash() {
 	p.emit(EventPageCrash, p)
 }
 
-func (p *Page) evaluateOnNewDocument(source string) {
-	// TODO: implement
+func (p *Page) evaluateOnNewDocument(source string) error {
+	p.logger.Debugf("Page:evaluateOnNewDocument", "sid:%v", p.sessionID())
+
+	// TODO: Consider adding support for worldName and includeCommandLineAPI params.
+	// See CDP spec: https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-addScriptToEvaluateOnNewDocument
+	action := cdppage.AddScriptToEvaluateOnNewDocument(source)
+	// TODO: If we want to support removing added scripts we should
+	// store the list of identifiers for the added scripts.
+	_, err := action.Do(cdp.WithExecutor(p.ctx, p.session))
+	if err != nil {
+		return fmt.Errorf("adding script to evaluate on new document: %w", err)
+	}
+
+	return nil
 }
 
 func (p *Page) getFrameElement(f *Frame) (handle *ElementHandle, _ error) {
