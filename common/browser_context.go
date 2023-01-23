@@ -147,7 +147,7 @@ func (b *BrowserContext) parseFuncInitScript(script goja.Value, arg goja.Value,
 	if isCallable && hasArgs {
 		input, err := json.Marshal(arg.Export())
 		if err != nil {
-			return "", fmt.Errorf("can't marshal arg: %w", err)
+			return "", fmt.Errorf("marshaling arg: %v", err)
 		}
 		return fmt.Sprintf("(%s)(%s);", script.ToString().String(), string(input)), nil
 	}
