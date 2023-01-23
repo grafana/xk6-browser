@@ -134,6 +134,14 @@ func NewPage(
 		return nil, fmt.Errorf("internal error while auto attaching to browser pages: %w", err)
 	}
 
+	// Add init scripts inherited from browser context.
+	initScripts := p.browserCtx.getEvaluateOnNewDocumentSources()
+	for _, s := range initScripts {
+		if err = p.evaluateOnNewDocument(s); err != nil {
+			return nil, fmt.Errorf("internal error while adding init scripts to page: %w", err)
+		}
+	}
+
 	return &p, nil
 }
 

@@ -481,3 +481,9 @@ func (b *BrowserContext) runWaitForEventHandler(
 func (b *BrowserContext) getSession(id target.SessionID) *Session {
 	return b.browser.conn.getSession(id)
 }
+
+func (b *BrowserContext) getEvaluateOnNewDocumentSources() []string {
+	sources := make([]string, len(b.evaluateOnNewDocumentSources))
+	copy(sources, b.evaluateOnNewDocumentSources)
+	return sources
+}
