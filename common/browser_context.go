@@ -131,7 +131,7 @@ func (b *BrowserContext) parseObjectInitScript(script goja.Value) (string, error
 			path := obj.Get(k).String()
 			source, err := readFile(path)
 			if err != nil {
-				return "", fmt.Errorf("reading file: %v", err)
+				return "", fmt.Errorf("reading file: %v", err) //nolint:errorlint
 			}
 			// See sourcemaps (https://developer.chrome.com/blog/sourcemaps/).
 			return fmt.Sprint(source, "\n//# sourceURL=", path), nil
@@ -147,7 +147,7 @@ func (b *BrowserContext) parseFuncInitScript(script goja.Value, arg goja.Value,
 	if isCallable && hasArgs {
 		input, err := json.Marshal(arg.Export())
 		if err != nil {
-			return "", fmt.Errorf("marshaling arg: %v", err)
+			return "", fmt.Errorf("marshaling arg: %v", err) //nolint:errorlint
 		}
 		return fmt.Sprintf("(%s)(%s);", script.ToString(), string(input)), nil
 	}
