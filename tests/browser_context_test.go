@@ -25,7 +25,7 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 			`(function () { document.open(); document.write("%s"); document.close(); }());`,
 			body,
 		)
-		_, err := rt.RunString(fmt.Sprintf("const s = '%s';", script))
+		_, err := tb.runJavaScript("const s = '%s';", script)
 		require.NoError(t, err)
 
 		err = bctx.AddInitScript(rt.Get("s"), nil)
@@ -52,7 +52,7 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 			`(function () { document.open(); document.write("%s"); document.close(); }());`,
 			body,
 		)
-		_, err := rt.RunString(fmt.Sprintf("const s = '%s';", script))
+		_, err := tb.runJavaScript("const s = '%s';", script)
 		require.NoError(t, err)
 
 		p := bctx.NewPage()
@@ -75,11 +75,11 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 
 		rt := tb.vu.Runtime()
 		body := "<h1>AddInitScript</h1>"
-		_, err := rt.RunString(fmt.Sprintf(`function f() {
+		_, err := tb.runJavaScript(`function f() {
 			document.open();
 			document.write("%s");
 			document.close();
-		}`, body))
+		}`, body)
 		require.NoError(t, err)
 
 		p := bctx.NewPage()
@@ -149,9 +149,9 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 				t.Cleanup(bctx.Close)
 
 				rt := tb.vu.Runtime()
-				_, err := rt.RunString(tt.argScript)
+				_, err := tb.runJavaScript(tt.argScript)
 				require.NoError(t, err)
-				_, err = rt.RunString(tt.script)
+				_, err = tb.runJavaScript(tt.script)
 				require.NoError(t, err)
 
 				p := bctx.NewPage()
@@ -180,10 +180,10 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 			`(function () { document.open(); document.write('%s'); document.close(); }());`,
 			body,
 		)
-		_, err := rt.RunString(fmt.Sprintf(
+		_, err := tb.runJavaScript(
 			`const obj = {content: "%s"};`,
 			script,
-		))
+		)
 		require.NoError(t, err)
 
 		p := bctx.NewPage()
@@ -206,10 +206,10 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 
 		rt := tb.vu.Runtime()
 		path := "static/init_script.js"
-		_, err := rt.RunString(fmt.Sprintf(
+		_, err := tb.runJavaScript(
 			`const obj = {path: "%s"};`,
 			path,
-		))
+		)
 		require.NoError(t, err)
 
 		p := bctx.NewPage()
@@ -235,10 +235,10 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 		if err != nil {
 			t.Fatal("error building test init script abosulte path")
 		}
-		_, err = rt.RunString(fmt.Sprintf(
+		_, err = tb.runJavaScript(
 			`const obj = {path: "%s"};`,
 			path,
-		))
+		)
 		require.NoError(t, err)
 
 		p := bctx.NewPage()
@@ -272,9 +272,9 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 
 		rt := tb.vu.Runtime()
 		script := `(function () { document.open(); document.write("test"); document.close(); }());`
-		_, err := rt.RunString(fmt.Sprintf("const s = '%s';", script))
+		_, err := tb.runJavaScript("const s = '%s';", script)
 		require.NoError(t, err)
-		_, err = rt.RunString(`const arg = 1;`)
+		_, err = tb.runJavaScript(`const arg = 1;`)
 		require.NoError(t, err)
 
 		err = bctx.AddInitScript(rt.Get("s"), rt.Get("arg"))
@@ -289,7 +289,7 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 		t.Cleanup(bctx.Close)
 
 		rt := tb.vu.Runtime()
-		_, err := rt.RunString(`const obj = {prop: "test"};`)
+		_, err := tb.runJavaScript(`const obj = {prop: "test"};`)
 		require.NoError(t, err)
 
 		err = bctx.AddInitScript(rt.Get("obj"), nil)
