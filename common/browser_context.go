@@ -20,8 +20,10 @@ import (
 )
 
 // Ensure BrowserContext implements the EventEmitter and api.BrowserContext interfaces.
-var _ EventEmitter = &BrowserContext{}
-var _ api.BrowserContext = &BrowserContext{}
+var (
+	_ EventEmitter       = &BrowserContext{}
+	_ api.BrowserContext = &BrowserContext{}
+)
 
 // BrowserContext stores context information for a single independent browser session.
 // A newly launched browser instance contains a default browser context.
@@ -70,7 +72,7 @@ func (b *BrowserContext) AddCookies(cookies goja.Value) *goja.Promise {
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
-func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) {
+func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error {
 	b.logger.Debugf("BrowserContext:AddInitScript", "bctxid:%v", b.id)
 
 	rt := b.vu.Runtime()
@@ -101,8 +103,12 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) {
 	b.evaluateOnNewDocumentSources = append(b.evaluateOnNewDocumentSources, source)
 
 	for _, p := range b.browser.getPages() {
-		p.evaluateOnNewDocument(source)
+		if err := p.evaluateOnNewDocument(source); err != nil {
+			return fmt.Errorf("adding init script: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // Browser returns the browser instance that this browser context belongs to.

@@ -482,8 +482,13 @@ func mapPage(ctx context.Context, vu k6modules.VU, p api.Page) mapping {
 func mapBrowserContext(ctx context.Context, vu k6modules.VU, bc api.BrowserContext) mapping {
 	rt := vu.Runtime()
 	return mapping{
-		"addCookies":                  bc.AddCookies,
-		"addInitScript":               bc.AddInitScript,
+		"addCookies": bc.AddCookies,
+		"addInitScript": func(script goja.Value, arg goja.Value) *goja.Promise {
+			return k6ext.Promise(ctx, func() (any, error) {
+				err := bc.AddInitScript(script, arg)
+				return nil, err //nolint:wrapcheck
+			})
+		},
 		"browser":                     bc.Browser,
 		"clearCookies":                bc.ClearCookies,
 		"clearPermissions":            bc.ClearPermissions,
