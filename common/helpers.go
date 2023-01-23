@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"time"
 
 	cdpruntime "github.com/chromedp/cdproto/runtime"
@@ -239,4 +241,23 @@ func asGojaValue(ctx context.Context, v any) goja.Value {
 // panics if v is not a goja value.
 func gojaValueToString(ctx context.Context, v any) string {
 	return asGojaValue(ctx, v).String()
+}
+
+// readFile reads a file from FS. If path is relative, it's
+// converted to absolute path based on current working dir.
+func readFile(path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		var err error
+		path, err = filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

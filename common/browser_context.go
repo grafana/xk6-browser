@@ -83,13 +83,20 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 		return errors.New("parsing init script: arguments are not supported")
 	}
 
+	var err error
 	var source string
 	//nolint:exhaustive
 	switch script.ExportType().Kind() {
 	case reflect.String:
 		source = script.String()
+	case reflect.Map, reflect.Struct:
+		source, err = b.parseObjectInitScript(script)
 	default:
 		return errors.New("parsing init script: invalid script type")
+	}
+
+	if err != nil {
+		return fmt.Errorf("parsing init script: %w", err)
 	}
 
 	b.evaluateOnNewDocumentSources = append(b.evaluateOnNewDocumentSources, source)
@@ -100,6 +107,26 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	}
 
 	return nil
+}
+
+func (b *BrowserContext) parseObjectInitScript(script goja.Value) (string, error) {
+	obj := script.ToObject(b.vu.Runtime())
+	for _, k := range obj.Keys() {
+		switch k {
+		case "content":
+			return obj.Get(k).String(), nil
+		case "path": //nolint:goconst
+			path := obj.Get(k).String()
+			source, err := readFile(path)
+			if err != nil {
+				return "", fmt.Errorf("can't read script from path '%s': %w", path, err)
+			}
+			// See sourcemaps (https://developer.chrome.com/blog/sourcemaps/).
+			return fmt.Sprint(source, "\n//# sourceURL=", path), nil
+		}
+	}
+
+	return "", errors.New("content or path properties must be set for script as object")
 }
 
 // Browser returns the browser instance that this browser context belongs to.
