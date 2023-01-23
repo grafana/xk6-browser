@@ -74,7 +74,7 @@ func (b *BrowserContext) AddCookies(cookies goja.Value) *goja.Promise {
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
-func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error {
+func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error { //nolint:cyclop
 	b.logger.Debugf("BrowserContext:AddInitScript", "bctxid:%v", b.id)
 
 	if !gojaValueExists(script) {
