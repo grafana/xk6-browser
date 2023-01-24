@@ -260,7 +260,7 @@ func TestBrowserContextAddInitScript(t *testing.T) {
 		t.Cleanup(bctx.Close)
 
 		err := bctx.AddInitScript(nil, nil)
-		require.ErrorContains(t, err, "invalid")
+		require.ErrorContains(t, err, "undefined")
 	})
 
 	t.Run("error_script_not_callable_with_arg", func(t *testing.T) {

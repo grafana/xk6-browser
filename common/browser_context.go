@@ -78,7 +78,7 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	b.logger.Debugf("BrowserContext:AddInitScript", "bctxid:%v", b.id)
 
 	if !gojaValueExists(script) {
-		return errors.New("parsing init script: invalid script")
+		return errors.New("parsing init script: script is undefined or null")
 	}
 
 	_, isCallable := goja.AssertFunction(script)
