@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/grafana/xk6-browser/browserprocess"
 
 	k6common "go.k6.io/k6/js/common"
 )
@@ -33,21 +34,7 @@ func Panic(ctx context.Context, format string, a ...any) {
 	}
 	defer k6common.Throw(rt, fmt.Errorf(format, a...))
 
-	pid := GetProcessID(ctx)
-	if pid == 0 {
-		// this should never happen unless a programmer error
-		panic("no browser process ID in context")
-	}
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		// optimistically return and don't kill the process
-		return
-	}
-	// no need to check the error for waiting the process to release
-	// its resources or whether we could kill it as we're already
-	// dying.
-	_ = p.Release()
-	_ = p.Kill()
+	browserprocess.ForceProcessShutdown()
 }
 
 // UserFriendlyError maps an internal error to an error that users
