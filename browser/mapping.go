@@ -2,12 +2,14 @@ package browser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dop251/goja"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/chromium"
+	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
 
 	k6common "go.k6.io/k6/js/common"
@@ -534,7 +536,13 @@ func mapWorker(ctx context.Context, vu k6modules.VU, w api.Worker) mapping {
 func mapBrowserContext(ctx context.Context, vu k6modules.VU, bc api.BrowserContext) mapping {
 	rt := vu.Runtime()
 	return mapping{
-		"addCookies":                  bc.AddCookies,
+		"addCookies": func(cookies goja.Value) *goja.Promise {
+			return k6ext.Promise(ctx, func() (result any, reason error) {
+				err := bc.AddCookies(cookies)
+				panicIfInternalError(ctx, err)
+				return nil, err //nolint:wrapcheck
+			})
+		},
 		"addInitScript":               bc.AddInitScript,
 		"browser":                     bc.Browser,
 		"clearCookies":                bc.ClearCookies,
@@ -617,5 +625,11 @@ func mapBrowserType(ctx context.Context, vu k6modules.VU, bt api.BrowserType) ma
 			m := mapBrowser(ctx, vu, bt.Launch(opts))
 			return rt.ToValue(m).ToObject(rt)
 		},
+	}
+}
+
+func panicIfInternalError(ctx context.Context, err error) {
+	if errors.Is(err, k6error.ErrInternal) {
+		k6ext.Panic(ctx, err.Error())
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -64,8 +65,8 @@ func NewBrowserContext(
 }
 
 // AddCookies is not implemented.
-func (b *BrowserContext) AddCookies(cookies goja.Value) {
-	k6ext.Panic(b.ctx, "BrowserContext.addCookies(cookies) has not been implemented yet")
+func (b *BrowserContext) AddCookies(cookies goja.Value) error {
+	return fmt.Errorf("BrowserContext.addCookies(cookies) has not been implemented yet: %w", k6error.ErrInternal)
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
