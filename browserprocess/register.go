@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	browserProcessRegister   = map[int]interface{}{}
-	browserProcessRegisterMu = sync.Mutex{}
+	browserProcessRegister   = map[int]interface{}{} //nolint:gochecknoglobals
+	browserProcessRegisterMu = sync.Mutex{}          //nolint:gochecknoglobals
 )
 
 func register(logger *log.Logger, pid int) {
