@@ -38,7 +38,10 @@ type BrowserProcess struct {
 	logger *log.Logger
 }
 
-func NewBrowserProcess(
+// New creates a new BrowserProcess. It will start
+// a child process where the internet browser will
+// run.
+func New(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
 ) (*BrowserProcess, error) {
