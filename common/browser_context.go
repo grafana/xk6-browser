@@ -362,6 +362,14 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 	return b.waitForEvent(event, predicateFn, timeout)
 }
 
+// Ctx returns the go context that is associated
+// with BrowserContext. It's main uses is to help
+// shutdown the browser process if a panic occurs
+// in the mapping layer.
+func (b *BrowserContext) Ctx() context.Context {
+	return b.ctx
+}
+
 func (b *BrowserContext) waitForEvent(event string, predicateFn goja.Callable, timeout time.Duration) any {
 	evCancelCtx, evCancelFn := context.WithCancel(b.ctx)
 	chEvHandler := make(chan Event)

@@ -37,6 +37,14 @@ func customMappings() map[string]string {
 	}
 }
 
+// ignoreUnmapped is used to ignore the unmapped
+// exported methods.
+func ignoreUnmapped() map[string]interface{} {
+	return map[string]interface{}{
+		"ctx": nil,
+	}
+}
+
 // TestMappings tests that all the methods of the API (api/) are
 // to the module. This is to ensure that we don't forget to map
 // a new method to the module.
@@ -56,6 +64,7 @@ func TestMappings(t *testing.T) {
 			},
 		}
 		customMappings = customMappings()
+		ignoreUnmapped = ignoreUnmapped()
 	)
 
 	// testMapping tests that all the methods of an API are mapped
@@ -87,7 +96,9 @@ func TestMappings(t *testing.T) {
 			if cmok {
 				m = cm
 			}
-			if _, ok := mapped[m]; !ok {
+			_, iOk := ignoreUnmapped[m]
+			_, mOk := mapped[m]
+			if !mOk && !iOk {
 				t.Errorf("method %s not found", m)
 			}
 		}

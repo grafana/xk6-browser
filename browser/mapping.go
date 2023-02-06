@@ -539,7 +539,7 @@ func mapBrowserContext(ctx context.Context, vu k6modules.VU, bc api.BrowserConte
 		"addCookies": func(cookies goja.Value) *goja.Promise {
 			return k6ext.Promise(ctx, func() (result any, reason error) {
 				err := bc.AddCookies(cookies)
-				panicIfInternalError(ctx, err)
+				panicIfInternalError(bc, err)
 				return nil, err //nolint:wrapcheck
 			})
 		},
@@ -628,8 +628,12 @@ func mapBrowserType(ctx context.Context, vu k6modules.VU, bt api.BrowserType) ma
 	}
 }
 
-func panicIfInternalError(ctx context.Context, err error) {
+type withCtx interface {
+	Ctx() context.Context
+}
+
+func panicIfInternalError(w withCtx, err error) {
 	if errors.Is(err, k6error.ErrInternal) {
-		k6ext.Panic(ctx, err.Error())
+		k6ext.Panic(w.Ctx(), err.Error())
 	}
 }

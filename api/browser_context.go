@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
+
 	"github.com/dop251/goja"
 )
 
 // BrowserContext is the public interface of a CDP browser context.
 type BrowserContext interface {
+	// Externally available methods
 	AddCookies(cookies goja.Value) error
 	AddInitScript(script goja.Value, arg goja.Value)
 	Browser() Browser
@@ -35,4 +38,7 @@ type BrowserContext interface {
 	StorageState(opts goja.Value)
 	Unroute(url goja.Value, handler goja.Callable)
 	WaitForEvent(event string, optsOrPredicate goja.Value) any
+
+	// Internally available methods
+	Ctx() context.Context
 }
