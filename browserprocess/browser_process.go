@@ -1,4 +1,6 @@
-package common
+// Package browserprocess is in charge of the interaction
+// with the OS process that is running the browser.
+package browserprocess
 
 import (
 	"bufio"
@@ -23,15 +25,15 @@ type BrowserProcess struct {
 	process *os.Process
 
 	// Channels for managing termination.
-	lostConnection             chan struct{}
+	LostConnection             chan struct{}
 	processIsGracefullyClosing chan struct{}
-	processDone                chan struct{}
+	ProcessDone                chan struct{}
 
 	// Browser's WebSocket URL to speak CDP
 	wsURL string
 
 	// The directory where user data for the browser is stored.
-	userDataDir *storage.Dir
+	UserDataDir *storage.Dir
 
 	logger *log.Logger
 }
@@ -54,18 +56,18 @@ func NewBrowserProcess(
 		ctx:                        ctx,
 		cancel:                     ctxCancel,
 		process:                    cmd.Process,
-		lostConnection:             make(chan struct{}),
+		LostConnection:             make(chan struct{}),
 		processIsGracefullyClosing: make(chan struct{}),
-		processDone:                cmd.done,
+		ProcessDone:                cmd.done,
 		wsURL:                      wsURL,
-		userDataDir:                dataDir,
+		UserDataDir:                dataDir,
 	}
 
 	go func() {
 		// If we lose connection to the browser and we're not in-progress with clean
 		// browser-initiated termination then cancel the context to clean up.
 		select {
-		case <-p.lostConnection:
+		case <-p.LostConnection:
 		case <-ctx.Done():
 		}
 
@@ -79,14 +81,20 @@ func NewBrowserProcess(
 	return &p, nil
 }
 
-func (p *BrowserProcess) didLoseConnection() {
-	close(p.lostConnection)
+// DidLoseConnection should be called
+// when we get a EventConnectionClose
+// or when the context is closed.
+func (p *BrowserProcess) DidLoseConnection() {
+	close(p.LostConnection)
 }
 
-func (p *BrowserProcess) isConnected() bool {
+// IsConnected returns whether the WebSocket
+// connection to the browser process is active
+// or not.
+func (p *BrowserProcess) IsConnected() bool {
 	var ok bool
 	select {
-	case _, ok = <-p.lostConnection:
+	case _, ok = <-p.LostConnection:
 	default:
 		ok = true
 	}

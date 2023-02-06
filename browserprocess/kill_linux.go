@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-package common
+package browserprocess
 
 import (
 	"os/exec"

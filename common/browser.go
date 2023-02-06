@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/browserprocess"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -40,7 +41,7 @@ type Browser struct {
 
 	state int64
 
-	browserProc *BrowserProcess
+	browserProc *browserprocess.BrowserProcess
 	launchOpts  *LaunchOptions
 
 	// Connection to the browser to talk CDP protocol.
@@ -71,7 +72,7 @@ type Browser struct {
 func NewBrowser(
 	ctx context.Context,
 	cancel context.CancelFunc,
-	browserProc *BrowserProcess,
+	browserProc *browserprocess.BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
 ) (*Browser, error) {
@@ -86,7 +87,7 @@ func NewBrowser(
 func newBrowser(
 	ctx context.Context,
 	cancelFn context.CancelFunc,
-	browserProc *BrowserProcess,
+	browserProc *browserprocess.BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
 ) *Browser {
@@ -159,7 +160,7 @@ func (b *Browser) initEvents() error {
 	go func() {
 		defer func() {
 			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
-			b.browserProc.didLoseConnection()
+			b.browserProc.DidLoseConnection()
 			if b.cancelFn != nil {
 				b.cancelFn()
 			}
@@ -392,7 +393,7 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 // Close shuts down the browser.
 func (b *Browser) Close() {
 	defer func() {
-		if err := b.browserProc.userDataDir.Cleanup(); err != nil {
+		if err := b.browserProc.UserDataDir.Cleanup(); err != nil {
 			b.logger.Errorf("Browser:Close", "cleaning up the user data directory: %v", err)
 		}
 	}()
@@ -422,7 +423,7 @@ func (b *Browser) Close() {
 	// forcefully after the timeout.
 	timeout := time.Second
 	select {
-	case <-b.browserProc.processDone:
+	case <-b.browserProc.ProcessDone:
 	case <-time.After(timeout):
 		b.logger.Debugf("Browser:Close", "killing browser process with PID %d after %s", b.browserProc.Pid(), timeout)
 		b.browserProc.Terminate()
@@ -455,7 +456,7 @@ func (b *Browser) Contexts() []api.BrowserContext {
 // IsConnected returns whether the WebSocket connection to the browser process
 // is active or not.
 func (b *Browser) IsConnected() bool {
-	return b.browserProc.isConnected()
+	return b.browserProc.IsConnected()
 }
 
 // NewContext creates a new incognito-like browser context.
@@ -494,7 +495,7 @@ func (b *Browser) On(event string) (bool, error) {
 	}
 
 	select {
-	case <-b.browserProc.lostConnection:
+	case <-b.browserProc.LostConnection:
 		return true, nil
 	case <-b.ctx.Done():
 		return false, fmt.Errorf("browser.on promise rejected: %w", b.ctx.Err())
