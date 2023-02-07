@@ -14,14 +14,17 @@ import (
 
 	cdpbrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 )
 
 // Ensure BrowserContext implements the EventEmitter and api.BrowserContext interfaces.
-var _ EventEmitter = &BrowserContext{}
-var _ api.BrowserContext = &BrowserContext{}
+var (
+	_ EventEmitter       = &BrowserContext{}
+	_ api.BrowserContext = &BrowserContext{}
+)
 
 // BrowserContext stores context information for a single independent browser session.
 // A newly launched browser instance contains a default browser context.
@@ -63,9 +66,30 @@ func NewBrowserContext(
 	return &b
 }
 
-// AddCookies is not implemented.
+// AddCookies adds cookies into this browser context.
+// All pages within this context will have these cookies installed.
 func (b *BrowserContext) AddCookies(cookies goja.Value) {
-	k6ext.Panic(b.ctx, "BrowserContext.addCookies(cookies) has not been implemented yet")
+	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
+
+	var cookieParams []network.CookieParam
+	if cookies != nil && !goja.IsUndefined(cookies) && !goja.IsNull(cookies) {
+		err := b.vu.Runtime().ExportTo(cookies, &cookieParams)
+		if err != nil {
+			k6ext.Panic(b.ctx, "adding cookies: %v", err)
+		}
+	}
+
+	// Create new array of pointers to items in cookieParams
+	var cookieParamsPointers []*network.CookieParam
+	for i := 0; i < len(cookieParams); i++ {
+		cookieParamsPointers = append(cookieParamsPointers, &cookieParams[i])
+	}
+
+	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
+
+	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
+		k6ext.Panic(b.ctx, "adding cookies: %w", err)
+	}
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
