@@ -55,7 +55,7 @@ func New(
 		return nil, err
 	}
 
-	register(logger, cmd.Process.Pid)
+	register(ctx, logger, cmd.Process.Pid)
 
 	p := BrowserProcess{
 		ctx:                        ctx,

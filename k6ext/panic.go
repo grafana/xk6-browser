@@ -34,7 +34,7 @@ func Panic(ctx context.Context, format string, a ...any) {
 	}
 	defer k6common.Throw(rt, fmt.Errorf(format, a...))
 
-	browserprocess.ForceProcessShutdown()
+	browserprocess.ForceProcessShutdown(ctx)
 }
 
 // UserFriendlyError maps an internal error to an error that users

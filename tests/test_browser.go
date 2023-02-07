@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
+	"github.com/grafana/xk6-browser/browserprocess"
 	"github.com/grafana/xk6-browser/chromium"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
@@ -34,6 +36,8 @@ type testBrowser struct {
 
 	api.Browser
 }
+
+var iID uint64 //nolint:gochecknoglobals
 
 // newTestBrowser configures and launches a new chrome browser.
 // It automatically closes it when `t` returns.
@@ -81,6 +85,13 @@ func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 		ctx = k6ext.WithVU(ctx, vu)
 		vu.CtxField = ctx
 	}
+
+	// This is used to help the browserprocess register
+	// distinguish between different error runs so that
+	// a panic in one test doesn't force close the browser
+	// in other running tests.
+	u := atomic.AddUint64(&iID, 1)
+	vu.CtxField = browserprocess.WithIterationID(vu.CtxField, strconv.FormatUint(u, 10))
 
 	registry := k6metrics.NewRegistry()
 	k6m := k6ext.RegisterCustomMetrics(registry)
