@@ -71,24 +71,25 @@ func NewBrowserContext(
 func (b *BrowserContext) AddCookies(cookies goja.Value) {
 	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
 
-	var cookieParams []network.CookieParam
+	cookieParams := []network.CookieParam{}
 	if cookies != nil && !goja.IsUndefined(cookies) && !goja.IsNull(cookies) {
-		err := b.vu.Runtime().ExportTo(cookies, &cookieParams)
+		rt := b.vu.Runtime()
+		err := rt.ExportTo(cookies, &cookieParams)
 		if err != nil {
 			k6ext.Panic(b.ctx, "adding cookies: %v", err)
 		}
-	}
 
-	// Create new array of pointers to items in cookieParams
-	var cookieParamsPointers []*network.CookieParam
-	for i := 0; i < len(cookieParams); i++ {
-		cookieParamsPointers = append(cookieParamsPointers, &cookieParams[i])
-	}
+		// Create new array of pointers to items in cookieParams
+		var cookieParamsPointers []*network.CookieParam
+		for i := 0; i < len(cookieParams); i++ {
+			cookieParamsPointers = append(cookieParamsPointers, &cookieParams[i])
+		}
 
-	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
+		action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
 
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
-		k6ext.Panic(b.ctx, "adding cookies: %w", err)
+		if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
+			k6ext.Panic(b.ctx, "adding cookies: %w", err)
+		}
 	}
 }
 
