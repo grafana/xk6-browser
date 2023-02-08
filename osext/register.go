@@ -19,11 +19,11 @@ func register(ctx context.Context, logger *log.Logger, pid int) {
 
 	logger.Debugf("Process:register", "registered Process pid %d", pid)
 
-	iID := GetIterationID(ctx)
-	if _, ok := processRegister[iID]; !ok {
-		processRegister[iID] = []int{}
+	rID := GetRunID(ctx)
+	if _, ok := processRegister[rID]; !ok {
+		processRegister[rID] = []int{}
 	}
-	processRegister[iID] = append(processRegister[iID], pid)
+	processRegister[rID] = append(processRegister[rID], pid)
 }
 
 // ForceProcessShutdown should be called when
@@ -33,9 +33,9 @@ func ForceProcessShutdown(ctx context.Context) {
 	processRegisterMu.Lock()
 	defer processRegisterMu.Unlock()
 
-	iID := GetIterationID(ctx)
+	rID := GetRunID(ctx)
 
-	for _, pid := range processRegister[iID] {
+	for _, pid := range processRegister[rID] {
 		p, err := os.FindProcess(pid)
 		if err != nil {
 			// optimistically continue and don't kill the process

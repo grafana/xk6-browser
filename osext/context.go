@@ -7,16 +7,16 @@ import (
 type ctxKey int
 
 const (
-	ctxKeyIterationID ctxKey = iota
+	ctxKeyRunID ctxKey = iota
 )
 
-// WithIterationID saves the current iteration ID to the context.
-func WithIterationID(ctx context.Context, iID string) context.Context {
-	return context.WithValue(ctx, ctxKeyIterationID, iID)
+// WithRunID saves the current iteration ID to the context.
+func WithRunID(ctx context.Context, rID string) context.Context {
+	return context.WithValue(ctx, ctxKeyRunID, rID)
 }
 
-// GetIterationID returns the current iteration ID from the context.
-func GetIterationID(ctx context.Context) string {
-	iID, _ := ctx.Value(ctxKeyIterationID).(string)
-	return iID
+// GetRunID returns the current iteration ID from the context.
+func GetRunID(ctx context.Context) string {
+	rID, _ := ctx.Value(ctxKeyRunID).(string)
+	return rID
 }

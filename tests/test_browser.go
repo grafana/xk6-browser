@@ -91,7 +91,7 @@ func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 	// so that a panic in one test doesn't force close the
 	// browser Process in other running tests.
 	u := atomic.AddUint64(&iID, 1)
-	vu.CtxField = osext.WithIterationID(vu.CtxField, strconv.FormatUint(u, 10))
+	vu.CtxField = osext.WithRunID(vu.CtxField, strconv.FormatUint(u, 10))
 
 	registry := k6metrics.NewRegistry()
 	k6m := k6ext.RegisterCustomMetrics(registry)
