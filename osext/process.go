@@ -17,7 +17,11 @@ import (
 	"github.com/grafana/xk6-browser/storage"
 )
 
-type BrowserProcess struct {
+// Process is a wrapper around the os.Process.
+// We can keep track of and control its lifecycle.
+// It's crucial in setting up and connecting to
+// the running browser.
+type Process struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -44,8 +48,8 @@ type BrowserProcess struct {
 func New(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
-) (*BrowserProcess, error) {
-	cmd, err := execute(ctx, ctxCancel, path, args, env, dataDir, logger)
+) (*Process, error) {
+	cmd, err := execute(ctx, path, args, env, dataDir, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +61,7 @@ func New(
 
 	register(ctx, logger, cmd.Process.Pid)
 
-	p := BrowserProcess{
+	p := Process{
 		ctx:                        ctx,
 		cancel:                     ctxCancel,
 		process:                    cmd.Process,
@@ -89,14 +93,14 @@ func New(
 // DidLoseConnection should be called
 // when we get a EventConnectionClose
 // or when the context is closed.
-func (p *BrowserProcess) DidLoseConnection() {
+func (p *Process) DidLoseConnection() {
 	close(p.LostConnection)
 }
 
 // IsConnected returns whether the WebSocket
 // connection to the browser process is active
 // or not.
-func (p *BrowserProcess) IsConnected() bool {
+func (p *Process) IsConnected() bool {
 	var ok bool
 	select {
 	case _, ok = <-p.LostConnection:
@@ -107,29 +111,29 @@ func (p *BrowserProcess) IsConnected() bool {
 }
 
 // GracefulClose triggers a graceful closing of the browser process.
-func (p *BrowserProcess) GracefulClose() {
+func (p *Process) GracefulClose() {
 	p.logger.Debugf("Browser:GracefulClose", "")
 	close(p.processIsGracefullyClosing)
 }
 
 // Terminate triggers the termination of the browser process.
-func (p *BrowserProcess) Terminate() {
+func (p *Process) Terminate() {
 	p.logger.Debugf("Browser:Close", "browserProc terminate")
 	p.cancel()
 }
 
 // WsURL returns the Websocket URL that the browser is listening on for CDP clients.
-func (p *BrowserProcess) WsURL() string {
+func (p *Process) WsURL() string {
 	return p.wsURL
 }
 
 // Pid returns the browser process ID.
-func (p *BrowserProcess) Pid() int {
+func (p *Process) Pid() int {
 	return p.process.Pid
 }
 
 // AttachLogger attaches a logger to the browser process.
-func (p *BrowserProcess) AttachLogger(logger *log.Logger) {
+func (p *Process) AttachLogger(logger *log.Logger) {
 	p.logger = logger
 }
 
@@ -140,7 +144,7 @@ type command struct {
 }
 
 func execute(
-	ctx context.Context, ctxCancel func(), path string, args, env []string,
+	ctx context.Context, path string, args, env []string,
 	dataDir *storage.Dir, logger *log.Logger,
 ) (command, error) {
 	cmd := exec.CommandContext(ctx, path, args...)

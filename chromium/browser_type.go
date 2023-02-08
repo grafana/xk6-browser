@@ -216,7 +216,7 @@ func (b *BrowserType) allocate(
 	ctx context.Context, opts *common.LaunchOptions,
 	flags map[string]any, env []string, dataDir *storage.Dir,
 	logger *log.Logger,
-) (_ *osext.BrowserProcess, rerr error) {
+) (_ *osext.Process, rerr error) {
 	bProcCtx, bProcCtxCancel := context.WithTimeout(ctx, opts.Timeout)
 	defer func() {
 		if rerr != nil {

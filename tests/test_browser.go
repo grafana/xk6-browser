@@ -86,10 +86,10 @@ func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 		vu.CtxField = ctx
 	}
 
-	// This is used to help the browserprocess register
-	// distinguish between different error runs so that
-	// a panic in one test doesn't force close the browser
-	// in other running tests.
+	// This is needed to register the browser osext.Process
+	// and distinguish between different integration test runs
+	// so that a panic in one test doesn't force close the
+	// browser Process in other running tests.
 	u := atomic.AddUint64(&iID, 1)
 	vu.CtxField = osext.WithIterationID(vu.CtxField, strconv.FormatUint(u, 10))
 

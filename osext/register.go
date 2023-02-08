@@ -17,7 +17,7 @@ func register(ctx context.Context, logger *log.Logger, pid int) {
 	processRegisterMu.Lock()
 	defer processRegisterMu.Unlock()
 
-	logger.Debugf("BrowserProcess:register", "registered BrowserProcess pid %d", pid)
+	logger.Debugf("Process:register", "registered Process pid %d", pid)
 
 	iID := GetIterationID(ctx)
 	if _, ok := processRegister[iID]; !ok {
