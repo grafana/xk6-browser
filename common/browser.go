@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
-	"github.com/grafana/xk6-browser/browserprocess"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/osext"
 
 	k6modules "go.k6.io/k6/js/modules"
 
@@ -41,7 +41,7 @@ type Browser struct {
 
 	state int64
 
-	browserProc *browserprocess.BrowserProcess
+	browserProc *osext.BrowserProcess
 	launchOpts  *LaunchOptions
 
 	// Connection to the browser to talk CDP protocol.
@@ -72,7 +72,7 @@ type Browser struct {
 func NewBrowser(
 	ctx context.Context,
 	cancel context.CancelFunc,
-	browserProc *browserprocess.BrowserProcess,
+	browserProc *osext.BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
 ) (*Browser, error) {
@@ -87,7 +87,7 @@ func NewBrowser(
 func newBrowser(
 	ctx context.Context,
 	cancelFn context.CancelFunc,
-	browserProc *browserprocess.BrowserProcess,
+	browserProc *osext.BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
 ) *Browser {

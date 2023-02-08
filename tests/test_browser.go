@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
-	"github.com/grafana/xk6-browser/browserprocess"
 	"github.com/grafana/xk6-browser/chromium"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
+	"github.com/grafana/xk6-browser/osext"
 
 	k6http "go.k6.io/k6/js/modules/k6/http"
 	k6httpmultibin "go.k6.io/k6/lib/testutils/httpmultibin"
@@ -91,7 +91,7 @@ func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 	// a panic in one test doesn't force close the browser
 	// in other running tests.
 	u := atomic.AddUint64(&iID, 1)
-	vu.CtxField = browserprocess.WithIterationID(vu.CtxField, strconv.FormatUint(u, 10))
+	vu.CtxField = osext.WithIterationID(vu.CtxField, strconv.FormatUint(u, 10))
 
 	registry := k6metrics.NewRegistry()
 	k6m := k6ext.RegisterCustomMetrics(registry)

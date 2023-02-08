@@ -1,7 +1,7 @@
 //go:build !linux
 // +build !linux
 
-package browserprocess
+package osext
 
 import "os/exec"
 

@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/grafana/xk6-browser/api"
-	"github.com/grafana/xk6-browser/browserprocess"
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/osext"
 	"github.com/grafana/xk6-browser/storage"
 
 	k6common "go.k6.io/k6/js/common"
@@ -216,7 +216,7 @@ func (b *BrowserType) allocate(
 	ctx context.Context, opts *common.LaunchOptions,
 	flags map[string]any, env []string, dataDir *storage.Dir,
 	logger *log.Logger,
-) (_ *browserprocess.BrowserProcess, rerr error) {
+) (_ *osext.BrowserProcess, rerr error) {
 	bProcCtx, bProcCtxCancel := context.WithTimeout(ctx, opts.Timeout)
 	defer func() {
 		if rerr != nil {
@@ -234,7 +234,7 @@ func (b *BrowserType) allocate(
 		path = b.ExecutablePath()
 	}
 
-	return browserprocess.New(bProcCtx, path, args, env, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
+	return osext.New(bProcCtx, path, args, env, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
 }
 
 // parseArgs parses command-line arguments and returns them.

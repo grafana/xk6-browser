@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/xk6-browser/browserprocess"
+	"github.com/grafana/xk6-browser/osext"
 
 	k6common "go.k6.io/k6/js/common"
 )
@@ -34,7 +34,7 @@ func Panic(ctx context.Context, format string, a ...any) {
 	}
 	defer k6common.Throw(rt, fmt.Errorf(format, a...))
 
-	browserprocess.ForceProcessShutdown(ctx)
+	osext.ForceProcessShutdown(ctx)
 }
 
 // UserFriendlyError maps an internal error to an error that users

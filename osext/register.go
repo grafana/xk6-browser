@@ -1,4 +1,4 @@
-package browserprocess
+package osext
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	// iterationID: []pid
 	processRegister   = map[string][]int{} //nolint:gochecknoglobals
 	processRegisterMu = sync.Mutex{}       //nolint:gochecknoglobals
 )

@@ -1,4 +1,4 @@
-package browserprocess
+package osext
 
 import (
 	"context"

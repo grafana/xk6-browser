@@ -1,6 +1,6 @@
-// Package browserprocess is in charge of the interaction
+// Package osext is in charge of the interaction
 // with the OS process that is running the browser.
-package browserprocess
+package osext
 
 import (
 	"bufio"
@@ -38,7 +38,7 @@ type BrowserProcess struct {
 	logger *log.Logger
 }
 
-// New creates a new BrowserProcess. It will start
+// New creates a new osext. It will start
 // a child process where the internet browser will
 // run.
 func New(
