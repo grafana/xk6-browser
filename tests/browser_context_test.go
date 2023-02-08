@@ -1,60 +1,81 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/dop251/goja"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBrowserContextAddCookies(t *testing.T) {
-	b := newTestBrowser(t)
+	opts := defaultLaunchOpts()
+	tb := newTestBrowser(t, withFileServer(), opts)
 
 	t.Run("happy_path", func(t *testing.T) {
-		cookies, err := b.vu.Runtime().RunString(`
+		testCookieName := "test_cookie_name"
+		testCookieValue := "test_cookie_value"
+
+		bc := tb.NewContext(nil)
+		cmd := fmt.Sprintf(`
 			[
 				{
-					name: "test_cookie_name",
-					value: "test_cookie_value",
-					url: "https://test.go"
+					name: "%v",
+					value: "%v",
+					url: "%v"
 				}
 			];
-		`)
+		`, testCookieName, testCookieValue, tb.URL(""))
+		cookies, err := tb.vu.Runtime().RunString(cmd)
 		require.NoError(t, err)
 
-		bc := b.NewContext(b.toGojaValue(nil))
 		bc.AddCookies(cookies)
 
-		// TODO: assert that the cookies are added once Cookies() is implemented
-	})
-
-	t.Run("nil_cookies", func(t *testing.T) {
-		bc := b.NewContext(b.toGojaValue(nil))
-		bc.AddCookies(nil)
-
-		// TODO: assert that no cookies are added once Cookies() is implemented
-	})
-
-	t.Run("goja_null_cookies", func(t *testing.T) {
-		cookies, err := b.vu.Runtime().RunString(`
-			null;
-		`)
+		p := bc.NewPage()
+		_, err = p.Goto(
+			tb.staticURL("add_cookies.html"),
+			tb.toGojaValue(struct {
+				WaitUntil string `js:"waitUntil"`
+			}{
+				WaitUntil: "load",
+			}),
+		)
 		require.NoError(t, err)
 
-		bc := b.NewContext(b.toGojaValue(nil))
-		bc.AddCookies(cookies)
-
-		// TODO: assert that no cookies are added once Cookies() is implemented
+		result := p.TextContent("#cookies", nil)
+		assert.EqualValues(t, fmt.Sprintf("%v=%v", testCookieName, testCookieValue), result)
 	})
 
-	t.Run("goja_undefined_cookies", func(t *testing.T) {
-		cookies, err := b.vu.Runtime().RunString(`
-			undefined;
-		`)
-		require.NoError(t, err)
+	type errorTestCase struct {
+		description string
+		cookiesCmd  string
+	}
 
-		bc := b.NewContext(b.toGojaValue(nil))
-		bc.AddCookies(cookies)
+	for _, testCase := range []errorTestCase{
+		{
+			description: "nil_cookies",
+			cookiesCmd:  "",
+		},
+		{
+			description: "goja_null_cookies",
+			cookiesCmd:  "null;",
+		},
+		{
+			description: "goja_undefined_cookies",
+			cookiesCmd:  "undefined;",
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			var cookies goja.Value
+			if testCase.cookiesCmd != "" {
+				var err error
+				cookies, err = tb.vu.Runtime().RunString(testCase.cookiesCmd)
+				require.NoError(t, err)
+			}
 
-		// TODO: assert that no cookies are added once Cookies() is implemented
-	})
+			bc := tb.NewContext(nil)
+			assert.Panics(t, func() { bc.AddCookies(cookies) })
+		})
+	}
 }
