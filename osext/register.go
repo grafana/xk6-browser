@@ -36,15 +36,22 @@ func ForceProcessShutdown(ctx context.Context) {
 	rID := GetRunID(ctx)
 
 	for _, pid := range processRegister[rID] {
-		p, err := os.FindProcess(pid)
-		if err != nil {
-			// optimistically continue and don't kill the process
-			continue
-		}
-		// no need to check the error for waiting the process to release
-		// its resources or whether we could kill it as we're already
-		// dying.
-		_ = p.Release()
-		_ = p.Kill()
+		Kill(pid)
 	}
+}
+
+// Kill will look for and kill the process with the
+// given pid. This is only being exported to allow
+// integration tests to override it so that in
+// those tests the browser processes isn't killed
+// which currently break many tests.
+var Kill = func(pid int) { //nolint:gochecknoglobals
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		// optimistically continue and don't kill the process
+		return
+	}
+	// no need to check the error since we're already dying.
+	_ = p.Release()
+	_ = p.Kill()
 }

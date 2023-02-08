@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,6 +40,8 @@ type testBrowser struct {
 
 var iID uint64 //nolint:gochecknoglobals
 
+var o = sync.Once{} //nolint:gochecknoglobals
+
 // newTestBrowser configures and launches a new chrome browser.
 // It automatically closes it when `t` returns.
 //
@@ -46,6 +49,14 @@ var iID uint64 //nolint:gochecknoglobals
 // see: withLaunchOptions for an example.
 func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 	tb.Helper()
+
+	// Some integration tests assert that a panic has occurred, but we do
+	// not want the browser process to be killed. All browser process
+	// spawned by the integration tests should still gracefully
+	// shutdown.
+	o.Do(func() {
+		osext.Kill = func(pid int) {}
+	})
 
 	// set default options and then customize them
 	var (
