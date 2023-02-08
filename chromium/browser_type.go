@@ -234,7 +234,7 @@ func (b *BrowserType) allocate(
 		path = b.ExecutablePath()
 	}
 
-	return osext.New(bProcCtx, path, args, env, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
+	return osext.NewProcess(bProcCtx, path, args, env, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
 }
 
 // parseArgs parses command-line arguments and returns them.

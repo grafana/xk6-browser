@@ -42,10 +42,10 @@ type Process struct {
 	logger *log.Logger
 }
 
-// New creates a new osext. It will start
+// NewProcess creates a new osext. It will start
 // a child process where the internet browser will
 // run.
-func New(
+func NewProcess(
 	ctx context.Context, path string, args, env []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
 ) (*Process, error) {
