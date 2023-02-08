@@ -3,49 +3,41 @@ package browserprocess
 import (
 	"context"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/grafana/xk6-browser/log"
 )
 
-type processState struct {
-	pid int
-}
-
 var (
-	browserProcessRegister   = map[string]*processState{} //nolint:gochecknoglobals
-	browserProcessRegisterMu = sync.Mutex{}               //nolint:gochecknoglobals
+	// iterationID: []pid
+	processRegister   = map[string][]int{} //nolint:gochecknoglobals
+	processRegisterMu = sync.Mutex{}       //nolint:gochecknoglobals
 )
 
 func register(ctx context.Context, logger *log.Logger, pid int) {
-	browserProcessRegisterMu.Lock()
-	defer browserProcessRegisterMu.Unlock()
-
-	iID := GetIterationID(ctx)
-	key := strconv.FormatInt(int64(pid), 10) + iID
+	processRegisterMu.Lock()
+	defer processRegisterMu.Unlock()
 
 	logger.Debugf("BrowserProcess:register", "registered BrowserProcess pid %d", pid)
 
-	browserProcessRegister[key] = &processState{pid: pid}
+	iID := GetIterationID(ctx)
+	if _, ok := processRegister[iID]; !ok {
+		processRegister[iID] = []int{}
+	}
+	processRegister[iID] = append(processRegister[iID], pid)
 }
 
 // ForceProcessShutdown should be called when
 // xk6-browser is having to shutdown due to an
 // internal error (and therefore a panic).
 func ForceProcessShutdown(ctx context.Context) {
-	browserProcessRegisterMu.Lock()
-	defer browserProcessRegisterMu.Unlock()
+	processRegisterMu.Lock()
+	defer processRegisterMu.Unlock()
 
 	iID := GetIterationID(ctx)
 
-	for k, v := range browserProcessRegister {
-		if iID != "" && !strings.Contains(k, iID) {
-			continue
-		}
-
-		p, err := os.FindProcess(v.pid)
+	for _, pid := range processRegister[iID] {
+		p, err := os.FindProcess(pid)
 		if err != nil {
 			// optimistically continue and don't kill the process
 			continue
