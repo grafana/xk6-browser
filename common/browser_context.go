@@ -81,12 +81,32 @@ func (b *BrowserContext) AddCookies(cookies goja.Value) {
 	if err != nil {
 		k6ext.Panic(b.ctx, "adding cookies: %v", err)
 	}
-	b.logger.Infof("BrowserContext:AddCookies", "cookies: %#v", cookieParams)
 
 	// Create new array of pointers to items in cookieParams
 	var cookieParamsPointers []*network.CookieParam
 	for i := 0; i < len(cookieParams); i++ {
-		cookieParamsPointers = append(cookieParamsPointers, &cookieParams[i])
+		cookieParam := cookieParams[i]
+
+		if cookieParam.Name == "" {
+			k6ext.Panic(b.ctx, "adding cookies: cookie name is not set. %#v", cookieParam)
+		}
+
+		if cookieParam.Value == "" {
+			k6ext.Panic(b.ctx, "adding cookies: cookie value is not set. %#v", cookieParam)
+		}
+
+		// if URL is not set, both Domain and Path must be provided
+		if cookieParam.URL == "" {
+			if cookieParam.Domain == "" || cookieParam.Path == "" {
+				k6ext.Panic(
+					b.ctx,
+					"adding cookies: if cookie url is not provided, both domain and path must be specified. %#v",
+					cookieParam,
+				)
+			}
+		}
+
+		cookieParamsPointers = append(cookieParamsPointers, &cookieParam)
 	}
 
 	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
