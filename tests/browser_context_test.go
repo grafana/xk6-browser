@@ -10,8 +10,7 @@ import (
 )
 
 func TestBrowserContextAddCookies(t *testing.T) {
-	opts := defaultLaunchOpts()
-	tb := newTestBrowser(t, withFileServer(), opts)
+	tb := newTestBrowser(t, withFileServer())
 
 	t.Run("happy_path", func(t *testing.T) {
 		testCookieName := "test_cookie_name"
@@ -27,7 +26,7 @@ func TestBrowserContextAddCookies(t *testing.T) {
 				}
 			];
 		`, testCookieName, testCookieValue, tb.URL(""))
-		cookies, err := tb.vu.Runtime().RunString(cmd)
+		cookies, err := tb.runJavaScript(cmd)
 		require.NoError(t, err)
 
 		bc.AddCookies(cookies)
@@ -165,7 +164,7 @@ func TestBrowserContextAddCookies(t *testing.T) {
 			var cookies goja.Value
 			if tt.cookiesCmd != "" {
 				var err error
-				cookies, err = tb.vu.Runtime().RunString(tt.cookiesCmd)
+				cookies, err = tb.runJavaScript(tt.cookiesCmd)
 				require.NoError(t, err)
 			}
 

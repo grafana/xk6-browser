@@ -71,15 +71,15 @@ func NewBrowserContext(
 func (b *BrowserContext) AddCookies(cookies goja.Value) {
 	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
 
-	cookieParams := []network.CookieParam{}
-	if cookies == nil || goja.IsUndefined(cookies) || goja.IsNull(cookies) {
+	var cookieParams []network.CookieParam
+	if !gojaValueExists(cookies) {
 		k6ext.Panic(b.ctx, "adding cookies: cookies value is not set")
 	}
 
 	rt := b.vu.Runtime()
 	err := rt.ExportTo(cookies, &cookieParams)
 	if err != nil {
-		k6ext.Panic(b.ctx, "adding cookies: %v", err)
+		k6ext.Panic(b.ctx, "adding cookies: %w", err)
 	}
 
 	// Create new array of pointers to items in cookieParams
