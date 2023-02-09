@@ -72,7 +72,6 @@ func (b *BrowserContext) AddCookies(cookies goja.Value) {
 	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
 
 	err := b.addCookies(cookies)
-
 	if err != nil {
 		k6ext.Panic(b.ctx, "adding cookies: %w", err)
 	}
@@ -478,7 +477,7 @@ func (b *BrowserContext) addCookies(cookies goja.Value) error {
 
 	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
-		return err
+		return fmt.Errorf("unable to execute SetCookies action: %w", err)
 	}
 
 	return nil

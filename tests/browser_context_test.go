@@ -10,9 +10,13 @@ import (
 )
 
 func TestBrowserContextAddCookies(t *testing.T) {
-	tb := newTestBrowser(t, withFileServer())
+	t.Parallel()
 
 	t.Run("happy_path", func(t *testing.T) {
+		t.Parallel()
+
+		tb := newTestBrowser(t, withFileServer())
+
 		testCookieName := "test_cookie_name"
 		testCookieValue := "test_cookie_value"
 
@@ -159,7 +163,12 @@ func TestBrowserContextAddCookies(t *testing.T) {
 	}
 
 	for _, tt := range errorTests {
+		tt := tt
 		t.Run(tt.description, func(t *testing.T) {
+			t.Parallel()
+
+			tb := newTestBrowser(t, withFileServer())
+
 			var cookies goja.Value
 			if tt.cookiesCmd != "" {
 				var err error
