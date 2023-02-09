@@ -71,46 +71,9 @@ func NewBrowserContext(
 func (b *BrowserContext) AddCookies(cookies goja.Value) {
 	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
 
-	var cookieParams []network.CookieParam
-	if !gojaValueExists(cookies) {
-		k6ext.Panic(b.ctx, "adding cookies: cookies value is not set")
-	}
+	err := b.addCookies(cookies)
 
-	rt := b.vu.Runtime()
-	err := rt.ExportTo(cookies, &cookieParams)
 	if err != nil {
-		k6ext.Panic(b.ctx, "adding cookies: %w", err)
-	}
-
-	// Create new array of pointers to items in cookieParams
-	var cookieParamsPointers []*network.CookieParam
-	for i := 0; i < len(cookieParams); i++ {
-		cookieParam := cookieParams[i]
-
-		if cookieParam.Name == "" {
-			k6ext.Panic(b.ctx, "adding cookies: cookie name is not set. %#v", cookieParam)
-		}
-
-		if cookieParam.Value == "" {
-			k6ext.Panic(b.ctx, "adding cookies: cookie value is not set. %#v", cookieParam)
-		}
-
-		// if URL is not set, both Domain and Path must be provided
-		if cookieParam.URL == "" {
-			if cookieParam.Domain == "" || cookieParam.Path == "" {
-				k6ext.Panic(
-					b.ctx,
-					"adding cookies: if cookie url is not provided, both domain and path must be specified. %#v",
-					cookieParam,
-				)
-			}
-		}
-
-		cookieParamsPointers = append(cookieParamsPointers, &cookieParam)
-	}
-
-	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
-	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
 		k6ext.Panic(b.ctx, "adding cookies: %w", err)
 	}
 }
@@ -473,4 +436,50 @@ func (b *BrowserContext) runWaitForEventHandler(
 
 func (b *BrowserContext) getSession(id target.SessionID) *Session {
 	return b.browser.conn.getSession(id)
+}
+
+func (b *BrowserContext) addCookies(cookies goja.Value) error {
+	var cookieParams []network.CookieParam
+	if !gojaValueExists(cookies) {
+		return Error("cookies value is not set")
+	}
+
+	rt := b.vu.Runtime()
+	err := rt.ExportTo(cookies, &cookieParams)
+	if err != nil {
+		return fmt.Errorf("unable to export cookies value to cookieParams. %w", err)
+	}
+
+	// Create new array of pointers to items in cookieParams
+	var cookieParamsPointers []*network.CookieParam
+	for i := 0; i < len(cookieParams); i++ {
+		cookieParam := cookieParams[i]
+
+		if cookieParam.Name == "" {
+			return fmt.Errorf("cookie name is not set. %#v", cookieParam)
+		}
+
+		if cookieParam.Value == "" {
+			return fmt.Errorf("cookie value is not set. %#v", cookieParam)
+		}
+
+		// if URL is not set, both Domain and Path must be provided
+		if cookieParam.URL == "" {
+			if cookieParam.Domain == "" || cookieParam.Path == "" {
+				return fmt.Errorf(
+					"if cookie url is not provided, both domain and path must be specified. %#v",
+					cookieParam,
+				)
+			}
+		}
+
+		cookieParamsPointers = append(cookieParamsPointers, &cookieParam)
+	}
+
+	action := storage.SetCookies(cookieParamsPointers).WithBrowserContextID(b.id)
+	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
+		return err
+	}
+
+	return nil
 }

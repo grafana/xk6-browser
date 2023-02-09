@@ -17,7 +17,7 @@ func TestBrowserContextAddCookies(t *testing.T) {
 		testCookieValue := "test_cookie_value"
 
 		bc := tb.NewContext(nil)
-		cmd := fmt.Sprintf(`
+		cookies, err := tb.runJavaScript(`
 			[
 				{
 					name: "%v",
@@ -26,7 +26,6 @@ func TestBrowserContextAddCookies(t *testing.T) {
 				}
 			];
 		`, testCookieName, testCookieValue, tb.URL(""))
-		cookies, err := tb.runJavaScript(cmd)
 		require.NoError(t, err)
 
 		bc.AddCookies(cookies)
