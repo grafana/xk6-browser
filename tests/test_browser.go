@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,8 +36,6 @@ type testBrowser struct {
 
 	api.Browser
 }
-
-var iID uint64 //nolint:gochecknoglobals
 
 var o = sync.Once{} //nolint:gochecknoglobals
 
@@ -96,13 +93,6 @@ func newTestBrowser(tb testing.TB, opts ...any) *testBrowser {
 		ctx = k6ext.WithVU(ctx, vu)
 		vu.CtxField = ctx
 	}
-
-	// This is needed to register the browser osext.Process
-	// and distinguish between different integration test runs
-	// so that a panic in one test doesn't force close the
-	// browser Process in other running tests.
-	u := atomic.AddUint64(&iID, 1)
-	vu.CtxField = osext.WithRunID(vu.CtxField, strconv.FormatUint(u, 10))
 
 	registry := k6metrics.NewRegistry()
 	k6m := k6ext.RegisterCustomMetrics(registry)

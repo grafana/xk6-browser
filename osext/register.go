@@ -9,21 +9,17 @@ import (
 )
 
 var (
-	processRegister   = map[string][]int{} //nolint:gochecknoglobals
-	processRegisterMu = sync.Mutex{}       //nolint:gochecknoglobals
+	processRegister   = []int{}      //nolint:gochecknoglobals
+	processRegisterMu = sync.Mutex{} //nolint:gochecknoglobals
 )
 
-func register(ctx context.Context, logger *log.Logger, pid int) {
+func register(logger *log.Logger, pid int) {
 	processRegisterMu.Lock()
 	defer processRegisterMu.Unlock()
 
 	logger.Debugf("Process:register", "registered Process pid %d", pid)
 
-	rID := GetRunID(ctx)
-	if _, ok := processRegister[rID]; !ok {
-		processRegister[rID] = []int{}
-	}
-	processRegister[rID] = append(processRegister[rID], pid)
+	processRegister = append(processRegister, pid)
 }
 
 // ForceProcessShutdown should be called when
@@ -33,9 +29,7 @@ func ForceProcessShutdown(ctx context.Context) {
 	processRegisterMu.Lock()
 	defer processRegisterMu.Unlock()
 
-	rID := GetRunID(ctx)
-
-	for _, pid := range processRegister[rID] {
+	for _, pid := range processRegister {
 		Kill(pid)
 	}
 }

@@ -59,7 +59,7 @@ func NewProcess(
 		return nil, err
 	}
 
-	register(ctx, logger, cmd.Process.Pid)
+	register(logger, cmd.Process.Pid)
 
 	p := Process{
 		ctx:                        ctx,
