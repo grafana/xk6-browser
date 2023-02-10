@@ -46,6 +46,5 @@ var Kill = func(pid int) { //nolint:gochecknoglobals
 		return
 	}
 	// no need to check the error since we're already dying.
-	_ = p.Release()
 	_ = p.Kill()
 }
