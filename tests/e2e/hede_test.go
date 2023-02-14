@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"embed"
 	"io"
+	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/xk6-browser/browser"
 
@@ -36,38 +35,49 @@ const (
 */
 
 func TestRunCurrentModule(t *testing.T) {
-	ts := newBrowserTest(t, "tests/fillform.js")
-	cmd.ExecuteWithGlobalState(ts.GlobalState)
+	t.Parallel()
 
-	logs := ts.LoggerHook.Drain()
-
-	t.Log("LOGS:")
-	t.Log("----------------------------------------------")
-	for _, e := range logs {
-		t.Log(e)
+	for i := 1; i <= 10; i++ {
+		t.Run("fillform"+strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+			ts := newBrowserTest(t, "tests/fillform.js")
+			cmd.ExecuteWithGlobalState(ts.GlobalState)
+		})
 	}
-	stdout := ts.Stdout.String()
-	t.Log("STDOUT:")
-	t.Log("----------------------------------------------")
-	t.Log(stdout)
 
-	stderr := ts.Stderr.String()
-	t.Log("STDERR:")
-	t.Log("----------------------------------------------")
-	t.Log(stderr)
+	// logs := ts.LoggerHook.Drain()
 
-	assert.Contains(t, stderr, "Object has no member 'extContent'")
+	// t.Log("LOGS:")
+	// t.Log("----------------------------------------------")
+	// for _, e := range logs {
+	// 	t.Log(e)
+	// }
+	// stdout := ts.Stdout.String()
+	// t.Log("STDOUT:")
+	// t.Log("----------------------------------------------")
+	// t.Log(stdout)
+
+	// stderr := ts.Stderr.String()
+	// t.Log("STDERR:")
+	// t.Log("----------------------------------------------")
+	// t.Log(stderr)
+
+	// assert.Contains(t, stderr, "Object has no member 'extContent'")
 	// assert.Contains(t, logs, "Object has no member 'extContent'")
 	// assert.True(t, testutils.LogContains(logs, logrus.ErrorLevel, "Object has no member 'extContent'"))
+}
+
+func init() {
+	modules.Register("k6/x/browser", browser.New())
 }
 
 func newBrowserTest(t *testing.T, name string) *tests.GlobalTestState {
 	t.Helper()
 
-	modules.Register("k6/x/browser", browser.New())
-
 	ts := tests.NewGlobalTestState(t)
 	ts.CmdArgs = []string{"k6", "run", "-q", "-"}
+	// ts.CmdArgs = []string{"k6", "run", "-v", "--log-output=stdout", "-"}
+	// ts.Env["XK6_BROWSER_LOG"] = "debug"
 
 	script := readTestScript(t, name)
 	ts.Stdin = bytes.NewBuffer(script)

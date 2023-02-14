@@ -19,7 +19,7 @@ export default async function() {
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
     await Promise.all([
       page.waitForNavigation(),
-      page.locator('a[href="/my_messages.php"]').click(),
+      page.click('a[href="/my_messages.php"]'),
     ]);
     // Enter login credentials and login
     page.locator('input[name="login"]').type('admin');
@@ -29,12 +29,11 @@ export default async function() {
     // to resolve.
     await Promise.all([
       page.waitForNavigation(),
-      page.locator('input[type="submit"]').click(),
+      page.click('input[type="submit"]'),
     ]);
     check(page, {
-      'header': page.locator('h2').extContent() == 'Welcome, admin!',
+      'header': page.locator('h2').textContent() == 'Welcome, admin!',
     });
-    
   } finally {
     page.close();
     browser.close();

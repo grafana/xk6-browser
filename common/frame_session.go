@@ -223,6 +223,9 @@ func (fs *FrameSession) initEvents() {
 
 				return
 			case event := <-fs.eventCh:
+				if fs.ctx.Err() != nil {
+					return
+				}
 				switch ev := event.data.(type) {
 				case *inspector.EventTargetCrashed:
 					fs.onTargetCrashed(ev)
@@ -242,6 +245,10 @@ func (fs *FrameSession) initEvents() {
 				case *cdppage.EventFrameStoppedLoading:
 					fs.onFrameStoppedLoading(ev.FrameID)
 				case *cdppage.EventLifecycleEvent:
+					// if fs.ctx.Err() != nil {
+					// 	fmt.Println("ctx is done")
+					// 	return
+					// }
 					fs.onPageLifecycle(ev)
 				case *cdppage.EventNavigatedWithinDocument:
 					fs.onPageNavigatedWithinDocument(ev)

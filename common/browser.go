@@ -161,12 +161,14 @@ func (b *Browser) initEvents() error {
 			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
 			b.browserProc.didLoseConnection()
 			if b.cancelFn != nil {
+				fmt.Println("closing the browser 1")
 				b.cancelFn()
 			}
 		}()
 		for {
 			select {
 			case <-cancelCtx.Done():
+				fmt.Println("closing the browser 2")
 				return
 			case event := <-chHandler:
 				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {

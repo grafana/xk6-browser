@@ -254,7 +254,8 @@ func (f *Frame) emitMetric(m *k6metrics.Metric, t time.Time) {
 	if state.Options.SystemTags.Has(k6metrics.TagURL) {
 		tags = tags.With("url", f.URL())
 	}
-	k6metrics.PushIfNotDone(f.ctx, state.Samples, k6metrics.ConnectedSamples{
+	fmt.Printf("frame ctx: %p err:%v\n", f.ctx, f.ctx.Err())
+	k6ext.PushIfNotDone(f.ctx, state.Samples, k6metrics.ConnectedSamples{
 		Samples: []k6metrics.Sample{
 			{
 				TimeSeries: k6metrics.TimeSeries{Metric: m, Tags: tags},

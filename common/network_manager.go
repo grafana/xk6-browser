@@ -143,6 +143,9 @@ func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
+	if m.ctx.Err() != nil {
+		return
+	}
 	state := m.vu.State()
 
 	tags := state.Tags.GetCurrentValues().Tags
@@ -153,7 +156,9 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 		tags = tags.With("url", req.URL())
 	}
 
-	k6metrics.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
+	fmt.Printf("network manager ctx: %p err:%v\n", m.ctx, m.ctx.Err())
+	m.vu.State().Logger.Println("emitRequestMetrics", req.method, req.URL(), req.wallTime, req.Size().Total())
+	k6ext.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
 		Samples: []k6metrics.Sample{
 			{
 				TimeSeries: k6metrics.TimeSeries{Metric: state.BuiltinMetrics.DataSent, Tags: tags},
@@ -165,6 +170,10 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
+	if m.ctx.Err() != nil {
+		return
+	}
+
 	state := m.vu.State()
 
 	// In some scenarios we might not receive a ResponseReceived CDP event, in
@@ -213,7 +222,8 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 	tags = tags.With("from_prefetch_cache", strconv.FormatBool(fromPreCache))
 	tags = tags.With("from_service_worker", strconv.FormatBool(fromSvcWrk))
 
-	k6metrics.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
+	m.vu.State().Logger.Println("emitResponseMetrics", req.method, req.URL(), req.wallTime, req.Size().Total())
+	k6ext.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
 		Samples: []k6metrics.Sample{
 			{
 				TimeSeries: k6metrics.TimeSeries{Metric: state.BuiltinMetrics.HTTPReqs, Tags: tags},
@@ -234,7 +244,8 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 	})
 
 	if resp != nil && resp.timing != nil {
-		k6metrics.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
+		m.vu.State().Logger.Println("emitResponseMetrics2", req.method, req.URL(), req.wallTime, req.Size().Total())
+		k6ext.PushIfNotDone(m.ctx, state.Samples, k6metrics.ConnectedSamples{
 			Samples: []k6metrics.Sample{
 				{
 					TimeSeries: k6metrics.TimeSeries{Metric: state.BuiltinMetrics.HTTPReqConnecting, Tags: tags},
@@ -394,6 +405,8 @@ func isInternalURL(u *url.URL) bool {
 }
 
 func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interceptionID string) {
+	m.vu.State().Logger.Println("onRequest", event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID)
+
 	var redirectChain []*Request = nil
 	if event.RedirectResponse != nil {
 		req := m.requestFromID(event.RequestID)
@@ -406,6 +419,9 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 	}
 
 	for _, r := range redirectChain {
+		if m.ctx.Err() != nil {
+			return
+		}
 		m.emitRequestMetrics(r)
 	}
 
@@ -437,6 +453,7 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 	m.reqsMu.Lock()
 	m.reqIDToRequest[event.RequestID] = req
 	m.reqsMu.Unlock()
+	m.vu.State().Logger.Println("onRequest: end")
 	m.emitRequestMetrics(req)
 	m.frameManager.requestStarted(req)
 }

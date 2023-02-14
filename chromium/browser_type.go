@@ -107,8 +107,8 @@ func (b *BrowserType) ExecutablePath() (execPath string) {
 	return ""
 }
 
-func (b *BrowserType) initContext() context.Context {
-	ctx := k6ext.WithVU(b.vu.Context(), b.vu)
+func (b *BrowserType) initContext(ctx context.Context) context.Context {
+	// ctx := k6ext.WithVU(b.vu.Context(), b.vu)
 	ctx = k6ext.WithCustomMetrics(ctx, b.k6Metrics)
 	ctx = common.WithHooks(ctx, b.hooks)
 	ctx = common.WithIterationID(ctx, fmt.Sprintf("%x", b.randSrc.Uint64()))
@@ -118,7 +118,7 @@ func (b *BrowserType) initContext() context.Context {
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,
 // which can be used for controlling the Chrome browser.
 func (b *BrowserType) Launch(opts goja.Value) api.Browser {
-	ctx := b.initContext()
+	ctx := b.initContext(b.vu.Context())
 
 	var err error
 	if b.logger, err = makeLogger(ctx); err != nil {
@@ -188,12 +188,18 @@ func (b *BrowserType) launch(ctx context.Context, opts *common.LaunchOptions) (*
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
+	cancelx := func() {
+		fmt.Printf("canceling the browser context: %p\n", browserCtx)
+		browserCtxCancel()
+		// _ = browserCtxCancel
+		fmt.Printf("cancelled the browser context: %v\n", browserCtx.Err())
+	}
 	// attach the browser process ID to the context
 	// so that we can kill it afterward if it lingers
 	// see: k6ext.Panic function.
 	browserCtx = k6ext.WithProcessID(browserCtx, browserProc.Pid())
 	b.Ctx = browserCtx
-	browser, err := common.NewBrowser(browserCtx, browserCtxCancel,
+	browser, err := common.NewBrowser(browserCtx, cancelx,
 		browserProc, opts, b.logger)
 	if err != nil {
 		return nil, fmt.Errorf("launching browser: %w", err)

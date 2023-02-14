@@ -75,6 +75,7 @@ func (l *Logger) Warnf(category string, msg string, args ...any) {
 
 // Logf logs a message.
 func (l *Logger) Logf(level logrus.Level, category string, msg string, args ...any) {
+	return // weirdly. this race condition only happens when I disable this.
 	if l == nil {
 		return
 	}
