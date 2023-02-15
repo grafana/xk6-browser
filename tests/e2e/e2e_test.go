@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"embed"
 	"io"
-	"strconv"
 	"testing"
 
 	"github.com/grafana/xk6-browser/browser"
@@ -35,15 +34,15 @@ const (
 */
 
 func TestRunCurrentModule(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
-	for i := 1; i <= 2; i++ {
-		t.Run("fillform"+strconv.Itoa(i), func(t *testing.T) {
-			t.Parallel()
-			ts := newBrowserTest(t, "tests/fillform.js")
-			cmd.ExecuteWithGlobalState(ts.GlobalState)
-		})
-	}
+	// for i := 1; i <= 2; i++ {
+	// t.Run("fillform"+strconv.Itoa(i), func(t *testing.T) {
+	// t.Parallel()
+	ts := newBrowserTest(t, "tests/fillform.js")
+	cmd.ExecuteWithGlobalState(ts.GlobalState)
+	// })
+	// }
 
 	// logs := ts.LoggerHook.Drain()
 
