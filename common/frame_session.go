@@ -223,9 +223,9 @@ func (fs *FrameSession) initEvents() {
 
 				return
 			case event := <-fs.eventCh:
-				if fs.ctx.Err() != nil {
-					return
-				}
+				// if fs.ctx.Err() != nil {
+				// 	return
+				// }
 				switch ev := event.data.(type) {
 				case *inspector.EventTargetCrashed:
 					fs.onTargetCrashed(ev)

@@ -190,9 +190,11 @@ func (b *BrowserType) launch(ctx context.Context, opts *common.LaunchOptions) (*
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
 	cancelx := func() {
 		fmt.Printf("canceling the browser context: %p\n", browserCtx)
+		defer func() {
+			fmt.Printf("cancelled the browser context: %v\n", browserCtx.Err())
+		}()
 		browserCtxCancel()
 		// _ = browserCtxCancel
-		fmt.Printf("cancelled the browser context: %v\n", browserCtx.Err())
 	}
 	// attach the browser process ID to the context
 	// so that we can kill it afterward if it lingers

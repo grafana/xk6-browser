@@ -254,8 +254,8 @@ func (f *Frame) emitMetric(m *k6metrics.Metric, t time.Time) {
 	if state.Options.SystemTags.Has(k6metrics.TagURL) {
 		tags = tags.With("url", f.URL())
 	}
-	fmt.Printf("frame ctx: %p err:%v\n", f.ctx, f.ctx.Err())
-	k6ext.PushIfNotDone(f.ctx, state.Samples, k6metrics.ConnectedSamples{
+
+	sample := k6metrics.ConnectedSamples{
 		Samples: []k6metrics.Sample{
 			{
 				TimeSeries: k6metrics.TimeSeries{Metric: m, Tags: tags},
@@ -263,7 +263,22 @@ func (f *Frame) emitMetric(m *k6metrics.Metric, t time.Time) {
 				Time:       time.Now(),
 			},
 		},
-	})
+	}
+	// f.pushIfNotDone(state.Samples, sample)
+	k6ext.PushIfNotDone(f.ctx, state.Samples, sample)
+}
+
+func (f *Frame) pushIfNotDone(output chan<- k6metrics.SampleContainer, sample k6metrics.SampleContainer) {
+	fmt.Printf("frame ctx: %p err:%v\n", f.ctx, f.ctx.Err())
+	fmt.Printf("frame.emitMetric.browser.ctx: %p %v\n", f.manager.mainFrame.page.browserCtx.browser.ctx, f.manager.mainFrame.page.browserCtx.browser.ctx.Err())
+	select {
+	case <-f.ctx.Done():
+		fmt.Println("frame.PushIfNotDone: context is done")
+	default:
+		fmt.Println("frame.PushIfNotDone: sending sample")
+		defer fmt.Println("frame.PushIfNotDone: sent sample")
+		output <- sample
+	}
 }
 
 func (f *Frame) newDocumentHandle() (*ElementHandle, error) {

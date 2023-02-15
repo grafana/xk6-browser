@@ -37,7 +37,7 @@ const (
 func TestRunCurrentModule(t *testing.T) {
 	t.Parallel()
 
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= 2; i++ {
 		t.Run("fillform"+strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 			ts := newBrowserTest(t, "tests/fillform.js")

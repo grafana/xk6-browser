@@ -2,6 +2,7 @@ package k6ext
 
 import (
 	"context"
+	"fmt"
 
 	k6metrics "go.k6.io/k6/metrics"
 )
@@ -36,8 +37,11 @@ func RegisterCustomMetrics(registry *k6metrics.Registry) *CustomMetrics {
 // context is not done. It returns true if the sample was pushed, false if the
 // context was done.
 func PushIfNotDone(ctx context.Context, output chan<- k6metrics.SampleContainer, sample k6metrics.SampleContainer) bool {
+	fmt.Println("PushIfNotDone: sending sample")
+	defer fmt.Println("PushIfNotDone: sent sample")
 	select {
 	case <-ctx.Done():
+		fmt.Println("PushIfNotDone: context is done")
 		return false
 	case output <- sample:
 		return true
