@@ -123,7 +123,7 @@ func parseRemoteObjectValue(t cdpruntime.Type, val string, op *cdpruntime.Object
 	case cdpruntime.TypeSymbol:
 		return val, nil
 	case cdpruntime.TypeObject:
-		if op != nil {
+		if op != nil && op.Subtype != "null" {
 			return parseRemoteObjectPreview(op)
 		}
 		if val == "Object" {
