@@ -1,0 +1,36 @@
+FROM --platform=linux/amd64 debian:latest
+
+# Install the deps we need to run Chrome.
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends wget unzip libglib2.0-0 libnss3 libatk1.0-dev libatk-bridge2.0-0 \
+  libcups2 libdrm2 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libxkbcommon0 libpango-1.0-0 libcairo2 \
+  libasound2 ca-certificates \
+  && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+# Add a new user, browser, and change to it.
+RUN groupadd -r browser && useradd -r -g browser browser
+USER browser
+
+WORKDIR /home/browser
+
+# Set the Chrome revision that will be part of the image.
+ENV REV=1105559
+
+# Download Chrome.
+RUN wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$REV/chrome-linux.zip \
+  && unzip chrome-linux.zip \
+  && rm chrome-linux.zip 
+
+# Change user to root for dep removal.
+USER root
+
+# Remove deps that aren't needed during runtime.
+RUN apt-get --allow-remove-essential -y remove unzip wget bash e2fsprogs libext2fs2 libss2 libtinfo6 libncursesw6 \
+  libperl5.32 libpython3.9-minimal libpython3.9-stdlib linux-libc-dev ncurses-base ncurses-bin perl perl-modules-5.32 \
+  python3.9 python3.9-minimal \
+  && apt-get autoclean
+
+# Change the user to browser.
+USER browser
+
+ENTRYPOINT ["./chrome-linux/chrome"]
