@@ -1067,7 +1067,7 @@ func (h *ElementHandle) QueryAll(selector string) ([]api.ElementHandle, error) {
 		return nil, fmt.Errorf("querying all selector %q: %w", selector, err)
 	}
 
-	return handles, err
+	return handles, nil
 }
 
 func (h *ElementHandle) queryAll(selector string, eval evalFunc) ([]api.ElementHandle, error) {
