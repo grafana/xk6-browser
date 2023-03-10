@@ -126,11 +126,15 @@ function displayNameForMetric(name) {
   return name
 }
 
-function indentForMetric(name) {
+function indentForMetric(name, sub) {
+  var ind = ''
   if (name.indexOf('{') >= 0) {
-    return '  '
+    ind = '  '
   }
-  return ''
+  for (var i = 0; i < sub; i++) {
+    ind += '  '
+  }
+  return ind
 }
 
 function humanizeBytes(bytes) {
@@ -238,30 +242,39 @@ function nonTrendMetricValueForSum(metric, timeUnit) {
         succMark + ' ' + metric.values.passes,
         failMark + ' ' + metric.values.fails,
       ]
+      case 'wv_rating':
+        return [
+          'good=' + metric.values.good,
+          'needs_improvement=' + metric.values.needs_improvement,
+          'poor=' + metric.values.poor,
+        ]
+      case 'title':
+        return ['']
     default:
       return ['[no data]']
   }
 }
 
-function summarizeMetrics(options, data, decorate) {
+function summarizeMetrics(options, data, decorate, nameLenMaxArg, nonTrendValueMaxLenArg, nonTrendExtraMaxLensArg, trendColMaxLensArg, subArg) {
   var indent = options.indent + '  '
   var result = []
 
   var names = []
-  var nameLenMax = 0
+  var nameLenMax = nameLenMaxArg
+  var sub = subArg
 
   var nonTrendValues = {}
-  var nonTrendValueMaxLen = 0
+  var nonTrendValueMaxLen = nonTrendValueMaxLenArg
   var nonTrendExtras = {}
-  var nonTrendExtraMaxLens = [0, 0]
+  var nonTrendExtraMaxLens = nonTrendExtraMaxLensArg
 
   var trendCols = {}
   var numTrendColumns = options.summaryTrendStats.length
-  var trendColMaxLens = new Array(numTrendColumns).fill(0)
+  var trendColMaxLens = trendColMaxLensArg
   forEach(data.metrics, function (name, metric) {
     names.push(name)
     // When calculating widths for metrics, account for the indentation on submetrics.
-    var displayName = indentForMetric(name) + displayNameForMetric(name)
+    var displayName = indentForMetric(name, sub) + displayNameForMetric(name)
     var displayNameWidth = strWidth(displayName)
     if (displayNameWidth > nameLenMax) {
       nameLenMax = displayNameWidth
@@ -348,6 +361,16 @@ function summarizeMetrics(options, data, decorate) {
   }
 
   for (var name of names) {
+    var subResult = []
+    if (data.metrics[name].metrics) {
+      const subReturnVal = summarizeMetrics(options, data.metrics[name], decorate, nameLenMax, nonTrendValueMaxLen, nonTrendExtraMaxLens, trendColMaxLens, sub+1)
+      nameLenMax = subReturnVal.nameLenMax
+      nonTrendValueMaxLen = subReturnVal.nonTrendValueMaxLen
+      nonTrendExtraMaxLens = subReturnVal.nonTrendExtraMaxLens
+      trendColMaxLens = subReturnVal.trendColMaxLens
+      subResult = subReturnVal.result
+    }
+    
     var metric = data.metrics[name]
     var mark = ' '
     var markColor = function (text) {
@@ -369,7 +392,7 @@ function summarizeMetrics(options, data, decorate) {
         }
       })
     }
-    var fmtIndent = indentForMetric(name)
+    var fmtIndent = indentForMetric(name, sub)
     var fmtName = displayNameForMetric(name)
     fmtName =
       fmtName +
@@ -379,9 +402,16 @@ function summarizeMetrics(options, data, decorate) {
       )
 
     result.push(indent + fmtIndent + markColor(mark) + ' ' + fmtName + ' ' + getData(name))
+    result = result.concat(subResult)
   }
 
-  return result
+  return {
+    "nameLenMax": nameLenMax,
+    "nonTrendValueMaxLen": nonTrendValueMaxLen,
+    "nonTrendExtraMaxLens": nonTrendExtraMaxLens,
+    "trendColMaxLens": trendColMaxLens,
+    "result": result
+  }
 }
 
 function generateTextSummary(data, options) {
@@ -407,14 +437,11 @@ function generateTextSummary(data, options) {
     summarizeGroup(mergedOpts.indent + '    ', data.root_group, decorate)
   )
 
-  Array.prototype.push.apply(lines, summarizeMetrics(mergedOpts, data, decorate))
+  const smResult = summarizeMetrics(mergedOpts, data, decorate, 0, 0, [0, 0], new Array(mergedOpts.summaryTrendStats.length).fill(0), 0)
+  Array.prototype.push.apply(lines, smResult.result)
 
   return lines.join('\n')
 }
-
-export const options = {
-  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(75)', 'p(90)', 'p(95)'],
-};
 
 function extractWebVitals(data) {
   var wvData = {}
@@ -478,6 +505,10 @@ function addHeading(wvData) {
   }
 }
 
+export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(75)', 'p(90)', 'p(95)'],
+};
+
 export function handleSummary(data) {
   var wvData = extractWebVitals(data)
   wvData = removePrefix(wvData)
@@ -488,7 +519,7 @@ export function handleSummary(data) {
   }
 
   return {
-    'stdout': '\n' + generateTextSummary(data, {summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(75)', 'p(90)', 'p(95)']}) + '\n\n'
+    'stdout': '\n' + generateTextSummary(data) + '\n\n'
   };
 }
 
