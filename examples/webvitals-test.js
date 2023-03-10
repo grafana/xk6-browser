@@ -416,7 +416,77 @@ export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(75)', 'p(90)', 'p(95)'],
 };
 
+function extractWebVitals(data) {
+  var wvData = {}
+  
+  for (var key in data.metrics) {
+    if (key.startsWith('webvital')) {
+      wvData[key] = data.metrics[key]
+      delete data.metrics[key];
+    }
+  }
+
+  return wvData
+}
+
+function removePrefix(wvData) {
+  for (var key in wvData) {
+    const nKey = key.replace("webvital_", "")
+    const m = wvData[key]
+    delete wvData[key]
+    wvData[nKey] = m
+  }
+  return wvData
+}
+
+function consolidateRatings(wvData) {
+  for (var key in wvData) {
+    const m = wvData[key]
+    if (m.type == "trend") {
+      const mG = (wvData[key+'_good']) ? wvData[key+'_good'].values.count : 0
+      delete wvData[key+'_good']
+      const mNI = (wvData[key+'_needs_improvement']) ? wvData[key+'_needs_improvement'].values.count : 0
+      delete wvData[key+'_needs_improvement']
+      const mP = (wvData[key+'_poor']) ? wvData[key+'_poor'].values.count : 0
+      delete wvData[key+'_poor']
+
+      m["metrics"] = {
+        "ratings": {
+          "type": "wv_rating",
+          "contains": "default",
+          "values": {
+            "good": mG,
+            "needs_improvement": mNI,
+            "poor": mP
+          }
+        }
+      }
+    }
+  }
+
+  return wvData
+}
+
+function addHeading(wvData) {
+  return {
+    "metrics": {
+      "web_vitals": {
+        "type": "title",
+        "metrics": wvData
+      }
+    }
+  }
+}
+
 export function handleSummary(data) {
+  var wvData = extractWebVitals(data)
+  wvData = removePrefix(wvData)
+  wvData = consolidateRatings(wvData)
+  wvData = addHeading(wvData)
+  for (var key in wvData.metrics) {
+    data.metrics[key] = wvData.metrics[key]
+  }
+
   return {
     'stdout': '\n' + generateTextSummary(data, {summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(75)', 'p(90)', 'p(95)']}) + '\n\n'
   };
