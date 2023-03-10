@@ -32,20 +32,20 @@ func NewNullLogger() *Logger {
 
 // New creates a new logger.
 func New(logger logrus.FieldLogger, iterID string) *Logger {
-	ll := logrus.New()
-
-	if logger == nil {
-		ll.Warn("Logger", "no logger supplied, using default")
-	} else if l, ok := logger.(*logrus.Logger); !ok {
-		ll.Warn("Logger", "invalid logger type, using default")
-	} else {
-		ll = l
-	}
-
-	return &Logger{
-		Logger: ll,
+	ll := &Logger{
+		Logger: logrus.New(),
 		iterID: iterID,
 	}
+
+	if logger == nil {
+		ll.Warnf("Logger", "no logger supplied, using default")
+	} else if l, ok := logger.(*logrus.Logger); !ok {
+		ll.Warnf("Logger", "invalid logger type %T, using default", logger)
+	} else {
+		ll.Logger = l
+	}
+
+	return ll
 }
 
 // Tracef logs a trace message.
