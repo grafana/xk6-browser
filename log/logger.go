@@ -32,16 +32,14 @@ func NewNullLogger() *Logger {
 
 // New creates a new logger.
 func New(logger logrus.FieldLogger, iterID string) *Logger {
-	var ll *logrus.Logger
+	ll := logrus.New()
 
 	if logger == nil {
-		ll = logrus.New()
 		ll.Warn("Logger", "no logger supplied, using default")
-	} else if l, ok := logger.(*logrus.Logger); ok {
-		ll = l
+	} else if l, ok := logger.(*logrus.Logger); !ok {
+		ll.Warn("Logger", "invalid logger type, using default")
 	} else {
-		// panic so that we know when to upgrade. see issue #818.
-		panic("logger is not a logrus.Logger")
+		ll = l
 	}
 
 	return &Logger{
