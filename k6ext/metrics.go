@@ -16,12 +16,12 @@ type CustomMetrics struct {
 // VU Registry and returns our internal struct pointer.
 func RegisterCustomMetrics(registry *k6metrics.Registry) *CustomMetrics {
 	wvs := map[string]string{
-		"LCP":  "browser_largest_content_paint",
-		"FID":  "browser_first_input_delay",
-		"CLS":  "browser_cumulative_layout_shift",
-		"FCP":  "browser_first_contentful_paint",
-		"TTFB": "browser_time_to_first_byte",
-		"INP":  "browser_interaction_to_next_paint",
+		"LCP":  "webvital_largest_content_paint",
+		"FID":  "webvital_first_input_delay",
+		"CLS":  "webvital_cumulative_layout_shift",
+		"FCP":  "webvital_first_contentful_paint",
+		"TTFB": "webvital_time_to_first_byte",
+		"INP":  "webvital_interaction_to_next_paint",
 	}
 	webVitals := make(map[string]*k6metrics.Metric)
 
