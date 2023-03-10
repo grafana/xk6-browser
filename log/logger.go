@@ -31,21 +31,23 @@ func NewNullLogger() *Logger {
 }
 
 // New creates a new logger.
-func New(logger *logrus.Logger, iterID string) *Logger {
-	var defLogger bool
+func New(logger logrus.FieldLogger, iterID string) *Logger {
+	var ll *logrus.Logger
+
 	if logger == nil {
-		defLogger = true
-		logger = logrus.New()
-	}
-	l := &Logger{
-		Logger: logger,
-		iterID: iterID,
-	}
-	if defLogger {
-		l.Warnf("Logger", "no logger supplied, using default")
+		ll = logrus.New()
+		ll.Warn("Logger", "no logger supplied, using default")
+	} else if l, ok := logger.(*logrus.Logger); ok {
+		ll = l
+	} else {
+		// panic so that we know when to upgrade. see issue #818.
+		panic("logger is not a logrus.Logger")
 	}
 
-	return l
+	return &Logger{
+		Logger: ll,
+		iterID: iterID,
+	}
 }
 
 // Tracef logs a trace message.
