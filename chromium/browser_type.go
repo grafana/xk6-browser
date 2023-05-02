@@ -240,7 +240,7 @@ func (b *BrowserType) allocate(
 	flags map[string]any, env []string, dataDir *storage.Dir,
 	logger *log.Logger,
 ) (_ *common.BrowserProcess, rerr error) {
-	bProcCtx, bProcCtxCancel := context.WithTimeout(ctx, opts.Timeout)
+	bProcCtx, bProcCtxCancel := context.WithCancel(ctx)
 	defer func() {
 		if rerr != nil {
 			bProcCtxCancel()
