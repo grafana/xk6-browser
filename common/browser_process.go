@@ -38,7 +38,7 @@ func NewLocalBrowserProcess(
 	ctx context.Context, path string, args []string, dataDir *storage.Dir,
 	ctxCancel context.CancelFunc, logger *log.Logger,
 ) (*BrowserProcess, error) {
-	cmd, err := execute(ctx, ctxCancel, path, args, dataDir, logger)
+	cmd, err := execute(ctx, path, args, dataDir, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ type command struct {
 }
 
 func execute(
-	ctx context.Context, ctxCancel func(), path string, args []string,
+	ctx context.Context, path string, args []string,
 	dataDir *storage.Dir, logger *log.Logger,
 ) (command, error) {
 	cmd := exec.CommandContext(ctx, path, args...)
