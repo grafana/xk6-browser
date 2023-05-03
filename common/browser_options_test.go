@@ -15,7 +15,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 	t.Parallel()
 
 	defaultOptions := &LaunchOptions{
-		Env:               make(map[string]string),
 		Headless:          true,
 		LogCategoryFilter: ".*",
 		Timeout:           DefaultTimeout,
@@ -47,7 +46,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 				// disallow changing the following opts
 				"args":              []string{"any"},
 				"devtools":          true,
-				"env":               map[string]string{"some": "thing"},
 				"executablePath":    "something else",
 				"headless":          false,
 				"ignoreDefaultArgs": []string{"any"},
@@ -62,7 +60,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 				tb.Helper()
 				assert.Equal(t, &LaunchOptions{
 					// disallowed:
-					Env:      make(map[string]string),
 					Headless: true,
 					// allowed:
 					Debug:             true,
@@ -76,7 +73,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 		},
 		"nulls": { // don't override the defaults on `null`
 			opts: map[string]any{
-				"env":               nil,
 				"headless":          nil,
 				"logCategoryFilter": nil,
 				"timeout":           nil,
@@ -84,7 +80,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 			assert: func(tb testing.TB, lo *LaunchOptions) {
 				tb.Helper()
 				assert.Equal(tb, &LaunchOptions{
-					Env:               make(map[string]string),
 					Headless:          true,
 					LogCategoryFilter: ".*",
 					Timeout:           DefaultTimeout,
@@ -132,19 +127,6 @@ func TestBrowserLaunchOptionsParse(t *testing.T) {
 		"devtools_err": {
 			opts: map[string]any{"devtools": "true"},
 			err:  "devtools should be a boolean",
-		},
-		"env": {
-			opts: map[string]any{
-				"env": map[string]string{"key": "value"},
-			},
-			assert: func(tb testing.TB, lo *LaunchOptions) {
-				tb.Helper()
-				assert.Equal(t, map[string]string{"key": "value"}, lo.Env)
-			},
-		},
-		"env_err": {
-			opts: map[string]any{"env": 1},
-			err:  "env should be a map",
 		},
 		"executablePath": {
 			opts: map[string]any{
