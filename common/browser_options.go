@@ -13,7 +13,6 @@ import (
 const (
 	optArgs              = "args"
 	optDebug             = "debug"
-	optDevTools          = "devtools"
 	optExecutablePath    = "executablePath"
 	optHeadless          = "headless"
 	optIgnoreDefaultArgs = "ignoreDefaultArgs"
@@ -35,7 +34,6 @@ type ProxyOptions struct {
 type LaunchOptions struct {
 	Args              []string
 	Debug             bool
-	Devtools          bool
 	ExecutablePath    string
 	Headless          bool
 	IgnoreDefaultArgs []string
@@ -106,8 +104,6 @@ func (l *LaunchOptions) Parse(ctx context.Context, logger *log.Logger, opts goja
 			err = exportOpt(rt, k, v, &l.Args)
 		case optDebug:
 			l.Debug, err = parseBoolOpt(k, v)
-		case optDevTools:
-			l.Devtools, err = parseBoolOpt(k, v)
 		case optExecutablePath:
 			l.ExecutablePath, err = parseStrOpt(k, v)
 		case optHeadless:
@@ -138,7 +134,6 @@ func (l *LaunchOptions) shouldIgnoreIfBrowserIsRemote(opt string) bool {
 
 	shouldIgnoreIfBrowserIsRemote := map[string]struct{}{
 		optArgs:              {},
-		optDevTools:          {},
 		optExecutablePath:    {},
 		optHeadless:          {},
 		optIgnoreDefaultArgs: {},
