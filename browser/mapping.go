@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/dop251/goja"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/chromium"
+	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
+	"github.com/grafana/xk6-browser/log"
 
 	k6common "go.k6.io/k6/js/common"
 )
@@ -32,14 +33,11 @@ type mapping = map[string]any
 // See issue #661 for more details.
 func mapBrowserToGoja(vu moduleVU) *goja.Object {
 	var (
-		rt  = vu.Runtime()
-		obj = rt.NewObject()
-		// TODO: Use k6 LookupEnv instead of OS package methods.
-		// See https://github.com/grafana/xk6-browser/issues/822.
-		wsURL, isRemoteBrowser = k6ext.IsRemoteBrowser(os.LookupEnv)
-		browserType            = chromium.NewBrowserType(vu)
+		rt      = vu.Runtime()
+		obj     = rt.NewObject()
+		browser = common.NewUnInitBrowser()
 	)
-	for k, v := range mapBrowserType(vu, browserType, wsURL, isRemoteBrowser) {
+	for k, v := range mapBrowser(vu, browser) {
 		err := obj.Set(k, rt.ToValue(v))
 		if err != nil {
 			k6common.Throw(rt, fmt.Errorf("mapping: %w", err))
