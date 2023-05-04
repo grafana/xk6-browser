@@ -169,10 +169,6 @@ func (b *BrowserType) link(
 func (b *BrowserType) StartChromium(
 	ctx context.Context, opts *common.LaunchOptions, logger *log.Logger,
 ) (*common.BrowserProcess, error) {
-	envs := make([]string, 0, len(opts.Env))
-	for k, v := range opts.Env {
-		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
-	}
 	flags, err := prepareFlags(opts, &(b.vu.State()).Options)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
@@ -197,7 +193,7 @@ func (b *BrowserType) StartChromium(
 		<-c.Done()
 	}(ctx)
 
-	browserProc, err := b.allocate(ctx, opts, flags, envs, dataDir, logger)
+	browserProc, err := b.allocate(ctx, opts, flags, dataDir, logger)
 	if browserProc == nil {
 		return nil, fmt.Errorf("launching browser: %w", err)
 	}
