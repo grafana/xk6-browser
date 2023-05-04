@@ -32,20 +32,16 @@ var _ api.BrowserType = &BrowserType{}
 // BrowserType provides methods to launch a Chrome browser instance or connect to an existing one.
 // It's the entry point for interacting with the browser.
 type BrowserType struct {
-	// FIXME: This is only exported because testBrowser needs it. Contexts
-	// shouldn't be stored on structs if we can avoid it.
-	vu        k6modules.VU
 	hooks     *common.Hooks
 	k6Metrics *k6ext.CustomMetrics
 	execPath  string // path to the Chromium executable
 	randSrc   *rand.Rand
 }
 
-func NewBrowserTypeWithReg(vu k6modules.VU, k6m *k6ext.CustomMetrics) *BrowserType {
+func NewBrowserTypeWithReg(k6m *k6ext.CustomMetrics) *BrowserType {
 	// NOTE: vu.InitEnv() *must* be called from the script init scope,
 	// otherwise it will return nil.
 	b := BrowserType{
-		vu:        vu,
 		hooks:     common.NewHooks(),
 		k6Metrics: k6m,
 		randSrc:   rand.New(rand.NewSource(time.Now().UnixNano())), //nolint: gosec
@@ -61,7 +57,7 @@ func NewBrowserType(vu k6modules.VU) *BrowserType {
 	// otherwise it will return nil.
 	k6m := k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
 	b := BrowserType{
-		vu:        vu,
+		// vu:        vu,
 		hooks:     common.NewHooks(),
 		k6Metrics: k6m,
 		randSrc:   rand.New(rand.NewSource(time.Now().UnixNano())), //nolint: gosec
@@ -70,10 +66,52 @@ func NewBrowserType(vu k6modules.VU) *BrowserType {
 	return &b
 }
 
+func (b *BrowserType) InitPerIteration(
+	vu k6modules.VU, launchOpts *common.LaunchOptions,
+) (context.Context, *log.Logger, error) {
+	ctx := b.initContext(vu)
+
+	logger, err := makeLogger(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error setting up logger: %w", err)
+	}
+
+	ctx = common.WithLaunchOptions(ctx, launchOpts)
+
+	if err := logger.SetCategoryFilter(launchOpts.LogCategoryFilter); err != nil {
+		return nil, nil, fmt.Errorf("error setting category filter: %w", err)
+	}
+	if launchOpts.Debug {
+		_ = logger.SetLevel("debug")
+	}
+
+	return ctx, logger, nil
+}
+
+func InitPerTestRun(
+	ctx context.Context, opts goja.Value, isRemoteBrowser bool,
+) (*common.LaunchOptions, error) {
+	// Temp logger
+	logger := log.New(nil, common.GetIterationID(ctx))
+
+	var launchOpts *common.LaunchOptions
+	if isRemoteBrowser {
+		launchOpts = common.NewRemoteBrowserLaunchOptions()
+	} else {
+		launchOpts = common.NewLaunchOptions()
+	}
+
+	if err := launchOpts.Parse(ctx, logger, opts); err != nil {
+		return nil, fmt.Errorf("error parsing launch options: %w", err)
+	}
+
+	return launchOpts, nil
+}
+
 func (b *BrowserType) Init(
-	opts goja.Value, isRemoteBrowser bool,
+	vu k6modules.VU, opts goja.Value, isRemoteBrowser bool,
 ) (context.Context, *common.LaunchOptions, *log.Logger, error) {
-	ctx := b.initContext()
+	ctx := b.initContext(vu)
 
 	logger, err := makeLogger(ctx)
 	if err != nil {
@@ -102,8 +140,8 @@ func (b *BrowserType) Init(
 	return ctx, launchOpts, logger, nil
 }
 
-func (b *BrowserType) initContext() context.Context {
-	ctx := k6ext.WithVU(b.vu.Context(), b.vu)
+func (b *BrowserType) initContext(vu k6modules.VU) context.Context {
+	ctx := k6ext.WithVU(vu.Context(), vu)
 	ctx = k6ext.WithCustomMetrics(ctx, b.k6Metrics)
 	ctx = common.WithHooks(ctx, b.hooks)
 	ctx = common.WithIterationID(ctx, fmt.Sprintf("%x", b.randSrc.Uint64()))
@@ -111,8 +149,8 @@ func (b *BrowserType) initContext() context.Context {
 }
 
 // Connect attaches k6 browser to an existing browser instance.
-func (b *BrowserType) Connect(wsEndpoint string, opts goja.Value) api.Browser {
-	ctx, launchOpts, logger, err := b.Init(opts, true)
+func (b *BrowserType) Connect(vu k6modules.VU, wsEndpoint string, opts goja.Value) api.Browser {
+	ctx, launchOpts, logger, err := b.Init(vu, opts, true)
 	if err != nil {
 		k6ext.Panic(ctx, "initializing browser type: %w", err)
 	}
@@ -165,9 +203,14 @@ func (b *BrowserType) link(
 }
 
 func (b *BrowserType) StartChromium(
-	ctx context.Context, opts *common.LaunchOptions, logger *log.Logger,
+	ctx context.Context, opts *common.LaunchOptions, vu k6modules.VU,
 ) (*common.BrowserProcess, error) {
-	flags, err := prepareFlags(opts, &(b.vu.State()).Options)
+	logger := log.New(nil, common.GetIterationID(ctx))
+
+	// Since this method is being called from within the script init scope,
+	// we can't use &(vu.State()).Options since vu.State() is nil. This means
+	// that the hosts argument cannot be used.
+	flags, err := prepareFlags(opts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -216,13 +259,13 @@ func (b *BrowserType) InitBrowser(
 
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,
 // which can be used for controlling the Chrome browser.
-func (b *BrowserType) Launch(opts goja.Value) (_ api.Browser, browserProcessID int) {
-	ctx, launchOpts, logger, err := b.Init(opts, false)
+func (b *BrowserType) Launch(vu k6modules.VU, opts goja.Value) (_ api.Browser, browserProcessID int) {
+	ctx, launchOpts, logger, err := b.Init(vu, opts, false)
 	if err != nil {
 		k6ext.Panic(ctx, "initializing browser type: %w", err)
 	}
 
-	bp, pid, err := b.launch(ctx, launchOpts, logger)
+	bp, pid, err := b.launch(ctx, launchOpts, logger, vu)
 	if err != nil {
 		err = &k6ext.UserFriendlyError{
 			Err:     err,
@@ -235,9 +278,9 @@ func (b *BrowserType) Launch(opts goja.Value) (_ api.Browser, browserProcessID i
 }
 
 func (b *BrowserType) launch(
-	ctx context.Context, opts *common.LaunchOptions, logger *log.Logger,
+	ctx context.Context, opts *common.LaunchOptions, logger *log.Logger, vu k6modules.VU,
 ) (_ *common.Browser, pid int, _ error) {
-	flags, err := prepareFlags(opts, &(b.vu.State()).Options)
+	flags, err := prepareFlags(opts, &(vu.State()).Options)
 	if err != nil {
 		return nil, 0, fmt.Errorf("%w", err)
 	}
@@ -279,8 +322,8 @@ func (b *BrowserType) launch(
 }
 
 // LaunchPersistentContext launches the browser with persistent storage.
-func (b *BrowserType) LaunchPersistentContext(userDataDir string, opts goja.Value) api.Browser {
-	rt := b.vu.Runtime()
+func (b *BrowserType) LaunchPersistentContext(vu k6modules.VU, userDataDir string, opts goja.Value) api.Browser {
+	rt := vu.Runtime()
 	k6common.Throw(rt, errors.New("BrowserType.LaunchPersistentContext(userDataDir, opts) has not been implemented yet"))
 	return nil
 }

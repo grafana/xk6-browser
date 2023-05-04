@@ -38,7 +38,7 @@ func New(logger logrus.FieldLogger, iterID string) *Logger {
 	}
 
 	if logger == nil {
-		ll.Warnf("Logger", "no logger supplied, using default")
+		// ll.Warnf("Logger", "no logger supplied, using default")
 	} else if l, ok := logger.(*logrus.Logger); !ok {
 		ll.Warnf("Logger", "invalid logger type %T, using default", logger)
 	} else {
