@@ -207,10 +207,7 @@ func (b *BrowserType) StartChromium(
 ) (*common.BrowserProcess, error) {
 	logger := log.New(nil, common.GetIterationID(ctx))
 
-	// Since this method is being called from within the script init scope,
-	// we can't use &(vu.State()).Options since vu.State() is nil. This means
-	// that the hosts argument cannot be used.
-	flags, err := prepareFlags(opts, nil)
+	flags, err := prepareFlags(opts, &(vu.State()).Options)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}

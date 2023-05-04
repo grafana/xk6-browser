@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/dop251/goja"
 
@@ -674,8 +675,8 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 	}
 }
 
-func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess, func(ctx context.Context)) {
-	browserType := chromium.NewBrowserType(vu)
+func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.CustomMetrics) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess, func(ctx context.Context)) {
+	browserType := chromium.NewBrowserTypeWithReg(k6m)
 
 	bOpts := rt.NewObject()
 	err := bOpts.Set("headless", rt.ToValue(false))
@@ -716,10 +717,14 @@ func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser) (*chromium.Brows
 
 // mapBrowser to the JS module.
 func mapBrowser(vu moduleVU, b api.Browser) mapping {
-	rt := vu.Runtime()
-
-	browserType, launchOpts, browserProc, closeFunc := startBrowser(vu, rt, b)
-	go closeFunc(vu.Context())
+	var (
+		rt          = vu.Runtime()
+		browserType *chromium.BrowserType
+		launchOpts  *common.LaunchOptions
+		browserProc *common.BrowserProcess
+		o           = sync.Once{}
+		k6m         = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
+	)
 
 	return mapping{
 		"close":       b.Close,
@@ -733,6 +738,14 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		"userAgent": b.UserAgent,
 		"version":   b.Version,
 		"newContext": func(opts goja.Value) (*goja.Object, error) {
+			// We see strange behaviour when this is done outside of this
+			// mapping.
+			o.Do(func() {
+				var closeFunc func(context.Context)
+				browserType, launchOpts, browserProc, closeFunc = startBrowser(vu, rt, b, k6m)
+				go closeFunc(vu.Context())
+			})
+
 			ctx, logger, err := browserType.InitPerIteration(vu, launchOpts)
 			if err != nil {
 				k6ext.Panic(ctx, "initializing browser type: %w", err)
