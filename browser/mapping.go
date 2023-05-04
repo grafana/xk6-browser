@@ -677,6 +677,21 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 
 // mapBrowser to the JS module.
 func mapBrowser(vu moduleVU, b api.Browser) mapping {
+	// These all needed to be set once at the beginning
+	// of the test run per vu, and shared between all
+	// the iterations.
+	var (
+		// These need to be recreated on every iteration
+		k6m    = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry) // This needs to be done here.
+		ctx    context.Context
+		logger *log.Logger
+		// These should only need to be created once for the full test lifecycle
+		browserType *chromium.BrowserType
+		launchOpts  *common.LaunchOptions
+		browserProc *common.BrowserProcess
+		fullTestCtx context.Context
+	)
+
 	rt := vu.Runtime()
 	return mapping{
 		"close":       b.Close,
@@ -690,11 +705,62 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		"userAgent": b.UserAgent,
 		"version":   b.Version,
 		"newContext": func(opts goja.Value) (*goja.Object, error) {
+			bOpts := rt.NewObject()
+			err := bOpts.Set("headless", rt.ToValue(false))
+			if err != nil {
+				k6common.Throw(rt, fmt.Errorf("creating launch opts: %w", err))
+			}
+
+			if browserType == nil {
+				fullTestCtx = context.Background()
+
+				browserType = chromium.NewBrowserTypeWithReg(vu, k6m)
+
+				ctx, launchOpts, logger, err = browserType.Init(bOpts, false)
+				if err != nil {
+					k6ext.Panic(ctx, "initializing browser type: %w", err)
+				}
+
+				browserProc, err = browserType.StartChromium(fullTestCtx, launchOpts, logger)
+				if err != nil {
+					k6ext.Panic(ctx, "starting chromium: %w", err)
+				}
+
+				vu.registerPid(browserProc.Pid())
+			} else {
+				ctx, launchOpts, logger, err = browserType.Init(bOpts, false)
+				if err != nil {
+					k6ext.Panic(ctx, "initializing browser type: %w", err)
+				}
+			}
+
+			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
+			if err != nil {
+				err = &k6ext.UserFriendlyError{
+					Err:     err,
+					Timeout: launchOpts.Timeout,
+				}
+				k6ext.Panic(ctx, "Ankur: InitBrowser %w", err)
+			}
+
 			bctx, err := b.NewContext(opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}
 			m := mapBrowserContext(vu, bctx)
+
+			// Not sure why this doesn't work:
+			callback := vu.RegisterCallback()
+			go func(ctx context.Context) {
+				defer callback(func() error {
+					return nil
+				})
+
+				<-ctx.Done() // Never closes :(
+
+				b.Close()
+			}(vu.VU.Context())
+
 			return rt.ToValue(m).ToObject(rt), nil
 		},
 		"newPage": func(opts goja.Value) (mapping, error) {
@@ -708,7 +774,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 }
 
 // mapBrowserType to the JS module.
-func mapBrowserType(vu moduleVU, bt api.BrowserType, wsURL string, isRemoteBrowser bool) mapping {
+func mapBrowserType(vu moduleVU, bt *chromium.BrowserType, wsURL string, isRemoteBrowser bool) mapping {
 	rt := vu.Runtime()
 	return mapping{
 		"connect": func(wsEndpoint string, opts goja.Value) *goja.Object {
