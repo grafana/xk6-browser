@@ -65,12 +65,45 @@ type Browser struct {
 	sessionIDtoTargetIDMu sync.RWMutex
 	sessionIDtoTargetID   map[target.SessionID]target.ID
 
-	// Used to display a warning when the browser is reclosed.
-	closed bool
+	// // Used to display a warning when the browser is reclosed.
+	// closed bool
 
 	vu k6modules.VU
 
 	logger *log.Logger
+}
+
+func NewUnInitBrowser() *Browser {
+	return &Browser{}
+}
+
+func (b *Browser) GetContext() context.Context {
+	return b.ctx
+}
+
+func (b *Browser) Init(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	browserProc *BrowserProcess,
+	launchOpts *LaunchOptions,
+	logger *log.Logger,
+) error {
+	b.BaseEventEmitter = NewBaseEventEmitter(ctx)
+	b.ctx = ctx
+	b.cancelFn = cancel
+	b.state = int64(BrowserStateOpen)
+	b.browserProc = browserProc
+	b.launchOpts = launchOpts
+	b.contexts = make(map[cdp.BrowserContextID]*BrowserContext)
+	b.pages = make(map[target.ID]*Page)
+	b.sessionIDtoTargetID = make(map[target.SessionID]target.ID)
+	b.vu = k6ext.GetVU(ctx)
+	b.logger = logger
+
+	if err := b.connect(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewBrowser creates a new browser, connects to it, then returns it.
@@ -180,7 +213,7 @@ func (b *Browser) initEvents() error {
 	go func() {
 		defer func() {
 			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
-			b.browserProc.didLoseConnection()
+			// b.browserProc.didLoseConnection()
 			if b.cancelFn != nil {
 				b.cancelFn()
 			}
@@ -434,20 +467,20 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 
 // Close shuts down the browser.
 func (b *Browser) Close() {
-	if b.closed {
-		b.logger.Warnf(
-			"Browser:Close",
-			"Please call browser.close only once, and do not use the browser after calling close.",
-		)
-		return
-	}
-	b.closed = true
+	// if b.closed {
+	// 	b.logger.Warnf(
+	// 		"Browser:Close",
+	// 		"Please call browser.close only once, and do not use the browser after calling close.",
+	// 	)
+	// 	return
+	// }
+	// b.closed = true
 
-	defer func() {
-		if err := b.browserProc.Cleanup(); err != nil {
-			b.logger.Errorf("Browser:Close", "cleaning up the user data directory: %v", err)
-		}
-	}()
+	// defer func() {
+	// 	if err := b.browserProc.Cleanup(); err != nil {
+	// 		b.logger.Errorf("Browser:Close", "cleaning up the user data directory: %v", err)
+	// 	}
+	// }()
 
 	b.logger.Debugf("Browser:Close", "")
 	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
@@ -458,16 +491,16 @@ func (b *Browser) Close() {
 	// `websocket.ReadMessage()` to return `close 1006 (abnormal closure):
 	// unexpected EOF`.
 	b.conn.IgnoreIOErrors()
-	b.browserProc.GracefulClose()
+	// b.browserProc.GracefulClose()
 
 	// If the browser is not being executed remotely, send the Browser.close CDP
 	// command, which triggers the browser process to exit.
 	if !b.launchOpts.isRemoteBrowser {
-		var closeErr *websocket.CloseError
-		err := cdpbrowser.Close().Do(cdp.WithExecutor(b.ctx, b.conn))
-		if err != nil && !errors.As(err, &closeErr) {
-			k6ext.Panic(b.ctx, "closing the browser: %v", err)
-		}
+		// var closeErr *websocket.CloseError
+		// err := cdpbrowser.Close().Do(cdp.WithExecutor(b.ctx, b.conn))
+		// if err != nil && !errors.As(err, &closeErr) {
+		// 	k6ext.Panic(b.ctx, "closing the browser: %v", err)
+		// }
 	}
 
 	// Wait for all outstanding events (e.g. Target.detachedFromTarget) to be
@@ -475,10 +508,10 @@ func (b *Browser) Close() {
 	// forcefully after the timeout.
 	timeout := time.Second
 	select {
-	case <-b.browserProc.processDone:
+	// case <-b.browserProc.processDone:
 	case <-time.After(timeout):
 		b.logger.Debugf("Browser:Close", "killing browser process with PID %d after %s", b.browserProc.Pid(), timeout)
-		b.browserProc.Terminate()
+		// b.browserProc.Terminate()
 	}
 
 	// This is unintuitive, since the process exited, so the connection would've
