@@ -34,7 +34,6 @@ var _ api.BrowserType = &BrowserType{}
 type BrowserType struct {
 	// FIXME: This is only exported because testBrowser needs it. Contexts
 	// shouldn't be stored on structs if we can avoid it.
-	Ctx       context.Context
 	vu        k6modules.VU
 	hooks     *common.Hooks
 	k6Metrics *k6ext.CustomMetrics
@@ -141,7 +140,6 @@ func (b *BrowserType) connect(
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	b.Ctx = browserCtx
 	browser, err := common.NewBrowser(
 		browserCtx, browserCtxCancel, browserProc, opts, logger,
 	)
@@ -207,7 +205,6 @@ func (b *BrowserType) InitBrowser(
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	b.Ctx = browserCtx
 	err := browser.Init(browserCtx, browserCtxCancel,
 		browserProc, opts, logger)
 	if err != nil {
@@ -272,7 +269,6 @@ func (b *BrowserType) launch(
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	b.Ctx = browserCtx
 	browser, err := common.NewBrowser(browserCtx, browserCtxCancel,
 		browserProc, opts, logger)
 	if err != nil {
