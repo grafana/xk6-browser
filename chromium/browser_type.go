@@ -42,9 +42,22 @@ type BrowserType struct {
 	randSrc   *rand.Rand
 }
 
+func NewBrowserTypeWithReg(vu k6modules.VU, k6m *k6ext.CustomMetrics) *BrowserType {
+	// NOTE: vu.InitEnv() *must* be called from the script init scope,
+	// otherwise it will return nil.
+	b := BrowserType{
+		vu:        vu,
+		hooks:     common.NewHooks(),
+		k6Metrics: k6m,
+		randSrc:   rand.New(rand.NewSource(time.Now().UnixNano())), //nolint: gosec
+	}
+
+	return &b
+}
+
 // NewBrowserType registers our custom k6 metrics, creates method mappings on
 // the goja runtime, and returns a new Chrome browser type.
-func NewBrowserType(vu k6modules.VU) api.BrowserType {
+func NewBrowserType(vu k6modules.VU) *BrowserType {
 	// NOTE: vu.InitEnv() *must* be called from the script init scope,
 	// otherwise it will return nil.
 	k6m := k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
@@ -58,7 +71,7 @@ func NewBrowserType(vu k6modules.VU) api.BrowserType {
 	return &b
 }
 
-func (b *BrowserType) init(
+func (b *BrowserType) Init(
 	opts goja.Value, isRemoteBrowser bool,
 ) (context.Context, *common.LaunchOptions, *log.Logger, error) {
 	ctx := b.initContext()
@@ -100,7 +113,7 @@ func (b *BrowserType) initContext() context.Context {
 
 // Connect attaches k6 browser to an existing browser instance.
 func (b *BrowserType) Connect(wsEndpoint string, opts goja.Value) api.Browser {
-	ctx, launchOpts, logger, err := b.init(opts, true)
+	ctx, launchOpts, logger, err := b.Init(opts, true)
 	if err != nil {
 		k6ext.Panic(ctx, "initializing browser type: %w", err)
 	}
@@ -153,10 +166,65 @@ func (b *BrowserType) link(
 	return p, nil
 }
 
+func (b *BrowserType) StartChromium(
+	ctx context.Context, opts *common.LaunchOptions, logger *log.Logger,
+) (*common.BrowserProcess, error) {
+	envs := make([]string, 0, len(opts.Env))
+	for k, v := range opts.Env {
+		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+	}
+	flags, err := prepareFlags(opts, &(b.vu.State()).Options)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	dataDir := &storage.Dir{}
+	if err := dataDir.Make("", flags["user-data-dir"]); err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	flags["user-data-dir"] = dataDir.Dir
+
+	go func(c context.Context) {
+		defer func() {
+			if err := dataDir.Cleanup(); err != nil {
+				logger.Errorf("BrowserType:Launch", "cleaning up the user data directory: %v", err)
+			}
+		}()
+		// There's a small chance that this might be called
+		// if the context is closed by the k6 runtime. To
+		// guarantee the cleanup we would need to orchestrate
+		// it correctly which https://github.com/grafana/k6/issues/2432
+		// will enable once it's complete.
+		<-c.Done()
+	}(ctx)
+
+	browserProc, err := b.allocate(ctx, opts, flags, envs, dataDir, logger)
+	if browserProc == nil {
+		return nil, fmt.Errorf("launching browser: %w", err)
+	}
+
+	return browserProc, nil
+}
+
+func (b *BrowserType) InitBrowser(
+	ctx context.Context, browserProc *common.BrowserProcess, browser *common.Browser, opts *common.LaunchOptions, logger *log.Logger,
+) error {
+	// If this context is cancelled we'll initiate an extension wide
+	// cancellation and shutdown.
+	browserCtx, browserCtxCancel := context.WithCancel(ctx)
+	b.Ctx = browserCtx
+	err := browser.Init(browserCtx, browserCtxCancel,
+		browserProc, opts, logger)
+	if err != nil {
+		return fmt.Errorf("launching browser: %w", err)
+	}
+
+	return nil
+}
+
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,
 // which can be used for controlling the Chrome browser.
 func (b *BrowserType) Launch(opts goja.Value) (_ api.Browser, browserProcessID int) {
-	ctx, launchOpts, logger, err := b.init(opts, false)
+	ctx, launchOpts, logger, err := b.Init(opts, false)
 	if err != nil {
 		k6ext.Panic(ctx, "initializing browser type: %w", err)
 	}
@@ -236,7 +304,7 @@ func (b *BrowserType) allocate(
 	flags map[string]any, dataDir *storage.Dir,
 	logger *log.Logger,
 ) (_ *common.BrowserProcess, rerr error) {
-	bProcCtx, bProcCtxCancel := context.WithTimeout(ctx, opts.Timeout)
+	bProcCtx, bProcCtxCancel := context.WithCancel(ctx)
 	defer func() {
 		if rerr != nil {
 			bProcCtxCancel()
