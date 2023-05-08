@@ -46,6 +46,36 @@ type BrowserContext struct {
 	evaluateOnNewDocumentSources []string
 }
 
+func (b *BrowserContext) InitBrowserContext(
+	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *BrowserContextOptions, logger *log.Logger,
+) error {
+	b.BaseEventEmitter = NewBaseEventEmitter(ctx)
+	b.ctx = ctx
+	b.browser = browser
+	b.id = id
+	b.opts = opts
+	b.logger = logger
+	b.vu = k6ext.GetVU(ctx)
+	b.timeoutSettings = NewTimeoutSettings(nil)
+
+	if opts != nil && len(opts.Permissions) > 0 {
+		b.GrantPermissions(opts.Permissions, nil)
+	}
+
+	rt := b.vu.Runtime()
+	wv := rt.ToValue(js.WebVitalIIFEScript)
+	wvi := rt.ToValue(js.WebVitalInitScript)
+
+	if err := b.AddInitScript(wv, nil); err != nil {
+		return fmt.Errorf("adding web vital script to new browser context: %w", err)
+	}
+	if err := b.AddInitScript(wvi, nil); err != nil {
+		return fmt.Errorf("adding web vital init script to new browser context: %w", err)
+	}
+
+	return nil
+}
+
 // NewBrowserContext creates a new browser context.
 func NewBrowserContext(
 	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *BrowserContextOptions, logger *log.Logger,

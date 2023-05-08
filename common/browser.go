@@ -545,6 +545,31 @@ func (b *Browser) IsConnected() bool {
 }
 
 // NewContext creates a new incognito-like browser context.
+func (b *Browser) InitContext(browserCtx *BrowserContext, opts goja.Value) (api.BrowserContext, error) {
+	action := target.CreateBrowserContext().WithDisposeOnDetach(true)
+	browserContextID, err := action.Do(cdp.WithExecutor(b.ctx, b.conn))
+	b.logger.Debugf("Browser:NewContext", "bctxid:%v", browserContextID)
+	if err != nil {
+		k6ext.Panic(b.ctx, "creating browser context ID %s: %w", browserContextID, err)
+	}
+
+	browserCtxOpts := NewBrowserContextOptions()
+	if err := browserCtxOpts.Parse(b.ctx, opts); err != nil {
+		k6ext.Panic(b.ctx, "parsing newContext options: %w", err)
+	}
+
+	b.contextsMu.Lock()
+	defer b.contextsMu.Unlock()
+	err = browserCtx.InitBrowserContext(b.ctx, b, browserContextID, browserCtxOpts, b.logger)
+	if err != nil {
+		return nil, fmt.Errorf("new context: %w", err)
+	}
+	b.contexts[browserContextID] = browserCtx
+
+	return browserCtx, nil
+}
+
+// NewContext creates a new incognito-like browser context.
 func (b *Browser) NewContext(opts goja.Value) (api.BrowserContext, error) {
 	action := target.CreateBrowserContext().WithDisposeOnDetach(true)
 	browserContextID, err := action.Do(cdp.WithExecutor(b.ctx, b.conn))

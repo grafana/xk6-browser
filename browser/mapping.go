@@ -33,11 +33,11 @@ type mapping = map[string]any
 // See issue #661 for more details.
 func mapBrowserToGoja(vu moduleVU) *goja.Object {
 	var (
-		rt      = vu.Runtime()
-		obj     = rt.NewObject()
-		browser = common.NewUnInitBrowser()
+		rt             = vu.Runtime()
+		obj            = rt.NewObject()
+		browserContext = &common.BrowserContext{}
 	)
-	for k, v := range mapBrowser(vu, browser) {
+	for k, v := range mapBrowserContext(vu, browserContext) {
 		err := obj.Set(k, rt.ToValue(v))
 		if err != nil {
 			k6common.Throw(rt, fmt.Errorf("mapping: %w", err))
@@ -615,11 +615,22 @@ func mapWorker(vu moduleVU, w api.Worker) mapping {
 
 // mapBrowserContext to the JS module.
 func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
-	rt := vu.Runtime()
+	var (
+		rt          = vu.Runtime()
+		browserType *chromium.BrowserType
+		launchOpts  *common.LaunchOptions
+		browserProc *common.BrowserProcess
+		o           = sync.Once{}
+		k6m         = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
+		browser     = common.NewUnInitBrowser()
+	)
+
 	return mapping{
-		"addCookies":       bc.AddCookies,
-		"addInitScript":    bc.AddInitScript,
-		"browser":          bc.Browser,
+		"addCookies":    bc.AddCookies,
+		"addInitScript": bc.AddInitScript,
+		"browser": func() mapping {
+			return mapBrowser(vu, bc.Browser())
+		},
 		"clearCookies":     bc.ClearCookies,
 		"clearPermissions": bc.ClearPermissions,
 		"close":            bc.Close,
@@ -666,6 +677,34 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 			return rt.ToValue(mpages).ToObject(rt)
 		},
 		"newPage": func() (mapping, error) {
+			// We see strange behaviour when this is done outside of this
+			// mapping.
+			o.Do(func() {
+				var closeFunc func(context.Context)
+				browser = common.NewUnInitBrowser()
+				browserType, launchOpts, browserProc, closeFunc = startBrowser(vu, rt, browser, k6m)
+				go closeFunc(vu.Context())
+			})
+
+			ctx, logger, err := browserType.InitPerIteration(vu, launchOpts)
+			if err != nil {
+				k6ext.Panic(ctx, "initializing browser type: %w", err)
+			}
+
+			err = browserType.InitBrowser(ctx, browserProc, browser, launchOpts, logger)
+			if err != nil {
+				err = &k6ext.UserFriendlyError{
+					Err:     err,
+					Timeout: launchOpts.Timeout,
+				}
+				k6ext.Panic(ctx, "browserType.InitBrowser %w", err)
+			}
+
+			bc, err = browser.InitContext(bc.(*common.BrowserContext), nil)
+			if err != nil {
+				return nil, err //nolint:wrapcheck
+			}
+
 			page, err := bc.NewPage()
 			if err != nil {
 				return nil, err //nolint:wrapcheck
@@ -717,15 +756,7 @@ func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.Custo
 
 // mapBrowser to the JS module.
 func mapBrowser(vu moduleVU, b api.Browser) mapping {
-	var (
-		rt          = vu.Runtime()
-		browserType *chromium.BrowserType
-		launchOpts  *common.LaunchOptions
-		browserProc *common.BrowserProcess
-		o           = sync.Once{}
-		k6m         = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
-	)
-
+	rt := vu.Runtime()
 	return mapping{
 		"close":       b.Close,
 		"contexts":    b.Contexts,
@@ -738,28 +769,6 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		"userAgent": b.UserAgent,
 		"version":   b.Version,
 		"newContext": func(opts goja.Value) (*goja.Object, error) {
-			// We see strange behaviour when this is done outside of this
-			// mapping.
-			o.Do(func() {
-				var closeFunc func(context.Context)
-				browserType, launchOpts, browserProc, closeFunc = startBrowser(vu, rt, b, k6m)
-				go closeFunc(vu.Context())
-			})
-
-			ctx, logger, err := browserType.InitPerIteration(vu, launchOpts)
-			if err != nil {
-				k6ext.Panic(ctx, "initializing browser type: %w", err)
-			}
-
-			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
-			if err != nil {
-				err = &k6ext.UserFriendlyError{
-					Err:     err,
-					Timeout: launchOpts.Timeout,
-				}
-				k6ext.Panic(ctx, "browserType.InitBrowser %w", err)
-			}
-
 			bctx, err := b.NewContext(opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck

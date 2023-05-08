@@ -18,7 +18,7 @@ type (
 
 	// JSModule exposes the properties available to the JS script.
 	JSModule struct {
-		Browser *goja.Object
+		Context *goja.Object
 		Devices map[string]common.Device
 		Version string
 	}
@@ -46,7 +46,7 @@ func New() *RootModule {
 func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 	return &ModuleInstance{
 		mod: &JSModule{
-			Browser: mapBrowserToGoja(moduleVU{
+			Context: mapBrowserToGoja(moduleVU{
 				VU:          vu,
 				pidRegistry: m.PidRegistry,
 			}),
