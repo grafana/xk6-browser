@@ -675,7 +675,7 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 	}
 }
 
-func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.CustomMetrics) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess, func(ctx context.Context)) {
+func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.CustomMetrics) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess) {
 	browserType := chromium.NewBrowserTypeWithReg(k6m)
 
 	bOpts := rt.NewObject()
@@ -697,22 +697,7 @@ func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.Custo
 
 	vu.registerPid(browserProc.Pid())
 
-	// // Not sure why this doesn't work:
-	// callback := vu.RegisterCallback()
-	// closeFunc := func(ctx context.Context) {
-	// 	defer callback(func() error {
-	// 		return nil
-	// 	})
-
-	// 	<-ctx.Done() // Never closes :(
-
-	// 	b.Close()
-	// }
-	closeFunc := func(ctx context.Context) {
-		// noop
-	}
-
-	return browserType, launchOpts, browserProc, closeFunc
+	return browserType, launchOpts, browserProc
 }
 
 // mapBrowser to the JS module.
@@ -741,15 +726,23 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			// We see strange behaviour when this is done outside of this
 			// mapping.
 			o.Do(func() {
-				var closeFunc func(context.Context)
-				browserType, launchOpts, browserProc, closeFunc = startBrowser(vu, rt, b, k6m)
-				go closeFunc(vu.Context())
+				browserType, launchOpts, browserProc = startBrowser(vu, rt, b, k6m)
 			})
 
 			ctx, logger, err := browserType.InitPerIteration(vu, launchOpts)
 			if err != nil {
 				k6ext.Panic(ctx, "initializing browser type: %w", err)
 			}
+
+			// This seems to be closing the connection for the new iteration and not the last one.
+			closeFunc := func(ctx context.Context, b api.Browser) {
+				<-ctx.Done()
+
+				fmt.Println("Ankur: We're closing")
+
+				b.Close()
+			}
+			go closeFunc(ctx, b)
 
 			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
 			if err != nil {
