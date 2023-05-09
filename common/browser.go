@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -465,6 +464,15 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 	return page, err
 }
 
+type ExportedConn interface {
+	Close(...goja.Value)
+	IgnoreIOErrors()
+}
+
+func (b *Browser) Conn() ExportedConn {
+	return b.conn
+}
+
 // Close shuts down the browser.
 func (b *Browser) Close() {
 	// if b.closed {
@@ -483,7 +491,7 @@ func (b *Browser) Close() {
 	// }()
 
 	b.logger.Debugf("Browser:Close", "")
-	atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
+	// atomic.CompareAndSwapInt64(&b.state, b.state, BrowserStateClosed)
 
 	// Signal to the connection and the process that we're gracefully closing.
 	// We ignore any IO errors reading from the WS connection, because the below
@@ -506,13 +514,13 @@ func (b *Browser) Close() {
 	// Wait for all outstanding events (e.g. Target.detachedFromTarget) to be
 	// processed, and for the process to exit gracefully. Otherwise kill it
 	// forcefully after the timeout.
-	timeout := time.Second
-	select {
-	// case <-b.browserProc.processDone:
-	case <-time.After(timeout):
-		b.logger.Debugf("Browser:Close", "killing browser process with PID %d after %s", b.browserProc.Pid(), timeout)
-		// b.browserProc.Terminate()
-	}
+	// timeout := time.Second
+	// select {
+	// // case <-b.browserProc.processDone:
+	// case <-time.After(timeout):
+	// 	b.logger.Debugf("Browser:Close", "killing browser process with PID %d after %s", b.browserProc.Pid(), timeout)
+	// 	// b.browserProc.Terminate()
+	// }
 
 	// This is unintuitive, since the process exited, so the connection would've
 	// been closed as well. The reason we still call conn.Close() here is to

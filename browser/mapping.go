@@ -734,16 +734,6 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 				k6ext.Panic(ctx, "initializing browser type: %w", err)
 			}
 
-			// This seems to be closing the connection for the new iteration and not the last one.
-			closeFunc := func(ctx context.Context, b api.Browser) {
-				<-ctx.Done()
-
-				fmt.Println("Ankur: We're closing")
-
-				b.Close()
-			}
-			go closeFunc(ctx, b)
-
 			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
 			if err != nil {
 				err = &k6ext.UserFriendlyError{
@@ -752,6 +742,14 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 				}
 				k6ext.Panic(ctx, "browserType.InitBrowser %w", err)
 			}
+
+			closeFunc := func(ctx context.Context, c common.ExportedConn) {
+				<-ctx.Done()
+
+				c.IgnoreIOErrors()
+				c.Close()
+			}
+			go closeFunc(ctx, b.(*common.Browser).Conn())
 
 			bctx, err := b.NewContext(opts)
 			if err != nil {
