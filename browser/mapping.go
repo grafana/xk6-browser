@@ -709,6 +709,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		browserProc *common.BrowserProcess
 		o           = sync.Once{}
 		k6m         = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
+		conn        *common.Connection
 	)
 
 	return mapping{
@@ -725,16 +726,25 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		"newContext": func(opts goja.Value) (*goja.Object, error) {
 			// We see strange behaviour when this is done outside of this
 			// mapping.
+			fmt.Println("Ankur: iteration start")
 			o.Do(func() {
+				fmt.Println("Ankur: create per vu things")
 				browserType, launchOpts, browserProc = startBrowser(vu, rt, b, k6m)
+				var err error
+				conn, err = common.Connect(context.Background(), b.(*common.Browser), browserProc)
+				if err != nil {
+					panic(fmt.Sprintf("connection failed: %v", err))
+				}
 			})
 
+			fmt.Println("Ankur: per iteration init")
 			ctx, logger, err := browserType.InitPerIteration(vu, launchOpts)
 			if err != nil {
 				k6ext.Panic(ctx, "initializing browser type: %w", err)
 			}
 
-			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
+			fmt.Println("Ankur: init browser")
+			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger, conn)
 			if err != nil {
 				err = &k6ext.UserFriendlyError{
 					Err:     err,
@@ -743,14 +753,15 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 				k6ext.Panic(ctx, "browserType.InitBrowser %w", err)
 			}
 
-			closeFunc := func(ctx context.Context, c common.ExportedConn) {
-				<-ctx.Done()
+			// closeFunc := func(ctx context.Context, c common.ExportedConn) {
+			// 	<-ctx.Done()
 
-				c.IgnoreIOErrors()
-				c.Close()
-			}
-			go closeFunc(ctx, b.(*common.Browser).Conn())
+			// 	c.IgnoreIOErrors()
+			// 	c.Close()
+			// }
+			// go closeFunc(ctx, b.(*common.Browser).Conn())
 
+			fmt.Println("Ankur: new context")
 			bctx, err := b.NewContext(opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck

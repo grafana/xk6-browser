@@ -12,8 +12,6 @@ import (
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
-	k6modules "go.k6.io/k6/js/modules"
-
 	"github.com/chromedp/cdproto"
 	cdpbrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
@@ -67,8 +65,6 @@ type Browser struct {
 	// // Used to display a warning when the browser is reclosed.
 	// closed bool
 
-	vu k6modules.VU
-
 	logger *log.Logger
 }
 
@@ -86,7 +82,9 @@ func (b *Browser) Init(
 	browserProc *BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
+	conn *Connection,
 ) error {
+	fmt.Println("Ankur: overwrite browser values")
 	b.BaseEventEmitter = NewBaseEventEmitter(ctx)
 	b.ctx = ctx
 	b.cancelFn = cancel
@@ -96,13 +94,19 @@ func (b *Browser) Init(
 	b.contexts = make(map[cdp.BrowserContextID]*BrowserContext)
 	b.pages = make(map[target.ID]*Page)
 	b.sessionIDtoTargetID = make(map[target.SessionID]target.ID)
-	b.vu = k6ext.GetVU(ctx)
 	b.logger = logger
+	b.conn = conn
 
-	if err := b.connect(); err != nil {
-		return err
+	fmt.Println("Ankur: create new default browserContext")
+
+	var err error
+	// We don't need to lock this because `connect()` is called only in NewBrowser
+	b.defaultContext, err = NewBrowserContext(ctx, b, "", NewBrowserContextOptions(), logger)
+	if err != nil {
+		return fmt.Errorf("create default browserContext: %w", err)
 	}
-	return nil
+
+	return b.initEvents()
 }
 
 // NewBrowser creates a new browser, connects to it, then returns it.
@@ -138,9 +142,21 @@ func newBrowser(
 		contexts:            make(map[cdp.BrowserContextID]*BrowserContext),
 		pages:               make(map[target.ID]*Page),
 		sessionIDtoTargetID: make(map[target.SessionID]target.ID),
-		vu:                  k6ext.GetVU(ctx),
 		logger:              logger,
 	}
+}
+
+func Connect(ctx context.Context, bs *Browser, browserProc *BrowserProcess) (*Connection, error) {
+	// Temp logger
+	logger := log.New(nil, GetIterationID(ctx))
+
+	logger.Debugf("Browser:connect", "wsURL:%q", browserProc.WsURL())
+	conn, err := NewConnection(ctx, browserProc.WsURL(), logger)
+	if err != nil {
+		return nil, fmt.Errorf("connecting to browser DevTools URL: %w", err)
+	}
+
+	return conn, nil
 }
 
 func (b *Browser) connect() error {
