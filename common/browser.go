@@ -73,23 +73,29 @@ func (b *Browser) GetContext() context.Context {
 	return b.ctx
 }
 
-func (b *Browser) Init(
-	ctx context.Context,
-	cancel context.CancelFunc,
+func (b *Browser) InitPerVU(
 	browserProc *BrowserProcess,
 	launchOpts *LaunchOptions,
-	logger *log.Logger,
-) error {
-	fmt.Println("Ankur: overwrite browser values")
-	b.ctx = ctx
-	b.cancelFn = cancel
+) {
+	fmt.Println("Ankur: init browser per vu")
 	b.state = int64(BrowserStateOpen)
 	b.browserProc = browserProc
 	b.launchOpts = launchOpts
 	b.contexts = make(map[cdp.BrowserContextID]*BrowserContext)
 	b.pages = make(map[target.ID]*Page)
 	b.sessionIDtoTargetID = make(map[target.SessionID]target.ID)
-	b.logger = logger
+}
+
+func (b *Browser) InitPerIteration(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	logger *log.Logger,
+) error {
+	fmt.Println("Ankur: init browser per iteration")
+
+	b.ctx = ctx         // This changes on every iteration
+	b.cancelFn = cancel // This changes on every iteration
+	b.logger = logger   // This changes on every iteration to include the iteration id/number
 
 	fmt.Println("Ankur: create new default browserContext")
 

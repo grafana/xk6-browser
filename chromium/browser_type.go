@@ -239,18 +239,23 @@ func (b *BrowserType) StartChromium(
 	return browserProc, nil
 }
 
-func (b *BrowserType) InitBrowser(
-	ctx context.Context,
+func (b *BrowserType) InitBrowserPerVU(
 	browserProc *common.BrowserProcess,
 	browser *common.Browser,
 	opts *common.LaunchOptions,
+) {
+	browser.InitPerVU(browserProc, opts)
+}
+
+func (b *BrowserType) InitBrowserPerIteration(
+	ctx context.Context,
+	browser *common.Browser,
 	logger *log.Logger,
 ) error {
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	err := browser.Init(browserCtx, browserCtxCancel,
-		browserProc, opts, logger)
+	err := browser.InitPerIteration(browserCtx, browserCtxCancel, logger)
 	if err != nil {
 		return fmt.Errorf("launching browser: %w", err)
 	}

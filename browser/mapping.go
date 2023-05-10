@@ -733,6 +733,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 				if err != nil {
 					panic(fmt.Sprintf("connection failed: %v", err))
 				}
+				browserType.InitBrowserPerVU(browserProc, b.(*common.Browser), launchOpts)
 			})
 
 			fmt.Println("Ankur: per iteration init")
@@ -742,7 +743,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			}
 
 			fmt.Println("Ankur: init browser")
-			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
+			err = browserType.InitBrowserPerIteration(ctx, b.(*common.Browser), logger)
 			if err != nil {
 				err = &k6ext.UserFriendlyError{
 					Err:     err,
