@@ -675,7 +675,7 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 	}
 }
 
-func startBrowser(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.CustomMetrics) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess) {
+func startChromium(vu moduleVU, rt *goja.Runtime, b api.Browser, k6m *k6ext.CustomMetrics) (*chromium.BrowserType, *common.LaunchOptions, *common.BrowserProcess) {
 	browserType := chromium.NewBrowserTypeWithReg(k6m)
 
 	bOpts := rt.NewObject()
@@ -728,9 +728,8 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			fmt.Println("Ankur: iteration start")
 			o.Do(func() {
 				fmt.Println("Ankur: create per vu things")
-				browserType, launchOpts, browserProc = startBrowser(vu, rt, b, k6m)
-				var err error
-				err = common.Connect(context.Background(), b.(*common.Browser), browserProc)
+				browserType, launchOpts, browserProc = startChromium(vu, rt, b, k6m)
+				err := common.Connect(context.Background(), b.(*common.Browser), browserProc)
 				if err != nil {
 					panic(fmt.Sprintf("connection failed: %v", err))
 				}
