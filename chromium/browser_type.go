@@ -239,14 +239,6 @@ func (b *BrowserType) StartChromium(
 	return browserProc, nil
 }
 
-func (b *BrowserType) InitBrowserPerVU(
-	browserProc *common.BrowserProcess,
-	browser *common.Browser,
-	opts *common.LaunchOptions,
-) {
-	browser.InitPerVU(browserProc, opts)
-}
-
 func (b *BrowserType) InitBrowserPerIteration(
 	ctx context.Context,
 	browser *common.Browser,
