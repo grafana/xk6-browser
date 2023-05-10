@@ -743,7 +743,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			}
 
 			fmt.Println("Ankur: init browser")
-			browserType.InitBrowserPerIteration(ctx, b.(*common.Browser), logger)
+			b.(*common.Browser).InitPerIteration(ctx, logger)
 
 			// closeFunc := func(ctx context.Context, c common.ExportedConn) {
 			// 	<-ctx.Done()

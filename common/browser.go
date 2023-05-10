@@ -88,14 +88,15 @@ func (b *Browser) InitPerVU(
 
 func (b *Browser) InitPerIteration(
 	ctx context.Context,
-	cancel context.CancelFunc,
 	logger *log.Logger,
 ) {
 	fmt.Println("Ankur: init browser per iteration")
 
-	b.ctx = ctx         // This changes on every iteration
-	b.cancelFn = cancel // This changes on every iteration
-	b.logger = logger   // This changes on every iteration to include the iteration id/number
+	browserCtx, browserCtxCancel := context.WithCancel(ctx)
+
+	b.ctx = browserCtx            // This changes on every iteration
+	b.cancelFn = browserCtxCancel // This changes on every iteration
+	b.logger = logger             // This changes on every iteration to include the iteration id/number
 }
 
 // NewBrowser creates a new browser, connects to it, then returns it.

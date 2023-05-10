@@ -239,17 +239,6 @@ func (b *BrowserType) StartChromium(
 	return browserProc, nil
 }
 
-func (b *BrowserType) InitBrowserPerIteration(
-	ctx context.Context,
-	browser *common.Browser,
-	logger *log.Logger,
-) {
-	// If this context is cancelled we'll initiate an extension wide
-	// cancellation and shutdown.
-	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	browser.InitPerIteration(browserCtx, browserCtxCancel, logger)
-}
-
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,
 // which can be used for controlling the Chrome browser.
 func (b *BrowserType) Launch(vu k6modules.VU, opts goja.Value) (_ api.Browser, browserProcessID int) {
