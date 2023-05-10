@@ -82,7 +82,6 @@ func (b *Browser) Init(
 	browserProc *BrowserProcess,
 	launchOpts *LaunchOptions,
 	logger *log.Logger,
-	conn *Connection,
 ) error {
 	fmt.Println("Ankur: overwrite browser values")
 	b.BaseEventEmitter = NewBaseEventEmitter(ctx)
@@ -95,7 +94,6 @@ func (b *Browser) Init(
 	b.pages = make(map[target.ID]*Page)
 	b.sessionIDtoTargetID = make(map[target.SessionID]target.ID)
 	b.logger = logger
-	b.conn = conn
 
 	fmt.Println("Ankur: create new default browserContext")
 
@@ -106,7 +104,7 @@ func (b *Browser) Init(
 		return fmt.Errorf("create default browserContext: %w", err)
 	}
 
-	return b.initEvents()
+	return nil
 }
 
 // NewBrowser creates a new browser, connects to it, then returns it.
@@ -146,17 +144,19 @@ func newBrowser(
 	}
 }
 
-func Connect(ctx context.Context, bs *Browser, browserProc *BrowserProcess) (*Connection, error) {
+func Connect(ctx context.Context, bs *Browser, browserProc *BrowserProcess) error {
 	// Temp logger
 	logger := log.New(nil, GetIterationID(ctx))
 
 	logger.Debugf("Browser:connect", "wsURL:%q", browserProc.WsURL())
 	conn, err := NewConnection(ctx, browserProc.WsURL(), logger)
 	if err != nil {
-		return nil, fmt.Errorf("connecting to browser DevTools URL: %w", err)
+		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
 
-	return conn, nil
+	bs.conn = conn
+
+	return bs.initEventsWithContext(ctx)
 }
 
 func (b *Browser) connect() error {
@@ -212,6 +212,60 @@ func (b *Browser) getPages() []*Page {
 		pages = append(pages, p)
 	}
 	return pages
+}
+
+func (b *Browser) initEventsWithContext(ctx context.Context) error {
+	var cancelCtx context.Context
+	cancelCtx, b.evCancelFn = context.WithCancel(ctx)
+	chHandler := make(chan Event)
+
+	b.conn.on(cancelCtx, []string{
+		cdproto.EventTargetAttachedToTarget,
+		cdproto.EventTargetDetachedFromTarget,
+		EventConnectionClose,
+	}, chHandler)
+
+	go func() {
+		defer func() {
+			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
+			// b.browserProc.didLoseConnection()
+			if b.cancelFn != nil {
+				b.cancelFn()
+			}
+		}()
+		for {
+			select {
+			case <-cancelCtx.Done():
+				return
+			case event := <-chHandler:
+				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
+					b.onAttachedToTarget(ev)
+				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
+					b.onDetachedFromTarget(ev)
+				} else if event.typ == EventConnectionClose {
+					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
+					return
+				}
+			}
+		}
+	}()
+
+	action := target.SetAutoAttach(true, true).WithFlatten(true)
+	if err := action.Do(cdp.WithExecutor(ctx, b.conn)); err != nil {
+		return fmt.Errorf("internal error while auto-attaching to browser pages: %w", err)
+	}
+
+	// Target.setAutoAttach has a bug where it does not wait for new Targets being attached.
+	// However making a dummy call afterwards fixes this.
+	// This can be removed after https://chromium-review.googlesource.com/c/chromium/src/+/2885888 lands in stable.
+	action2 := target.GetTargetInfo()
+	if _, err := action2.Do(cdp.WithExecutor(ctx, b.conn)); err != nil {
+		return fmt.Errorf("internal error while getting browser target info: %w", err)
+	}
+
+	return nil
 }
 
 func (b *Browser) initEvents() error {

@@ -709,7 +709,6 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 		browserProc *common.BrowserProcess
 		o           = sync.Once{}
 		k6m         = k6ext.RegisterCustomMetrics(vu.InitEnv().Registry)
-		conn        *common.Connection
 	)
 
 	return mapping{
@@ -731,7 +730,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 				fmt.Println("Ankur: create per vu things")
 				browserType, launchOpts, browserProc = startBrowser(vu, rt, b, k6m)
 				var err error
-				conn, err = common.Connect(context.Background(), b.(*common.Browser), browserProc)
+				err = common.Connect(context.Background(), b.(*common.Browser), browserProc)
 				if err != nil {
 					panic(fmt.Sprintf("connection failed: %v", err))
 				}
@@ -744,7 +743,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			}
 
 			fmt.Println("Ankur: init browser")
-			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger, conn)
+			err = browserType.InitBrowser(ctx, browserProc, b.(*common.Browser), launchOpts, logger)
 			if err != nil {
 				err = &k6ext.UserFriendlyError{
 					Err:     err,

@@ -245,13 +245,12 @@ func (b *BrowserType) InitBrowser(
 	browser *common.Browser,
 	opts *common.LaunchOptions,
 	logger *log.Logger,
-	conn *common.Connection,
 ) error {
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
 	err := browser.Init(browserCtx, browserCtxCancel,
-		browserProc, opts, logger, conn)
+		browserProc, opts, logger)
 	if err != nil {
 		return fmt.Errorf("launching browser: %w", err)
 	}
