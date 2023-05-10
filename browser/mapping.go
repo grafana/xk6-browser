@@ -743,14 +743,7 @@ func mapBrowser(vu moduleVU, b api.Browser) mapping {
 			}
 
 			fmt.Println("Ankur: init browser")
-			err = browserType.InitBrowserPerIteration(ctx, b.(*common.Browser), logger)
-			if err != nil {
-				err = &k6ext.UserFriendlyError{
-					Err:     err,
-					Timeout: launchOpts.Timeout,
-				}
-				k6ext.Panic(ctx, "browserType.InitBrowser %w", err)
-			}
+			browserType.InitBrowserPerIteration(ctx, b.(*common.Browser), logger)
 
 			// closeFunc := func(ctx context.Context, c common.ExportedConn) {
 			// 	<-ctx.Done()

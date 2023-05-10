@@ -251,16 +251,11 @@ func (b *BrowserType) InitBrowserPerIteration(
 	ctx context.Context,
 	browser *common.Browser,
 	logger *log.Logger,
-) error {
+) {
 	// If this context is cancelled we'll initiate an extension wide
 	// cancellation and shutdown.
 	browserCtx, browserCtxCancel := context.WithCancel(ctx)
-	err := browser.InitPerIteration(browserCtx, browserCtxCancel, logger)
-	if err != nil {
-		return fmt.Errorf("launching browser: %w", err)
-	}
-
-	return nil
+	browser.InitPerIteration(browserCtx, browserCtxCancel, logger)
 }
 
 // Launch allocates a new Chrome browser process and returns a new api.Browser value,

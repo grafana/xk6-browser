@@ -90,23 +90,12 @@ func (b *Browser) InitPerIteration(
 	ctx context.Context,
 	cancel context.CancelFunc,
 	logger *log.Logger,
-) error {
+) {
 	fmt.Println("Ankur: init browser per iteration")
 
 	b.ctx = ctx         // This changes on every iteration
 	b.cancelFn = cancel // This changes on every iteration
 	b.logger = logger   // This changes on every iteration to include the iteration id/number
-
-	fmt.Println("Ankur: create new default browserContext")
-
-	var err error
-	// We don't need to lock this because `connect()` is called only in NewBrowser
-	b.defaultContext, err = NewBrowserContext(ctx, b, "", NewBrowserContextOptions(), logger)
-	if err != nil {
-		return fmt.Errorf("create default browserContext: %w", err)
-	}
-
-	return nil
 }
 
 // NewBrowser creates a new browser, connects to it, then returns it.
