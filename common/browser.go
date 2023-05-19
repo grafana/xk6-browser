@@ -260,11 +260,15 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	if err != nil {
 		k6ext.Panic(b.ctx, "creating a new %s: %w", targetPage.Type, err)
 	}
+	fmt.Println("Register page)")
 	b.attachNewPage(p, ev) // Register the page as an active page.
 	// Emit the page event only for pages, not for background pages.
 	// Background pages are created by extensions.
 	if isPage {
 		browserCtx.emit(EventBrowserContextPage, p)
+		fmt.Println("EMITTING PAGE")
+		time.Sleep(time.Second)
+		browserCtx.emit(EventBrowserPage, p)
 	}
 }
 
@@ -374,6 +378,57 @@ func (b *Browser) onDetachedFromTarget(ev *target.EventDetachedFromTarget) {
 		delete(b.pages, targetID)
 		t.didClose()
 	}
+}
+
+func (b *Browser) newPage() (*Page, error) {
+	ctx, cancel := context.WithTimeout(b.ctx, b.launchOpts.Timeout)
+	defer cancel()
+
+	// buffer of one is for sending the target ID whether an event handler
+	// exists or not.
+	targetID := make(chan target.ID, 1)
+
+	id := "none"
+	waitForPage, removeEventHandler := createWaitForEventHandler(
+		ctx,
+		b, // browser context will emit the following event:
+		[]string{EventBrowserPage},
+		func(e any) bool {
+			tid := <-targetID
+
+			b.logger.Debugf("Browser:newPage:createWaitForEventHandler",
+				"tid:%v ptid:%v bctxid:%v", tid, e.(*Page).targetID, id)
+
+			// we are only interested in the new page.
+			return e.(*Page).targetID == tid
+		},
+	)
+	defer removeEventHandler()
+
+	// create a new page.
+	action := target.CreateTarget("about:blank")
+	tid, err := action.Do(cdp.WithExecutor(ctx, b.conn))
+	if err != nil {
+		return nil, fmt.Errorf("creating a new blank page: %w", err)
+	}
+	// let the event handler know about the new page.
+	fmt.Println("waiting for tid:", tid)
+	targetID <- tid
+	var page *Page
+	select {
+	case <-waitForPage:
+		b.logger.Debugf("Browser:newPage:<-waitForPage", "tid:%v bctxid:%v", tid, id)
+		b.pagesMu.RLock()
+		page = b.pages[tid]
+		b.pagesMu.RUnlock()
+	case <-ctx.Done():
+		err = &k6ext.UserFriendlyError{
+			Err:     ctx.Err(),
+			Timeout: b.launchOpts.Timeout,
+		}
+		b.logger.Debugf("Browser:newPage:<-ctx.Done", "tid:%v bctxid:%v err:%v", tid, id, err)
+	}
+	return page, err
 }
 
 func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
@@ -538,12 +593,7 @@ func (b *Browser) NewContext(opts goja.Value) (api.BrowserContext, error) {
 
 // NewPage creates a new tab in the browser window.
 func (b *Browser) NewPage(opts goja.Value) (api.Page, error) {
-	browserCtx, err := b.NewContext(opts)
-	if err != nil {
-		return nil, fmt.Errorf("new page: %w", err)
-	}
-
-	return browserCtx.NewPage()
+	return b.newPage()
 }
 
 // On returns a Promise that is resolved when the browser process is disconnected.

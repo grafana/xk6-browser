@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec
 	"os"
+	"runtime"
 
 	"github.com/grafana/xk6-browser/browser"
 
@@ -15,6 +16,12 @@ import (
 func init() {
 	if _, ok := os.LookupEnv("K6_BROWSER_PPROF"); ok {
 		go func() {
+
+			// set blocking profile rate:
+			// https://golang.org/pkg/runtime/#SetBlockProfileRate
+
+			runtime.SetBlockProfileRate(1)
+
 			address := "localhost:6060"
 			log.Println("Starting http debug server", address)
 			log.Println(http.ListenAndServe(address, nil)) //nolint:gosec

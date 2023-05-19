@@ -12,6 +12,7 @@ const (
 	// Browser
 
 	EventBrowserDisconnected string = "disconnected"
+	EventBrowserPage         string = "page"
 
 	// BrowserContext
 
