@@ -89,6 +89,15 @@ func NewPage(
 	bp bool,
 	logger *log.Logger,
 ) (*Page, error) {
+	var tos *TimeoutSettings
+	var opts *BrowserContextOptions
+	if bctx != nil {
+		tos = bctx.timeoutSettings
+		opts = bctx.opts
+	} else {
+		tos = NewTimeoutSettings(nil)
+		opts = NewBrowserContextOptions()
+	}
 	p := Page{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
 		ctx:              ctx,
@@ -98,10 +107,10 @@ func NewPage(
 		opener:           opener,
 		backgroundPage:   bp,
 		mediaType:        MediaTypeScreen,
-		colorScheme:      bctx.opts.ColorScheme,
-		reducedMotion:    bctx.opts.ReducedMotion,
-		extraHTTPHeaders: bctx.opts.ExtraHTTPHeaders,
-		timeoutSettings:  NewTimeoutSettings(bctx.timeoutSettings),
+		colorScheme:      opts.ColorScheme,
+		reducedMotion:    opts.ReducedMotion,
+		extraHTTPHeaders: opts.ExtraHTTPHeaders,
+		timeoutSettings:  NewTimeoutSettings(tos),
 		Keyboard:         NewKeyboard(ctx, s),
 		jsEnabled:        true,
 		frameSessions:    make(map[cdp.FrameID]*FrameSession),
@@ -116,12 +125,12 @@ func NewPage(
 
 	// We need to init viewport and screen size before initializing the main frame session,
 	// as that's where the emulation is activated.
-	if bctx.opts.Viewport != nil {
+	if bctx != nil && bctx.opts.Viewport != nil {
 		p.emulatedSize = NewEmulatedSize(bctx.opts.Viewport, bctx.opts.Screen)
 	}
 
 	var err error
-	p.frameManager = NewFrameManager(ctx, s, &p, bctx.timeoutSettings, p.logger)
+	p.frameManager = NewFrameManager(ctx, s, &p, tos, p.logger)
 	p.mainFrameSession, err = NewFrameSession(ctx, s, &p, nil, tid, p.logger)
 	if err != nil {
 		p.logger.Debugf("Page:NewPage:NewFrameSession:return", "sid:%v tid:%v err:%v",
@@ -130,7 +139,7 @@ func NewPage(
 		return nil, err
 	}
 	p.frameSessions[cdp.FrameID(tid)] = p.mainFrameSession
-	p.Mouse = NewMouse(ctx, s, p.frameManager.MainFrame(), bctx.timeoutSettings, p.Keyboard)
+	p.Mouse = NewMouse(ctx, s, p.frameManager.MainFrame(), tos, p.Keyboard)
 	p.Touchscreen = NewTouchscreen(ctx, s, p.Keyboard)
 
 	action := target.SetAutoAttach(true, true).WithFlatten(true)
@@ -143,8 +152,10 @@ func NewPage(
 		return nil, fmt.Errorf("internal error while adding binding to page: %w", err)
 	}
 
-	if err := bctx.applyAllInitScripts(&p); err != nil {
-		return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
+	if bctx != nil {
+		if err := bctx.applyAllInitScripts(&p); err != nil {
+			return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
+		}
 	}
 
 	return &p, nil

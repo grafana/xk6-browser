@@ -46,6 +46,8 @@ type FrameSession struct {
 	manager        *FrameManager
 	networkManager *NetworkManager
 
+	opts *BrowserContextOptions
+
 	k6Metrics *k6ext.CustomMetrics
 
 	targetID target.ID
@@ -92,6 +94,11 @@ func NewFrameSession(
 		k6Metrics:            k6ext.GetCustomMetrics(ctx),
 		logger:               l,
 		serializer:           l.ConsoleLogFormatterSerializer(),
+	}
+	if p.browserCtx != nil {
+		fs.opts = p.browserCtx.opts
+	} else {
+		fs.opts = NewBrowserContextOptions()
 	}
 
 	var parentNM *NetworkManager
@@ -153,23 +160,23 @@ func NewFrameSession(
 }
 
 func (fs *FrameSession) emulateLocale() error {
-	action := emulation.SetLocaleOverride().WithLocale(fs.page.browserCtx.opts.Locale)
+	action := emulation.SetLocaleOverride().WithLocale(fs.opts.Locale)
 	if err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
 		if strings.Contains(err.Error(), "Another locale override is already in effect") {
 			return nil
 		}
-		return fmt.Errorf("emulating locale %q: %w", fs.page.browserCtx.opts.Locale, err)
+		return fmt.Errorf("emulating locale %q: %w", fs.opts.Locale, err)
 	}
 	return nil
 }
 
 func (fs *FrameSession) emulateTimezone() error {
-	action := emulation.SetTimezoneOverride(fs.page.browserCtx.opts.TimezoneID)
+	action := emulation.SetTimezoneOverride(fs.opts.TimezoneID)
 	if err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
 		if strings.Contains(err.Error(), "Timezone override is already in effect") {
 			return nil
 		}
-		return fmt.Errorf("emulating timezone %q: %w", fs.page.browserCtx.opts.TimezoneID, err)
+		return fmt.Errorf("emulating timezone %q: %w", fs.opts.TimezoneID, err)
 	}
 	return nil
 }
@@ -442,7 +449,7 @@ func (fs *FrameSession) initOptions() error {
 		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
 	var (
-		opts       = fs.manager.page.browserCtx.opts
+		opts       = fs.opts
 		optActions = []Action{}
 		state      = fs.vu.State()
 	)
@@ -983,7 +990,7 @@ func (fs *FrameSession) updateExtraHTTPHeaders(initial bool) {
 
 	// Merge extra headers from browser context and page, where page specific headers ake precedence.
 	mergedHeaders := make(network.Headers)
-	for k, v := range fs.page.browserCtx.opts.ExtraHTTPHeaders {
+	for k, v := range fs.opts.ExtraHTTPHeaders {
 		mergedHeaders[k] = v
 	}
 	for k, v := range fs.page.extraHTTPHeaders {
@@ -997,7 +1004,7 @@ func (fs *FrameSession) updateExtraHTTPHeaders(initial bool) {
 func (fs *FrameSession) updateGeolocation(initial bool) error {
 	fs.logger.Debugf("NewFrameSession:updateGeolocation", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
-	geolocation := fs.page.browserCtx.opts.Geolocation
+	geolocation := fs.opts.Geolocation
 	if !initial || geolocation != nil {
 		action := emulation.SetGeolocationOverride().
 			WithLatitude(geolocation.Latitude).
@@ -1013,7 +1020,7 @@ func (fs *FrameSession) updateGeolocation(initial bool) error {
 func (fs *FrameSession) updateHTTPCredentials(initial bool) {
 	fs.logger.Debugf("NewFrameSession:updateHttpCredentials", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
-	credentials := fs.page.browserCtx.opts.HttpCredentials
+	credentials := fs.opts.HttpCredentials
 	if !initial || credentials != nil {
 		fs.networkManager.Authenticate(credentials)
 	}
@@ -1022,7 +1029,7 @@ func (fs *FrameSession) updateHTTPCredentials(initial bool) {
 func (fs *FrameSession) updateOffline(initial bool) {
 	fs.logger.Debugf("NewFrameSession:updateOffline", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
-	offline := fs.page.browserCtx.opts.Offline
+	offline := fs.opts.Offline
 	if !initial || offline {
 		fs.networkManager.SetOfflineMode(offline)
 	}
@@ -1049,7 +1056,6 @@ func (fs *FrameSession) updateViewport() error {
 		panic(err)
 	}
 
-	opts := fs.page.browserCtx.opts
 	emulatedSize := fs.page.emulatedSize
 	if emulatedSize == nil {
 		return nil
@@ -1065,7 +1071,7 @@ func (fs *FrameSession) updateViewport() error {
 		orientation.Angle = 90.0
 		orientation.Type = emulation.OrientationTypeLandscapePrimary
 	}
-	action := emulation.SetDeviceMetricsOverride(viewport.Width, viewport.Height, opts.DeviceScaleFactor, opts.IsMobile).
+	action := emulation.SetDeviceMetricsOverride(viewport.Width, viewport.Height, fs.opts.DeviceScaleFactor, fs.opts.IsMobile).
 		WithScreenOrientation(&orientation).
 		WithScreenWidth(screen.Width).
 		WithScreenHeight(screen.Height)

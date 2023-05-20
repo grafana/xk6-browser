@@ -156,6 +156,13 @@ func (b *Browser) getDefaultBrowserContextOrByID(id cdp.BrowserContextID) *Brows
 	return browserCtx
 }
 
+// getContextOrByID returns the BrowserContext for the given page ID.
+func (b *Browser) getContextOrByID(id cdp.BrowserContextID) *BrowserContext {
+	b.contextsMu.RLock()
+	defer b.contextsMu.RUnlock()
+	return b.contexts[id]
+}
+
 func (b *Browser) getPages() []*Page {
 	b.pagesMu.RLock()
 	defer b.pagesMu.RUnlock()
@@ -229,7 +236,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 	var (
 		targetPage = ev.TargetInfo
-		browserCtx = b.getDefaultBrowserContextOrByID(targetPage.BrowserContextID)
+		browserCtx = b.getContextOrByID(targetPage.BrowserContextID)
 	)
 
 	if !b.isAttachedPageValid(ev, browserCtx) {
@@ -263,16 +270,18 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	if err != nil {
 		k6ext.Panic(b.ctx, "creating a new %s: %w", targetPage.Type, err)
 	}
-	fmt.Println("Register page)")
+	fmt.Println("Register page:", isPage)
 	b.attachNewPage(p, ev) // Register the page as an active page.
 	// Emit the page event only for pages, not for background pages.
 	// Background pages are created by extensions.
+	// If browserCtx is populated, then emit the event for the browser context, otherwise,
+	// emit the event for the browser.
 	if isPage {
-		browserCtx.emit(EventBrowserContextPage, p)
-		fmt.Println("EMITTING PAGE")
-		time.Sleep(3 * time.Second)
-		browserCtx.emit(EventBrowserPage, p)
-		fmt.Println("DONE EMITTING PAGE")
+		if browserCtx != nil {
+			browserCtx.emit(EventBrowserContextPage, p)
+		} else {
+			b.emit(EventBrowserPage, p)
+		}
 	}
 }
 
@@ -393,16 +402,18 @@ func (b *Browser) newPage() (*Page, error) {
 	targetID := make(chan target.ID, 1)
 
 	id := "none"
+	var page *Page
 	waitForPage, removeEventHandler := createWaitForEventHandler(
 		ctx,
 		b, // browser will emit the following event:
-		[]string{EventBrowserPage, EventBrowserContextPage},
+		[]string{EventBrowserPage},
 		func(e any) bool {
 			tid := <-targetID
 
 			b.logger.Debugf("Browser:newPage:createWaitForEventHandler",
 				"tid:%v ptid:%v bctxid:%v", tid, e.(*Page).targetID, id)
 
+			page = e.(*Page)
 			// we are only interested in the new page.
 			return e.(*Page).targetID == tid
 		},
@@ -418,13 +429,15 @@ func (b *Browser) newPage() (*Page, error) {
 	// let the event handler know about the new page.
 	fmt.Println("waiting for tid:", tid)
 	targetID <- tid
-	var page *Page
 	select {
 	case <-waitForPage:
 		b.logger.Debugf("Browser:newPage:<-waitForPage", "tid:%v bctxid:%v", tid, id)
-		b.pagesMu.RLock()
-		page = b.pages[tid]
-		b.pagesMu.RUnlock()
+		// b.pagesMu.RLock()
+		// page, ok = b.pages[tid]
+		// b.pagesMu.RUnlock()
+		// if !ok {
+		// 	return nil, fmt.Errorf("page not found: %v", tid)
+		// }
 	case <-ctx.Done():
 		err = &k6ext.UserFriendlyError{
 			Err:     ctx.Err(),

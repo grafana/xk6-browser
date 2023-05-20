@@ -31,5 +31,5 @@ func init() {
 }
 
 func init() {
-	k6modules.Register("k6/x/browser2", browser.New())
+	k6modules.Register("k6/x/browser", browser.New())
 }
