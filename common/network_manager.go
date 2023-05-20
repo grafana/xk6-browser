@@ -280,14 +280,14 @@ func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *n
 }
 
 func (m *NetworkManager) initDomains() error {
-	actions := []Action{network.Enable()}
+	actions := []Action{}
 
 	// Only enable the Fetch domain if necessary, as it has a performance overhead.
-	if m.userReqInterceptionEnabled {
-		actions = append(actions,
-			network.SetCacheDisabled(true),
-			fetch.Enable().WithPatterns([]*fetch.RequestPattern{{URLPattern: "*"}}))
-	}
+	// if m.userReqInterceptionEnabled {
+	// 	actions = append(actions,
+	// 		network.SetCacheDisabled(true),
+	// 		fetch.Enable().WithPatterns([]*fetch.RequestPattern{{URLPattern: "*"}}))
+	// }
 	for _, action := range actions {
 		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
 			return fmt.Errorf("initializing networking %T: %w", action, err)

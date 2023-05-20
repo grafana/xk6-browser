@@ -249,7 +249,7 @@ func (b *BrowserContext) NewPage() (api.Page, error) {
 
 	p, err := b.browser.newPageInContext(b.id)
 	if err != nil {
-		return nil, fmt.Errorf("creating new page in browser context: %w", err)
+		return nil, fmt.Errorf("creating new page in browser contextxx: %w", err)
 	}
 
 	var (

@@ -140,6 +140,8 @@ func createWaitForEventHandler(
 			case <-evCancelCtx.Done():
 				return
 			case ev := <-chEvHandler:
+				panic(32)
+				fmt.Println("           ---> EVENT:", ev.typ, stringSliceContains(events, ev.typ))
 				if stringSliceContains(events, ev.typ) {
 					if predicateFn != nil {
 						if predicateFn(ev.data) {

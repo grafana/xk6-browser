@@ -190,6 +190,8 @@ func (b *Browser) initEvents() error {
 			case <-cancelCtx.Done():
 				return
 			case event := <-chHandler:
+				// fmt.Printf("EVENT: Browser:initEvents:chHandler event: %v type: %T\n\n", event.data, event.data)
+				// time.Sleep(time.Second)
 				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
 					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
 					b.onAttachedToTarget(ev)
@@ -253,6 +255,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		}
 		b.pagesMu.RUnlock()
 	}
+
 	p, err := NewPage(b.ctx, session, browserCtx, targetPage.TargetID, opener, isPage, b.logger)
 	if err != nil && b.isPageAttachmentErrorIgnorable(ev, session, err) {
 		return // Ignore this page.
@@ -267,8 +270,9 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	if isPage {
 		browserCtx.emit(EventBrowserContextPage, p)
 		fmt.Println("EMITTING PAGE")
-		time.Sleep(time.Second)
+		time.Sleep(3 * time.Second)
 		browserCtx.emit(EventBrowserPage, p)
+		fmt.Println("DONE EMITTING PAGE")
 	}
 }
 
@@ -391,8 +395,8 @@ func (b *Browser) newPage() (*Page, error) {
 	id := "none"
 	waitForPage, removeEventHandler := createWaitForEventHandler(
 		ctx,
-		b, // browser context will emit the following event:
-		[]string{EventBrowserPage},
+		b, // browser will emit the following event:
+		[]string{EventBrowserPage, EventBrowserContextPage},
 		func(e any) bool {
 			tid := <-targetID
 
@@ -469,6 +473,7 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 		return nil, fmt.Errorf("creating a new blank page: %w", err)
 	}
 	// let the event handler know about the new page.
+	fmt.Println("waiting for tid:", tid)
 	targetID <- tid
 	var page *Page
 	select {
