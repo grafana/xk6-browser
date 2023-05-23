@@ -448,3 +448,20 @@ func TestLocatorPress(t *testing.T) {
 
 	require.Equal(t, "AbC", l.InputValue(nil))
 }
+
+// Test Shadow DOM Piercing
+func TestLocatorShadowDOM(t *testing.T) {
+	t.Parallel()
+
+	timeout := func(tb *testBrowser) goja.Value {
+		return tb.toGojaValue(jsFrameBaseOpts{Timeout: "1000"})
+	}
+	tb := newTestBrowser(t, withFileServer())
+	p := tb.NewPage(nil)
+
+	_, err := p.Goto(tb.staticURL("shadow-dom-link.html"), nil)
+	require.NoError(t, err)
+
+	err = p.Click("#inner-link", timeout(tb))
+	require.NoError(t, err)
+}
