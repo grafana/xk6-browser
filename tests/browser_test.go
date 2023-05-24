@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/k6ext/k6test"
 )
 
 func TestBrowserNewPage(t *testing.T) {
@@ -141,14 +142,21 @@ func TestBrowserUserAgent(t *testing.T) {
 }
 
 func TestBrowserCrashErr(t *testing.T) {
-	t.Parallel()
+	vu := k6test.NewVU(t)
+	rt := vu.Runtime()
+	mod := browser.New().NewModuleInstance(vu)
+	jsMod, ok := mod.Exports().Default.(*browser.JSModule)
+	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
 
-	assertExceptionContains(t, goja.New(), func() {
-		lopts := defaultBrowserOpts()
-		lopts.Args = []string{"remote-debugging-port=99999"}
+	vu.MoveToVUContext()
+	t.Setenv("K6_BROWSER_ARGS", "remote-debugging-port=99999")
 
-		newTestBrowser(t, lopts)
-	}, "launching browser: Invalid devtools server port")
+	require.NoError(t, rt.Set("chromium", jsMod.Chromium))
+	_, err := rt.RunString(`
+		const b = chromium.launch();
+		b.close();
+	`)
+	assert.ErrorContains(t, err, "launching browser: Invalid devtools server port")
 }
 
 func TestBrowserLogIterationID(t *testing.T) {
