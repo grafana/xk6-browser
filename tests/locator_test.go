@@ -453,15 +453,13 @@ func TestLocatorPress(t *testing.T) {
 func TestLocatorShadowDOM(t *testing.T) {
 	t.Parallel()
 
-	timeout := func(tb *testBrowser) goja.Value {
-		return tb.toGojaValue(jsFrameBaseOpts{Timeout: "1000"})
-	}
 	tb := newTestBrowser(t, withFileServer())
 	p := tb.NewPage(nil)
+	opts := tb.toGojaValue(jsFrameBaseOpts{Timeout: "1000"})
 
 	_, err := p.Goto(tb.staticURL("shadow-dom-link.html"), nil)
 	require.NoError(t, err)
 
-	err = p.Click("#inner-link", timeout(tb))
+	err = p.Click("#inner-link", opts)
 	require.NoError(t, err)
 }
