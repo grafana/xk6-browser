@@ -16,12 +16,11 @@ customElements.define('my-link',
   }
 );
 
-window.clickCount = 0;
 </script>
 </head>
 <body>
 <template id="my-link-template">
-  <a href="#" id="inner-link" onclick="clickCount++"><slot></slot></a>
+  <a href="#" id="inner-link"><slot></slot></a>
 </template>
 <my-link>Sign up</my-link>
 </body>
