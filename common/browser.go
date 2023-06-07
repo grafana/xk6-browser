@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/otel"
 
 	k6modules "go.k6.io/k6/js/modules"
 
@@ -535,6 +536,9 @@ func (b *Browser) NewContext(opts goja.Value) (api.BrowserContext, error) {
 
 // NewPage creates a new tab in the browser window.
 func (b *Browser) NewPage(ctx context.Context, opts goja.Value) (api.Page, error) {
+	_, span := otel.Trace(ctx, "Browser.NewPage")
+	defer span.End()
+
 	browserCtx, err := b.NewContext(opts)
 	if err != nil {
 		return nil, fmt.Errorf("new page: %w", err)
