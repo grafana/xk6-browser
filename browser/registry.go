@@ -16,9 +16,12 @@ import (
 	"github.com/grafana/xk6-browser/chromium"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
+	"github.com/grafana/xk6-browser/otel"
 
 	k6event "go.k6.io/k6/event"
 	k6modules "go.k6.io/k6/js/modules"
+
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // errBrowserNotFoundInRegistry indicates that the browser instance
@@ -344,4 +347,99 @@ func isBrowserIter(vu k6modules.VU) bool {
 	opts := k6ext.GetScenarioOpts(vu.Context(), vu)
 	_, ok := opts["type"] // Check if browser type option is set
 	return ok
+}
+
+// trace represents a traces registry entry which holds the
+// root span for the trace and a context that wraps that span.
+type trace struct {
+	ctx      context.Context
+	rootSpan oteltrace.Span
+}
+
+type tracesRegistry struct {
+	ctx context.Context
+	tp  otel.TraceProvider
+
+	mu sync.Mutex
+	m  map[string]*trace
+}
+
+func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRegistry, error) {
+	if !isTracingEnabled(envLookup) {
+		return &tracesRegistry{
+			ctx: ctx,
+			tp:  otel.NewNoopTraceProvider(),
+			m:   make(map[string]*trace),
+		}, nil
+	}
+
+	// TODO: Default fallback to HTTP and localhost:4318?
+	// Seems like we are missing logging in registries/mapping layer
+	endpoint, proto, insecure := parseTracingConfig(envLookup)
+	if endpoint == "" || proto == "" {
+		return nil, errors.New(
+			"tracing is enabled but K6_BROWSER_TRACING_ENDPOINT or K6_BROWSER_TRACING_PROTO were not set",
+		)
+	}
+
+	tp, err := otel.NewTraceProvider(ctx, proto, endpoint, insecure)
+	if err != nil {
+		return nil, fmt.Errorf("creating trace provider: %w", err)
+	}
+
+	return &tracesRegistry{
+		tp: tp,
+		m:  make(map[string]*trace),
+	}, nil
+}
+
+func isTracingEnabled(envLookup env.LookupFunc) bool {
+	vs, ok := envLookup(env.EnableTracing)
+	if !ok {
+		return false
+	}
+
+	v, err := strconv.ParseBool(vs)
+	return err == nil && v
+}
+
+func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto string, insecure bool) {
+	endpoint, _ = envLookup(env.TracingEndpoint)
+	proto, _ = envLookup(env.TracingProto)
+	insecureStr, _ := envLookup(env.TracingInsecure)
+	insecure, _ = strconv.ParseBool(insecureStr)
+
+	return endpoint, proto, insecure
+}
+
+func (r *tracesRegistry) traceCtx(id string) context.Context {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if t, ok := r.m[id]; ok {
+		return t.ctx
+	}
+
+	// TODO: Move trace initialization to IterStart event handling
+	// once integrated with k6 event system.
+	spanCtx, span := otel.Trace(r.ctx, "IterStart")
+
+	r.m[id] = &trace{
+		ctx:      spanCtx,
+		rootSpan: span,
+	}
+
+	return spanCtx
+}
+
+// TODO: Move trace end to IterEnd event handling
+// once integrated with k6 event system.
+func (r *tracesRegistry) endTrace(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if t, ok := r.m[id]; ok {
+		t.rootSpan.End()
+		delete(r.m, id)
+	}
 }
