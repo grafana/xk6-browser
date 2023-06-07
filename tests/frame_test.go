@@ -17,7 +17,7 @@ func TestFramePress(t *testing.T) {
 
 	tb := newTestBrowser(t)
 
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 
 	p.SetContent(`<input id="text1">`, nil)
 
@@ -45,7 +45,7 @@ func TestFrameDismissDialogBox(t *testing.T) {
 
 			var (
 				tb = newTestBrowser(t, withFileServer())
-				p  = tb.NewPage(nil)
+				p  = tb.NewPage(context.Background(), nil)
 			)
 
 			opts := tb.toGojaValue(struct {
@@ -89,7 +89,7 @@ func TestFrameNoPanicWithEmbeddedIFrame(t *testing.T) {
 		withEnvLookup(env.ConstLookup(env.BrowserHeadless, "0")),
 	)
 
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 	_, err := p.Goto(
 		tb.staticURL("embedded_iframe.html"),
 		tb.toGojaValue(struct {
@@ -123,7 +123,7 @@ func TestFrameNoPanicNavigateAndClickOnPageWithIFrames(t *testing.T) {
 		withFileServer(),
 		withEnvLookup(env.ConstLookup(env.BrowserHeadless, "0")),
 	)
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 	tb.withHandler("/iframeSignIn", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, tb.staticURL("iframe_signin.html"), http.StatusMovedPermanently)
 	})
@@ -148,7 +148,7 @@ func TestFrameNoPanicNavigateAndClickOnPageWithIFrames(t *testing.T) {
 func TestFrameTitle(t *testing.T) {
 	t.Parallel()
 
-	p := newTestBrowser(t).NewPage(nil)
+	p := newTestBrowser(t).NewPage(context.Background(), nil)
 	p.SetContent(`<html><head><title>Some title</title></head></html>`, nil)
 	assert.Equal(t, "Some title", p.MainFrame().Title())
 }

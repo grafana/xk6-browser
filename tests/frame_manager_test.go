@@ -31,7 +31,7 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			opts := tb.toGojaValue(&common.FrameGotoOptions{
 				WaitUntil: common.LifecycleEventNetworkIdle,
@@ -63,7 +63,7 @@ func TestWaitForFrameNavigation(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t, withHTTPServer())
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 
 	tb.withHandler("/first", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, `

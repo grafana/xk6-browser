@@ -1,6 +1,10 @@
 package api
 
-import "github.com/dop251/goja"
+import (
+	"context"
+
+	"github.com/dop251/goja"
+)
 
 // Browser is the public interface of a CDP browser.
 type Browser interface {
@@ -8,7 +12,7 @@ type Browser interface {
 	Context() BrowserContext
 	IsConnected() bool
 	NewContext(opts goja.Value) (BrowserContext, error)
-	NewPage(opts goja.Value) (Page, error)
+	NewPage(ctx context.Context, opts goja.Value) (Page, error)
 	On(string) (bool, error)
 	UserAgent() string
 	Version() string

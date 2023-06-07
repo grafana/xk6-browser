@@ -20,7 +20,7 @@ func TestWebVitalMetric(t *testing.T) {
 	var (
 		samples  = make(chan k6metrics.SampleContainer)
 		browser  = newTestBrowser(t, withFileServer(), withSamples(samples))
-		page     = browser.NewPage(nil)
+		page     = browser.NewPage(context.Background(), nil)
 		expected = map[string]bool{
 			"browser_web_vital_ttfb": false,
 			"browser_web_vital_fcp":  false,
@@ -111,7 +111,7 @@ func TestWebVitalMetricNoInteraction(t *testing.T) {
 		}
 	}()
 
-	page := browser.NewPage(nil)
+	page := browser.NewPage(context.Background(), nil)
 	resp, err := page.Goto(
 		browser.staticURL("web_vitals.html"),
 		browser.toGojaValue(map[string]any{
@@ -119,6 +119,7 @@ func TestWebVitalMetricNoInteraction(t *testing.T) {
 			"waitUntil": "networkidle",
 		}),
 	)
+
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 

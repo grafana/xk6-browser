@@ -24,11 +24,11 @@ func TestBrowserNewPage(t *testing.T) {
 	t.Parallel()
 
 	b := newTestBrowser(t)
-	p1 := b.NewPage(nil)
+	p1 := b.NewPage(context.Background(), nil)
 	c := b.Context()
 	assert.NotNil(t, c)
 
-	_, err := b.Browser.NewPage(nil)
+	_, err := b.Browser.NewPage(context.Background(), nil)
 	assert.EqualError(t, err, "new page: existing browser context must be closed before creating a new one")
 
 	err = p1.Close(nil)
@@ -36,14 +36,14 @@ func TestBrowserNewPage(t *testing.T) {
 	c = b.Context()
 	assert.NotNil(t, c)
 
-	_, err = b.Browser.NewPage(nil)
+	_, err = b.Browser.NewPage(context.Background(), nil)
 	assert.EqualError(t, err, "new page: existing browser context must be closed before creating a new one")
 
 	b.Context().Close()
 	c = b.Context()
 	assert.Nil(t, c)
 
-	_ = b.NewPage(nil)
+	_ = b.NewPage(context.Background(), nil)
 	c = b.Context()
 	assert.NotNil(t, c)
 }
@@ -87,7 +87,7 @@ func TestTmpDirCleanup(t *testing.T) {
 		withSkipClose(),
 		withEnvLookup(env.ConstLookup("TMPDIR", tmpDirPath)),
 	)
-	p := b.NewPage(nil)
+	p := b.NewPage(context.Background(), nil)
 	err = p.Close(nil)
 	require.NoError(t, err)
 

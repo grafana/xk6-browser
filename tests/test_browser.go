@@ -256,10 +256,10 @@ func withSkipClose() func(*testBrowser) {
 
 // NewPage is a wrapper around Browser.NewPage that fails the test if an
 // error occurs. Added this helper to avoid boilerplate code in tests.
-func (b *testBrowser) NewPage(opts goja.Value) *common.Page {
+func (b *testBrowser) NewPage(ctx context.Context, opts goja.Value) *common.Page {
 	b.t.Helper()
 
-	p, err := b.Browser.NewPage(opts)
+	p, err := b.Browser.NewPage(ctx, opts)
 	require.NoError(b.t, err)
 
 	pp, ok := p.(*common.Page)

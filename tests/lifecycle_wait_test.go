@@ -147,7 +147,7 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			withHomeHandler(t, tb, "lifecycle.html?pingCount=10")
 			withPingHandler(t, tb, tt.pingSlowness, nil)
@@ -285,7 +285,7 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			withHomeHandler(t, tb, "lifecycle.html?pingCount=10")
 			withPingHandler(t, tb, tt.pingSlowness, nil)
@@ -380,7 +380,7 @@ func TestLifecycleReload(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			withHomeHandler(t, tb, "lifecycle.html?pingCount=10")
 			withPingHandler(t, tb, tt.pingSlowness, nil)
@@ -476,7 +476,7 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			withHomeHandler(t, tb, "lifecycle_main_frame.html")
 			withSubHandler(t, tb, "lifecycle.html?pingCount=10")
@@ -548,7 +548,7 @@ func TestLifecycleGoto(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			withHomeHandler(t, tb, "lifecycle.html?pingCount=10")
 			withPingHandler(t, tb, tt.pingSlowness, nil)
@@ -570,11 +570,13 @@ func TestLifecycleGoto(t *testing.T) {
 func TestLifecycleGotoNetworkIdle(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	t.Run("doesn't timeout waiting for networkIdle", func(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t, withHTTPServer())
-		p := tb.NewPage(nil)
+		p := tb.NewPage(ctx, nil)
 		tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, `
 			<html>
@@ -601,7 +603,7 @@ func TestLifecycleGotoNetworkIdle(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t, withFileServer())
-		p := tb.NewPage(nil)
+		p := tb.NewPage(ctx, nil)
 
 		withHomeHandler(t, tb, "lifecycle.html?pingCount=4")
 		ch := make(chan bool)
@@ -623,7 +625,7 @@ func TestLifecycleGotoNetworkIdle(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t, withFileServer())
-		p := tb.NewPage(nil)
+		p := tb.NewPage(ctx, nil)
 
 		withHomeHandler(t, tb, "lifecycle_no_ping_js.html")
 		withPingHandler(t, tb, 50*time.Millisecond, nil)

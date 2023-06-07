@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -19,7 +20,7 @@ func TestURLSkipRequest(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t, withLogCache())
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 
 	_, err := p.Goto("data:text/html,hello", nil)
 	require.NoError(t, err)
@@ -39,7 +40,7 @@ func TestBlockHostnames(t *testing.T) {
 	require.NoError(t, err)
 	tb.vu.State().Options.BlockedHostnames = blocked
 
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 
 	res, err := p.Goto("http://host.test/", nil)
 	require.NoError(t, err)
@@ -60,7 +61,7 @@ func TestBlockIPs(t *testing.T) {
 	require.NoError(t, err)
 	tb.vu.State().Options.BlacklistIPs = []*k6lib.IPNet{ipnet}
 
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 	res, err := p.Goto("http://10.0.0.1:8000/", nil)
 	require.NoError(t, err)
 	require.Nil(t, res)

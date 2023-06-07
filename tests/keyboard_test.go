@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	_ "embed"
 	"runtime"
 	"testing"
@@ -18,7 +19,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 		layout := keyboardlayout.GetKeyboardLayout("us")
 
@@ -33,7 +34,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<input>`, nil)
@@ -52,7 +53,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<input>`, nil)
@@ -79,7 +80,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 		t.Skip("FIXME") // See https://github.com/grafana/xk6-browser/issues/424
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<input>`, nil)
@@ -106,7 +107,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<textarea>`, nil)
@@ -122,7 +123,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<textarea>`, nil)
@@ -150,7 +151,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<textarea>`, nil)
@@ -169,7 +170,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<textarea>`, nil)
@@ -189,7 +190,7 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		p := tb.NewPage(nil)
+		p := tb.NewPage(context.Background(), nil)
 		kb := p.GetKeyboard()
 
 		p.SetContent(`<input>`, nil)
