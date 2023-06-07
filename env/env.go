@@ -65,6 +65,26 @@ const (
 	LogCategoryFilter = "K6_BROWSER_LOG_CATEGORY_FILTER"
 )
 
+// Tracing.
+const (
+	// EnableTracing is an environment variable that can be used to
+	// enable traces generation during execution.
+	EnableTracing = "K6_BROWSER_TRACING_ENABLED"
+
+	// TracingEndpoint is an environment variable that can be used to
+	// define the endpoint to which push traces to.
+	TracingEndpoint = "K6_BROWSER_TRACING_ENDPOINT"
+
+	// TracingProto is an environment variable that can be used to
+	// define the protocol to use when pushing traces.
+	// Currently only HTTP is supported.
+	TracingProto = "K6_BROWSER_TRACING_PROTO"
+
+	// TracingInsecure is an environment variable that can be used to
+	// allow pushing traces through an insecure channel without using TLS.
+	TracingInsecure = "K6_BROWSER_TRACING_INSECURE"
+)
+
 // LookupFunc defines a function to look up a key from the environment.
 type LookupFunc func(key string) (string, bool)
 
