@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+
 	"github.com/dop251/goja"
 )
 
@@ -17,7 +19,7 @@ type BrowserContext interface {
 	ExposeFunction(name string, callback goja.Callable)
 	GrantPermissions(permissions []string, opts goja.Value)
 	NewCDPSession() CDPSession
-	NewPage() (Page, error)
+	NewPage(ctx context.Context) (Page, error)
 	Pages() []Page
 	Route(url goja.Value, handler goja.Callable)
 	SetDefaultNavigationTimeout(timeout int64)

@@ -96,7 +96,7 @@ func TestBasicAuth(t *testing.T) {
 				},
 			}))
 		require.NoError(t, err)
-		p, err := bc.NewPage()
+		p, err := bc.NewPage(context.Background())
 		require.NoError(t, err)
 
 		opts := browser.toGojaValue(struct {

@@ -547,7 +547,7 @@ func (b *Browser) NewPage(ctx context.Context, opts goja.Value) (api.Page, error
 		return nil, fmt.Errorf("new page: %w", err)
 	}
 
-	return browserCtx.NewPage()
+	return browserCtx.NewPage(ctx)
 }
 
 // On returns a Promise that is resolved when the browser process is disconnected.

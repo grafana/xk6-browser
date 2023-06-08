@@ -52,7 +52,8 @@ func TestBrowserContextOptionsSetViewport(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t)
-	bctx, err := tb.NewContext(context.Background(), tb.toGojaValue(struct {
+	ctx := context.Background()
+	bctx, err := tb.NewContext(ctx, tb.toGojaValue(struct {
 		Viewport common.Viewport `js:"viewport"`
 	}{
 		Viewport: common.Viewport{
@@ -62,7 +63,7 @@ func TestBrowserContextOptionsSetViewport(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	t.Cleanup(bctx.Close)
-	p, err := bctx.NewPage()
+	p, err := bctx.NewPage(ctx)
 	require.NoError(t, err)
 
 	viewportSize := p.ViewportSize()
@@ -74,7 +75,8 @@ func TestBrowserContextOptionsExtraHTTPHeaders(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t, withHTTPServer())
-	bctx, err := tb.NewContext(context.Background(), tb.toGojaValue(struct {
+	ctx := context.Background()
+	bctx, err := tb.NewContext(ctx, tb.toGojaValue(struct {
 		ExtraHTTPHeaders map[string]string `js:"extraHTTPHeaders"`
 	}{
 		ExtraHTTPHeaders: map[string]string{
@@ -83,7 +85,7 @@ func TestBrowserContextOptionsExtraHTTPHeaders(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	t.Cleanup(bctx.Close)
-	p, err := bctx.NewPage()
+	p, err := bctx.NewPage(ctx)
 	require.NoError(t, err)
 
 	err = tb.awaitWithTimeout(time.Second*5, func() error {
