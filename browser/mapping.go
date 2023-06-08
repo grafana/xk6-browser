@@ -681,7 +681,7 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 			return rt.ToValue(mpages).ToObject(rt)
 		},
 		"newPage": func() (mapping, error) {
-			page, err := bc.NewPage(context.Background())
+			page, err := bc.NewPage(vu.traceCtx(iterID(vu)))
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}

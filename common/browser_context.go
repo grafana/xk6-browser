@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/otel"
 
 	k6modules "go.k6.io/k6/js/modules"
 
@@ -236,6 +237,8 @@ func (b *BrowserContext) NewCDPSession() api.CDPSession {
 // NewPage creates a new page inside this browser context.
 func (b *BrowserContext) NewPage(ctx context.Context) (api.Page, error) {
 	b.logger.Debugf("BrowserContext:NewPage", "bctxid:%v", b.id)
+	_, span := otel.Trace(ctx, "BrowserContext.NewPage")
+	defer span.End()
 
 	p, err := b.browser.newPageInContext(b.id)
 	if err != nil {
