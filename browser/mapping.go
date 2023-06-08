@@ -478,7 +478,7 @@ func mapPage(vu moduleVU, p api.Page) mapping {
 		"goForward": p.GoForward,
 		"goto": func(url string, opts goja.Value) *goja.Promise {
 			return k6ext.Promise(vu.Context(), func() (any, error) {
-				resp, err := p.Goto(url, opts)
+				resp, err := p.Goto(context.Background(), url, opts)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
@@ -681,7 +681,7 @@ func mapBrowserContext(vu moduleVU, bc api.BrowserContext) mapping {
 			return rt.ToValue(mpages).ToObject(rt)
 		},
 		"newPage": func() (mapping, error) {
-			page, err := bc.NewPage(vu.traceCtx(iterID(vu)))
+			page, err := bc.NewPage(context.Background())
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}

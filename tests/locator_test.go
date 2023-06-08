@@ -222,7 +222,7 @@ func TestLocator(t *testing.T) {
 
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(ctx, nil)
-			_, err := p.Goto(tb.staticURL("locators.html"), nil)
+			_, err := p.Goto(ctx, tb.staticURL("locators.html"), nil)
 			tt.do(tb, p)
 			require.NoError(t, err)
 		})
@@ -317,7 +317,7 @@ func TestLocator(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(ctx, nil)
 
-			_, err := p.Goto(tb.staticURL("locators.html"), nil)
+			_, err := p.Goto(ctx, tb.staticURL("locators.html"), nil)
 			require.NoError(t, err)
 
 			assert.Panics(t, func() {
@@ -371,7 +371,7 @@ func TestLocatorElementState(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(ctx, nil)
 
-			_, err := p.Goto(tb.staticURL("locators.html"), nil)
+			_, err := p.Goto(ctx, tb.staticURL("locators.html"), nil)
 			require.NoError(t, err)
 
 			l := p.Locator("#inputText", nil)
@@ -429,7 +429,7 @@ func TestLocatorElementState(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(ctx, nil)
 
-			_, err := p.Goto(tb.staticURL("locators.html"), nil)
+			_, err := p.Goto(ctx, tb.staticURL("locators.html"), nil)
 			assert.Panics(t, func() {
 				tt.do(p.Locator("a", nil), tb)
 			})
@@ -463,7 +463,7 @@ func TestLocatorShadowDOM(t *testing.T) {
 	p := tb.NewPage(context.Background(), nil)
 	opts := tb.toGojaValue(jsFrameBaseOpts{Timeout: "1000"})
 
-	_, err := p.Goto(tb.staticURL("shadow_dom_link.html"), nil)
+	_, err := p.Goto(context.Background(), tb.staticURL("shadow_dom_link.html"), nil)
 	require.NoError(t, err)
 
 	err = p.Click("#inner-link", opts)

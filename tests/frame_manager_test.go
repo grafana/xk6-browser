@@ -30,14 +30,15 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
 			tb := newTestBrowser(t, withFileServer())
-			p := tb.NewPage(context.Background(), nil)
+			p := tb.NewPage(ctx, nil)
 
 			opts := tb.toGojaValue(&common.FrameGotoOptions{
 				WaitUntil: common.LifecycleEventNetworkIdle,
 				Timeout:   time.Duration(timeout.Milliseconds()), // interpreted as ms
 			})
-			resp, err := p.Goto(tb.staticURL("/nav_in_doc.html"), opts)
+			resp, err := p.Goto(ctx, tb.staticURL("/nav_in_doc.html"), opts)
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 
@@ -62,8 +63,9 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 func TestWaitForFrameNavigation(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	tb := newTestBrowser(t, withHTTPServer())
-	p := tb.NewPage(context.Background(), nil)
+	p := tb.NewPage(ctx, nil)
 
 	tb.withHandler("/first", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, `
@@ -94,7 +96,7 @@ func TestWaitForFrameNavigation(t *testing.T) {
 		WaitUntil: common.LifecycleEventNetworkIdle,
 		Timeout:   common.DefaultTimeout,
 	})
-	_, err := p.Goto(tb.url("/first"), opts)
+	_, err := p.Goto(context.Background(), tb.url("/first"), opts)
 	require.NoError(t, err)
 
 	waitForNav := func() error {

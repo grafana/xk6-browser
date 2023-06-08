@@ -18,6 +18,7 @@ func TestWebVitalMetric(t *testing.T) {
 	t.Parallel()
 
 	var (
+		ctx      = context.Background()
 		samples  = make(chan k6metrics.SampleContainer)
 		browser  = newTestBrowser(t, withFileServer(), withSamples(samples))
 		page     = browser.NewPage(context.Background(), nil)
@@ -52,7 +53,7 @@ func TestWebVitalMetric(t *testing.T) {
 		}
 	}()
 
-	resp, err := page.Goto(browser.staticURL("/web_vitals.html"), nil)
+	resp, err := page.Goto(ctx, browser.staticURL("/web_vitals.html"), nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -113,6 +114,7 @@ func TestWebVitalMetricNoInteraction(t *testing.T) {
 
 	page := browser.NewPage(context.Background(), nil)
 	resp, err := page.Goto(
+		context.Background(),
 		browser.staticURL("web_vitals.html"),
 		browser.toGojaValue(map[string]any{
 			// wait until the page is completely loaded.

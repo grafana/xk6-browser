@@ -138,11 +138,12 @@ func TestPageEvaluate(t *testing.T) {
 func TestPageGoto(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	b := newTestBrowser(t, withFileServer())
-	p := b.NewPage(context.Background(), nil)
+	p := b.NewPage(ctx, nil)
 
 	url := b.staticURL("empty.html")
-	r, err := p.Goto(url, nil)
+	r, err := p.Goto(ctx, url, nil)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	assert.Equal(t, url, r.URL(), `expected URL to be %q, result of navigation was %q`, url, r.URL())
@@ -151,10 +152,11 @@ func TestPageGoto(t *testing.T) {
 func TestPageGotoDataURI(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	b := newTestBrowser(t)
-	p := b.NewPage(context.Background(), nil)
+	p := b.NewPage(ctx, nil)
 
-	r, err := p.Goto("data:text/html,hello", nil)
+	r, err := p.Goto(ctx, "data:text/html,hello", nil)
 	require.NoError(t, err)
 	assert.Nil(t, r, `expected response to be nil`)
 	require.NoError(t, err)
@@ -163,15 +165,16 @@ func TestPageGotoDataURI(t *testing.T) {
 func TestPageGotoWaitUntilLoad(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	b := newTestBrowser(t, withFileServer())
-	p := b.NewPage(context.Background(), nil)
+	p := b.NewPage(ctx, nil)
 
 	opts := b.toGojaValue(struct {
 		WaitUntil string `js:"waitUntil"`
 	}{
 		WaitUntil: "load",
 	})
-	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
+	_, err := p.Goto(ctx, b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
 	var (
 		results = p.Evaluate(b.toGojaValue("() => window.results"))
@@ -188,15 +191,16 @@ func TestPageGotoWaitUntilLoad(t *testing.T) {
 func TestPageGotoWaitUntilDOMContentLoaded(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	b := newTestBrowser(t, withFileServer())
-	p := b.NewPage(context.Background(), nil)
+	p := b.NewPage(ctx, nil)
 
 	opts := b.toGojaValue(struct {
 		WaitUntil string `js:"waitUntil"`
 	}{
 		WaitUntil: "domcontentloaded",
 	})
-	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
+	_, err := p.Goto(ctx, b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
 	var (
 		results = p.Evaluate(b.toGojaValue("() => window.results"))
@@ -463,16 +467,17 @@ func TestPageTitle(t *testing.T) {
 func TestPageSetExtraHTTPHeaders(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	b := newTestBrowser(t, withHTTPServer())
 
-	p := b.NewPage(context.Background(), nil)
+	p := b.NewPage(ctx, nil)
 
 	headers := map[string]string{
 		"Some-Header": "Some-Value",
 	}
 	p.SetExtraHTTPHeaders(headers)
 
-	resp, err := p.Goto(b.url("/get"), nil)
+	resp, err := p.Goto(context.Background(), b.url("/get"), nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -716,7 +721,7 @@ func TestPageURL(t *testing.T) {
 	p := b.NewPage(context.Background(), nil)
 	assert.Equal(t, common.BlankPage, p.URL())
 
-	resp, err := p.Goto(b.url("/get"), nil)
+	resp, err := p.Goto(context.Background(), b.url("/get"), nil)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Regexp(t, "http://.*/get", p.URL())
@@ -1042,7 +1047,7 @@ func TestPageTimeout(t *testing.T) {
 				fmt.Fprintf(w, `sorry for being so slow`)
 			})
 
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			if tc.defaultTimeout != 0 {
 				p.SetDefaultTimeout(tc.defaultTimeout.Milliseconds())
@@ -1100,7 +1105,7 @@ func TestPageWaitForSelector(t *testing.T) {
 
 			tb := newTestBrowser(t, withFileServer())
 
-			page := tb.NewPage(nil)
+			page := tb.NewPage(context.Background(), nil)
 			_, err := page.Goto(tb.staticURL(tc.url), nil)
 			require.NoError(t, err)
 

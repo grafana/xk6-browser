@@ -550,7 +550,7 @@ func TestBrowserContextCookies(t *testing.T) {
 			// the setupHandler can set some cookies
 			// that will be received by the browser context.
 			tb.withHandler("/empty", tt.setupHandler)
-			_, err := p.Goto(tb.url("/empty"), nil)
+			_, err := p.Goto(context.Background(), tb.url("/empty"), nil)
 			require.NoErrorf(t,
 				err, "failed to open an empty page",
 			)
@@ -625,7 +625,7 @@ func TestK6Object(t *testing.T) {
 	p := b.NewPage(context.Background(), nil)
 
 	url := b.staticURL("empty.html")
-	r, err := p.Goto(url, nil)
+	r, err := p.Goto(context.Background(), url, nil)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 
@@ -680,7 +680,7 @@ func TestBrowserContextTimeout(t *testing.T) {
 				bc.SetDefaultNavigationTimeout(tc.defaultNavigationTimeout.Milliseconds())
 			}
 
-			p, err := bc.NewPage()
+			p, err := bc.NewPage(context.Background())
 			require.NoError(t, err)
 
 			res, err := p.Goto(tb.url("/slow"), nil)
@@ -768,7 +768,7 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 				},
 				func() error {
 					var err error
-					p2, err = bc.NewPage()
+					p2, err = bc.NewPage(context.Background())
 					return err
 				},
 			)

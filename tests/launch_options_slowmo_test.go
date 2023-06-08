@@ -19,6 +19,8 @@ func TestBrowserOptionsSlowMo(t *testing.T) {
 		t.Skip()
 	}
 
+	ctx := context.Background()
+
 	t.Run("Page", func(t *testing.T) {
 		t.Parallel()
 		t.Run("check", func(t *testing.T) {
@@ -93,7 +95,7 @@ func TestBrowserOptionsSlowMo(t *testing.T) {
 			t.Parallel()
 			tb := newTestBrowser(t, withFileServer())
 			testPageSlowMoImpl(t, tb, func(_ *testBrowser, p *common.Page) {
-				_, err := p.Goto(common.BlankPage, nil)
+				_, err := p.Goto(ctx, common.BlankPage, nil)
 				require.NoError(t, err)
 			})
 		})

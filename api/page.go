@@ -1,6 +1,10 @@
 package api
 
-import "github.com/dop251/goja"
+import (
+	"context"
+
+	"github.com/dop251/goja"
+)
 
 // Page is the interface of a single browser tab.
 type Page interface {
@@ -32,7 +36,7 @@ type Page interface {
 	GetTouchscreen() Touchscreen
 	GoBack(opts goja.Value) Response
 	GoForward(opts goja.Value) Response
-	Goto(url string, opts goja.Value) (Response, error)
+	Goto(ctx context.Context, url string, opts goja.Value) (Response, error)
 	Hover(selector string, opts goja.Value)
 	InnerHTML(selector string, opts goja.Value) string
 	InnerText(selector string, opts goja.Value) string
