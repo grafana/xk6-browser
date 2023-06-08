@@ -710,7 +710,7 @@ func (p *Page) GoForward(opts goja.Value) api.Response {
 // Goto will navigate the page to the specified URL and return a HTTP response object.
 func (p *Page) Goto(ctx context.Context, url string, opts goja.Value) (api.Response, error) {
 	p.logger.Debugf("Page:Goto", "sid:%v url:%q", p.sessionID(), url)
-	_, span := otel.Trace(ctx, "Page.Goto", trace.WithAttributes(attribute.String("url", url)))
+	ctx, span := otel.Trace(ctx, "Page.Goto", trace.WithAttributes(attribute.String("url", url)))
 	defer span.End()
 
 	return p.MainFrame().Goto(ctx, url, opts)

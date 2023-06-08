@@ -330,7 +330,7 @@ func mapFrame(vu moduleVU, f api.Frame) mapping {
 		"getAttribute": f.GetAttribute,
 		"goto": func(url string, opts goja.Value) *goja.Promise {
 			return k6ext.Promise(vu.Context(), func() (any, error) {
-				resp, err := f.Goto(context.Background(), url, opts)
+				resp, err := f.Goto(vu.traceCtx(iterID(vu)), url, opts)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
