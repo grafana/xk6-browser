@@ -683,7 +683,7 @@ func TestBrowserContextTimeout(t *testing.T) {
 			p, err := bc.NewPage(context.Background())
 			require.NoError(t, err)
 
-			res, err := p.Goto(tb.url("/slow"), nil)
+			res, err := p.Goto(context.Background(), tb.url("/slow"), nil)
 			require.Nil(t, res)
 			assert.ErrorContains(t, err, "timed out after")
 		})

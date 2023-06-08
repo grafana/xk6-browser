@@ -1056,7 +1056,7 @@ func TestPageTimeout(t *testing.T) {
 				p.SetDefaultNavigationTimeout(tc.defaultNavigationTimeout.Milliseconds())
 			}
 
-			res, err := p.Goto(tb.url("/slow"), nil)
+			res, err := p.Goto(context.Background(), tb.url("/slow"), nil)
 			require.Nil(t, res)
 			assert.ErrorContains(t, err, "timed out after")
 		})
@@ -1106,7 +1106,7 @@ func TestPageWaitForSelector(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 
 			page := tb.NewPage(context.Background(), nil)
-			_, err := page.Goto(tb.staticURL(tc.url), nil)
+			_, err := page.Goto(context.Background(), tb.staticURL(tc.url), nil)
 			require.NoError(t, err)
 
 			_, err = page.WaitForSelector(tc.selector, tb.toGojaValue(tc.opts))

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/emulation"
@@ -20,9 +19,13 @@ import (
 	"github.com/dop251/goja"
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 
+	"github.com/chromedp/cdproto"
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	k6modules "go.k6.io/k6/js/modules"
 )
@@ -707,6 +710,8 @@ func (p *Page) GoForward(opts goja.Value) api.Response {
 // Goto will navigate the page to the specified URL and return a HTTP response object.
 func (p *Page) Goto(ctx context.Context, url string, opts goja.Value) (api.Response, error) {
 	p.logger.Debugf("Page:Goto", "sid:%v url:%q", p.sessionID(), url)
+	_, span := otel.Trace(ctx, "Page.Goto", trace.WithAttributes(attribute.String("url", url)))
+	defer span.End()
 
 	return p.MainFrame().Goto(url, opts)
 }
