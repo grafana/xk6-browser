@@ -196,7 +196,7 @@ func TestBrowserContextAddCookies(t *testing.T) {
 			t.Parallel()
 
 			tb := newTestBrowser(t, withFileServer())
-			bc, err := tb.NewContext(nil)
+			bc, err := tb.NewContext(context.Background(), nil)
 			require.NoError(t, err)
 
 			err = bc.AddCookies(tt.cookies)
@@ -545,7 +545,7 @@ func TestBrowserContextCookies(t *testing.T) {
 			// since we want to run cookie tests in parallel
 			// we're creating a new browser context for each test.
 			tb := newTestBrowser(t, withHTTPServer())
-			p := tb.NewPage(nil)
+			p := tb.NewPage(context.Background(), nil)
 
 			// the setupHandler can set some cookies
 			// that will be received by the browser context.
@@ -598,7 +598,7 @@ func TestBrowserContextClearCookies(t *testing.T) {
 	// add a cookie and clear it out
 
 	tb := newTestBrowser(t, withHTTPServer())
-	p := tb.NewPage(nil)
+	p := tb.NewPage(context.Background(), nil)
 	bctx := p.Context()
 
 	err := bctx.AddCookies(
@@ -622,7 +622,7 @@ func TestK6Object(t *testing.T) {
 	t.Parallel()
 
 	b := newTestBrowser(t, withFileServer())
-	p := b.NewPage(nil)
+	p := b.NewPage(context.Background(), nil)
 
 	url := b.staticURL("empty.html")
 	r, err := p.Goto(url, nil)
@@ -670,7 +670,7 @@ func TestBrowserContextTimeout(t *testing.T) {
 				fmt.Fprintf(w, `sorry for being so slow`)
 			})
 
-			bc, err := tb.NewContext(nil)
+			bc, err := tb.NewContext(context.Background(), nil)
 			require.NoError(t, err)
 
 			if tc.defaultTimeout != 0 {
@@ -744,7 +744,7 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 
 			tb := newTestBrowser(t)
 
-			bc, err := tb.NewContext(nil)
+			bc, err := tb.NewContext(context.Background(), nil)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithTimeout(tb.context(), 5*time.Second)

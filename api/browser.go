@@ -11,7 +11,7 @@ type Browser interface {
 	Close()
 	Context() BrowserContext
 	IsConnected() bool
-	NewContext(opts goja.Value) (BrowserContext, error)
+	NewContext(ctx context.Context, opts goja.Value) (BrowserContext, error)
 	NewPage(ctx context.Context, opts goja.Value) (Page, error)
 	On(string) (bool, error)
 	UserAgent() string

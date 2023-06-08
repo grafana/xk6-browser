@@ -52,19 +52,19 @@ func TestBrowserNewContext(t *testing.T) {
 	t.Parallel()
 
 	b := newTestBrowser(t)
-	bc1, err := b.NewContext(nil)
+	bc1, err := b.NewContext(context.Background(), nil)
 	assert.NoError(t, err)
 	c := b.Context()
 	assert.NotNil(t, c)
 
-	_, err = b.NewContext(nil)
+	_, err = b.NewContext(context.Background(), nil)
 	assert.EqualError(t, err, "existing browser context must be closed before creating a new one")
 
 	bc1.Close()
 	c = b.Context()
 	assert.Nil(t, c)
 
-	_, err = b.NewContext(nil)
+	_, err = b.NewContext(context.Background(), nil)
 	assert.NoError(t, err)
 	c = b.Context()
 	assert.NotNil(t, c)
@@ -277,7 +277,7 @@ func TestMultiBrowserPanic(t *testing.T) {
 		b1 = newTestBrowser(t)
 		b2 = newTestBrowser(t)
 
-		bctx, err := b1.NewContext(nil)
+		bctx, err := b1.NewContext(context.Background(), nil)
 		require.NoError(t, err)
 		p1, err := bctx.NewPage()
 		require.NoError(t, err, "failed to create page #1")
@@ -324,14 +324,14 @@ func TestMultiConnectToSingleBrowser(t *testing.T) {
 
 	b1, err := tb.browserType.Connect(ctx, tb.wsURL)
 	require.NoError(t, err)
-	bctx1, err := b1.NewContext(nil)
+	bctx1, err := b1.NewContext(ctx, nil)
 	require.NoError(t, err)
 	p1, err := bctx1.NewPage()
 	require.NoError(t, err, "failed to create page #1")
 
 	b2, err := tb.browserType.Connect(ctx, tb.wsURL)
 	require.NoError(t, err)
-	bctx2, err := b2.NewContext(nil)
+	bctx2, err := b2.NewContext(ctx, nil)
 	require.NoError(t, err)
 
 	err = p1.Close(nil)
