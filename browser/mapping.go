@@ -744,7 +744,7 @@ func mapBrowser(vu moduleVU) mapping {
 			if err != nil {
 				return nil, err
 			}
-			bctx, err := b.NewContext(context.Background(), opts)
+			bctx, err := b.NewContext(vu.traceCtx(iterID(vu)), opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}
