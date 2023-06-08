@@ -713,7 +713,7 @@ func (p *Page) Goto(ctx context.Context, url string, opts goja.Value) (api.Respo
 	_, span := otel.Trace(ctx, "Page.Goto", trace.WithAttributes(attribute.String("url", url)))
 	defer span.End()
 
-	return p.MainFrame().Goto(url, opts)
+	return p.MainFrame().Goto(ctx, url, opts)
 }
 
 func (p *Page) Hover(selector string, opts goja.Value) {

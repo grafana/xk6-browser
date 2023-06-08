@@ -877,7 +877,7 @@ func (f *Frame) getAttribute(selector, name string, opts *FrameBaseOptions) (goj
 }
 
 // Goto will navigate the frame to the specified URL and return a HTTP response object.
-func (f *Frame) Goto(url string, opts goja.Value) (api.Response, error) {
+func (f *Frame) Goto(ctx context.Context, url string, opts goja.Value) (api.Response, error) {
 	var (
 		netMgr         = f.manager.page.mainFrameSession.getNetworkManager()
 		defaultReferer = netMgr.extraHTTPHeaders["referer"]
