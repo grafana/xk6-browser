@@ -30,14 +30,15 @@ func TestBrowserNewPage(t *testing.T) {
 	l = len(b.Contexts())
 	assert.Equal(t, 2, l, "expected there to be 2 browser context, but found %d", l)
 
+	// contexts are auto-closed when the page is closed and context.Context is canceled.
 	err := p.Close(nil)
 	require.NoError(t, err)
 	l = len(b.Contexts())
-	assert.Equal(t, 2, l, "expected there to be 2 browser contexts after first page close, but found %d", l)
+	assert.Equal(t, 1, l, "expected there to be one browser context after first page close, but found %d", l)
 	err = p2.Close(nil)
 	require.NoError(t, err)
 	l = len(b.Contexts())
-	assert.Equal(t, 2, l, "expected there to be 2 browser contexts after second page close, but found %d", l)
+	assert.Equal(t, 0, l, "expected there to be zero browser contexts after second page close, but found %d", l)
 }
 
 func TestTmpDirCleanup(t *testing.T) {
@@ -251,7 +252,6 @@ func TestMultiConnectToSingleBrowser(t *testing.T) {
 
 	err = p1.Close(nil)
 	require.NoError(t, err, "failed to close page #1")
-	bctx1.Close()
 
 	p2, err := bctx2.NewPage()
 	require.NoError(t, err, "failed to create page #2")

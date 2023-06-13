@@ -443,6 +443,10 @@ func (p *Page) Close(opts goja.Value) error {
 		// we're waiting for the response to come back from the browser
 		// for this current command (it's racey).
 		if errors.Is(err, context.Canceled) {
+			// If the context was canceled, it means the session was
+			// closed, so we can just return nil here. No need to
+			// check the error, as we know it's context.Canceled.
+			_ = p.browserCtx.browser.disposeContext(p.browserCtx.id)
 			return nil
 		}
 
