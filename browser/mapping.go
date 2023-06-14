@@ -774,13 +774,13 @@ func getOrInitBrowser(
 		vu.registerPid(pid)
 	}
 
-	vu.setBrowser(id, b)
-
 	go func(ctx context.Context) {
 		<-ctx.Done()
 		b.Close()
 		vu.deleteBrowser(id)
 	}(vu.Context())
+
+	vu.setBrowser(id, b)
 
 	return b, nil
 }
