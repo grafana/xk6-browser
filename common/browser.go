@@ -47,6 +47,7 @@ type Browser struct {
 	// A *Connection is saved to this field, see: connect().
 	conn connection
 
+	contextCreated bool
 	context        *BrowserContext
 	defaultContext *BrowserContext
 
@@ -496,8 +497,8 @@ func (b *Browser) IsConnected() bool {
 
 // NewContext creates a new incognito-like browser context.
 func (b *Browser) NewContext(opts goja.Value) (api.BrowserContext, error) {
-	if b.context != nil {
-		return nil, errors.New("existing browser context must be closed before creating a new one")
+	if b.contextCreated {
+		return nil, fmt.Errorf("only one browser context can be setup per iteration")
 	}
 
 	action := target.CreateBrowserContext().WithDisposeOnDetach(true)
@@ -517,6 +518,7 @@ func (b *Browser) NewContext(opts goja.Value) (api.BrowserContext, error) {
 		return nil, fmt.Errorf("new context: %w", err)
 	}
 	b.context = browserCtx
+	b.contextCreated = true
 
 	return browserCtx, nil
 }

@@ -27,7 +27,7 @@ func TestBrowserNewPage(t *testing.T) {
 	assert.Equal(t, 1, l, "expected there to be 1 browser context, but found %d", l)
 
 	_, err := b.Browser.NewPage(nil)
-	assert.EqualError(t, err, "new page: existing browser context must be closed before creating a new one")
+	assert.EqualError(t, err, "new page: only one browser context can be setup per iteration")
 
 	err = p1.Close(nil)
 	require.NoError(t, err)
@@ -35,15 +35,16 @@ func TestBrowserNewPage(t *testing.T) {
 	assert.Equal(t, 1, l, "expected there to be 1 browser context, but found %d", l)
 
 	_, err = b.Browser.NewPage(nil)
-	assert.EqualError(t, err, "new page: existing browser context must be closed before creating a new one")
+	assert.EqualError(t, err, "new page: only one browser context can be setup per iteration")
 
 	b.Contexts()[0].Close()
 	l = len(b.Contexts())
 	assert.Equal(t, 0, l, "expected there to be 0 browser context, but found %d", l)
 
-	_ = b.NewPage(nil)
+	_, err = b.Browser.NewPage(nil)
+	assert.EqualError(t, err, "new page: only one browser context can be setup per iteration")
 	l = len(b.Contexts())
-	assert.Equal(t, 1, l, "expected there to be 1 browser context, but found %d", l)
+	assert.Equal(t, 0, l, "expected there to be 0 browser context, but found %d", l)
 }
 
 func TestBrowserNewContext(t *testing.T) {
@@ -54,16 +55,16 @@ func TestBrowserNewContext(t *testing.T) {
 	assert.Equal(t, 1, l, "expected there to be 1 browser context, but found %d", l)
 
 	_, err = b.NewContext(nil)
-	assert.EqualError(t, err, "existing browser context must be closed before creating a new one")
+	assert.EqualError(t, err, "only one browser context can be setup per iteration")
 
 	bc1.Close()
 	l = len(b.Contexts())
 	assert.Equal(t, 0, l, "expected there to be 0 browser context, but found %d", l)
 
 	_, err = b.NewContext(nil)
-	assert.NoError(t, err)
+	assert.EqualError(t, err, "only one browser context can be setup per iteration")
 	l = len(b.Contexts())
-	assert.Equal(t, 1, l, "expected there to be 1 browser context, but found %d", l)
+	assert.Equal(t, 0, l, "expected there to be 0 browser context, but found %d", l)
 }
 
 func TestTmpDirCleanup(t *testing.T) {
