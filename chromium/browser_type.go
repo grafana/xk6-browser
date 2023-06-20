@@ -334,6 +334,7 @@ func parseArgs(flags map[string]any) ([]string, error) {
 func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[string]any, error) {
 	// After Puppeteer's and Playwright's default behavior.
 	f := map[string]any{
+		"disable-gpu":                                        true, // fixes CI tests.
 		"disable-background-networking":                      true,
 		"enable-features":                                    "NetworkService,NetworkServiceInProcess",
 		"disable-background-timer-throttling":                true,
