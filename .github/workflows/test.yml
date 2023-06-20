@@ -21,6 +21,19 @@ jobs:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Chrome version
+        if: runner.os != 'Windows'
+        run: chrome --version
+      - name: Chrome version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        # chrome --version doesn't work on Windows :-/
+        # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
+        run: (get-command chrome.exe).Version
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -53,6 +66,19 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Chrome version
+        if: runner.os != 'Windows'
+        run: chrome --version
+      - name: Chrome version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        # chrome --version doesn't work on Windows :-/
+        # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
+        run: (get-command chrome.exe).Version
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install Go
@@ -86,6 +112,19 @@ jobs:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Chrome version
+        if: runner.os != 'Windows'
+        run: chrome --version
+      - name: Chrome version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        # chrome --version doesn't work on Windows :-/
+        # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
+        run: (get-command chrome.exe).Version
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install Go
@@ -132,6 +171,19 @@ jobs:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Chrome version
+        if: runner.os != 'Windows'
+        run: chrome --version
+      - name: Chrome version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        # chrome --version doesn't work on Windows :-/
+        # See https://bugs.chromium.org/p/chromium/issues/detail?id=158372
+        run: (get-command chrome.exe).Version
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install Go
