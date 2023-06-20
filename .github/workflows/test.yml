@@ -51,14 +51,9 @@ jobs:
         run: |
           set -x
           go version
-          export GOMAXPROCS=2
-          args=("-p" "2" "-race")
-          # Run with less concurrency on Windows to minimize flakiness.
-          if [[ "${{ matrix.platform }}" == windows* ]]; then
-            unset args[2]
-            args[1]="1"
-            export GOMAXPROCS=1
-          fi
+          # Run with less concurrency to reduce CI flakiness.
+          export GOMAXPROCS=1
+          args=("-p" "1" "-race")
           export K6_BROWSER_HEADLESS=true
           go test "${args[@]}" -timeout 5m ./...
 
@@ -99,8 +94,8 @@ jobs:
           set -x
           which go
           go version
-          export GOMAXPROCS=2
-          args=("-p" "2" "-race")
+          export GOMAXPROCS=1
+          args=("-p" "1" "-race")
           export K6_BROWSER_HEADLESS=true
           go test "${args[@]}" -timeout 5m ./...
 
@@ -135,14 +130,9 @@ jobs:
       - name: Run tests with code coverage
         run: |
           go version
-          export GOMAXPROCS=2
-          args=("-p" "2" "-race")
-          # Run with less concurrency on Windows to minimize flakiness.
-          if [[ "${{ matrix.platform }}" == windows* ]]; then
-            unset args[2]
-            args[1]="1"
-            export GOMAXPROCS=1
-          fi
+          # Run with less concurrency to reduce CI flakiness.
+          export GOMAXPROCS=1
+          args=("-p" "1" "-race")
           export K6_BROWSER_HEADLESS=true
           echo "mode: set" > coverage.txt
           for pkg in $(go list ./... | grep -v vendor); do
@@ -195,14 +185,9 @@ jobs:
         run: |
           set -x
           go version
-          export GOMAXPROCS=2
-          args=("-p" "2" "-race")
-          # Run with less concurrency on Windows to minimize flakiness.
-          if [[ "${{ matrix.platform }}" == windows* ]]; then
-            unset args[2]
-            args[1]="1"
-            export GOMAXPROCS=1
-          fi
+          # Run with less concurrency to reduce CI flakiness.
+          export GOMAXPROCS=1
+          args=("-p" "1" "-race")
           cat go.mod | grep go.k6.io/k6
           # Get the latest master version of k6
           go get go.k6.io/k6@master
