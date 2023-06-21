@@ -40,6 +40,7 @@ jobs:
           go version
           export GOMAXPROCS=1
           export K6_BROWSER_HEADLESS=true
+          echo $TMPDIR
           go test -p 1 -timeout 5m ./...
 
   test-tip:
@@ -68,6 +69,7 @@ jobs:
           go version
           export GOMAXPROCS=1
           export K6_BROWSER_HEADLESS=true
+          echo $TMPDIR
           go test -p 1 -timeout 5m ./...
 
   test-current-cov:
@@ -97,6 +99,7 @@ jobs:
                   list=$(echo "$list" | cut -f1 -d ' ' | sort -u | paste -sd, -)
               fi
 
+              echo $TMPDIR
               go test -p 1 -timeout 5m --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
           done
           grep -h -v "^mode:" *.coverage >> coverage.txt
@@ -135,4 +138,5 @@ jobs:
           go mod tidy
           cat go.mod | grep go.k6.io/k6
           export K6_BROWSER_HEADLESS=true
+          echo $TMPDIR
           go test -p 1 -timeout 5m ./...
