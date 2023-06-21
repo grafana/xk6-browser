@@ -38,7 +38,7 @@ jobs:
         run: |
           set -x
           go version
-          export GOMAXPROCS=2
+          export GOMAXPROCS=1
           args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
@@ -73,7 +73,7 @@ jobs:
           set -x
           which go
           go version
-          export GOMAXPROCS=2
+          export GOMAXPROCS=1
           args=("-p" "2" "-race")
           export K6_BROWSER_HEADLESS=true
           go test "${args[@]}" -timeout 5m ./...
@@ -96,7 +96,7 @@ jobs:
       - name: Run tests with code coverage
         run: |
           go version
-          export GOMAXPROCS=2
+          export GOMAXPROCS=1
           args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
@@ -143,7 +143,7 @@ jobs:
         run: |
           set -x
           go version
-          export GOMAXPROCS=2
+          export GOMAXPROCS=1
           args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
