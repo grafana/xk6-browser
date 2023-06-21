@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -320,6 +321,12 @@ func parseArgs(flags map[string]any) ([]string, error) {
 			return nil, fmt.Errorf(`invalid browser command line flag: "%s=%v"`, name, value)
 		}
 	}
+	if _, ok := flags["no-sandbox"]; !ok && os.Getuid() == 0 {
+		// Running as root, for example in a Linux container. Chromium
+		// needs --no-sandbox when running as root, so make that the
+		// default, unless the user set "no-sandbox": false.
+		args = append(args, "--no-sandbox")
+	}
 	if _, ok := flags["remote-debugging-port"]; !ok {
 		args = append(args, "--remote-debugging-port=0")
 	}
@@ -362,6 +369,7 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"no-default-browser-check":    true,
 		"disable-gpu":                 true,
 		"disable-software-rasterizer": true,
+		"no-sandbox":                  true,
 		"headless":                    lopts.Headless,
 		"window-size":                 fmt.Sprintf("%d,%d", 800, 600),
 	}
