@@ -148,6 +148,7 @@ type command struct {
 	*exec.Cmd
 	done           chan struct{}
 	stdout, stderr io.Reader
+	logger         *log.Logger
 }
 
 func execute(
@@ -196,14 +197,16 @@ func execute(
 		}
 	}()
 
-	return command{cmd, done, stdout, stderr}, nil
+	return command{cmd, done, stdout, stderr, logger}, nil
 }
 
 // parseDevToolsURL grabs the WebSocket address from Chrome's output and returns
 // it. If the process ends abruptly, it will return the first error from stderr.
 func parseDevToolsURL(ctx context.Context, cmd command) (_ string, err error) {
 	parser := &devToolsURLParser{
-		sc: bufio.NewScanner(cmd.stderr),
+		scStdout: bufio.NewScanner(cmd.stdout),
+		sc:       bufio.NewScanner(cmd.stderr),
+		logger:   cmd.logger,
 	}
 	done := make(chan struct{})
 	go func() {
@@ -225,14 +228,31 @@ func parseDevToolsURL(ctx context.Context, cmd command) (_ string, err error) {
 		err = nil
 	}
 
+	go func() {
+		for {
+			parser.scanStderr()
+			parser.scanStdout()
+
+			select {
+			case <-ctx.Done():
+				cmd.logger.Errorf("cmd", "scan goroutine: context closed")
+				return
+			default:
+			}
+		}
+	}()
+
 	return parser.url, err
 }
 
 type devToolsURLParser struct {
-	sc *bufio.Scanner
+	scStdout *bufio.Scanner
+	sc       *bufio.Scanner
 
 	errs []error
 	url  string
+
+	logger *log.Logger
 }
 
 func (p *devToolsURLParser) scan() bool {
@@ -253,6 +273,26 @@ func (p *devToolsURLParser) scan() bool {
 	}
 
 	return p.url == ""
+}
+
+func (p *devToolsURLParser) scanStdout() {
+	if !p.sc.Scan() {
+		return
+	}
+
+	line := p.scStdout.Text()
+
+	p.logger.Errorf("cmd.stdout", "stdout: %s", line)
+}
+
+func (p *devToolsURLParser) scanStderr() {
+	if !p.sc.Scan() {
+		return
+	}
+
+	line := p.sc.Text()
+
+	p.logger.Errorf("cmd.stderr", "stderr: %s", line)
 }
 
 func (p *devToolsURLParser) err() error {
