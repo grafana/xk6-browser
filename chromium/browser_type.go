@@ -358,10 +358,12 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"use-mock-keychain":               true,
 		"no-service-autorun":              true,
 
-		"no-startup-window":        true,
-		"no-default-browser-check": true,
-		"headless":                 lopts.Headless,
-		"window-size":              fmt.Sprintf("%d,%d", 800, 600),
+		"no-startup-window":           true,
+		"no-default-browser-check":    true,
+		"disable-gpu":                 true,
+		"disable-software-rasterizer": true,
+		"headless":                    lopts.Headless,
+		"window-size":                 fmt.Sprintf("%d,%d", 800, 600),
 	}
 	if lopts.Headless {
 		f["hide-scrollbars"] = true
