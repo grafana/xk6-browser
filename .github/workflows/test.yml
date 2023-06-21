@@ -39,7 +39,7 @@ jobs:
           set -x
           go version
           export GOMAXPROCS=2
-          args=("-p" "1" "-race")
+          args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
             unset args[2]
@@ -74,7 +74,7 @@ jobs:
           which go
           go version
           export GOMAXPROCS=2
-          args=("-p" "1" "-race")
+          args=("-p" "2" "-race")
           export K6_BROWSER_HEADLESS=true
           go test "${args[@]}" -timeout 5m ./...
 
@@ -97,7 +97,7 @@ jobs:
         run: |
           go version
           export GOMAXPROCS=2
-          args=("-p" "1" "-race")
+          args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
             unset args[2]
@@ -144,7 +144,7 @@ jobs:
           set -x
           go version
           export GOMAXPROCS=2
-          args=("-p" "1" "-race")
+          args=("-p" "2" "-race")
           # Run with less concurrency on Windows to minimize flakiness.
           if [[ "${{ matrix.platform }}" == windows* ]]; then
             unset args[2]
