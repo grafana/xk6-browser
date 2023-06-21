@@ -39,9 +39,8 @@ jobs:
           set -x
           go version
           export GOMAXPROCS=1
-          args=("-p" "2" "-race")
           export K6_BROWSER_HEADLESS=true
-          go test "${args[@]}" -timeout 5m ./...
+          go test -p 1 -timeout 5m ./...
 
   test-tip:
     runs-on: ubuntu-latest
@@ -68,9 +67,8 @@ jobs:
           which go
           go version
           export GOMAXPROCS=1
-          args=("-p" "2" "-race")
           export K6_BROWSER_HEADLESS=true
-          go test "${args[@]}" -timeout 5m ./...
+          go test -p 1 -timeout 5m ./...
 
   test-current-cov:
     strategy:
@@ -91,7 +89,6 @@ jobs:
         run: |
           go version
           export GOMAXPROCS=1
-          args=("-p" "2" "-race")
           export K6_BROWSER_HEADLESS=true
           echo "mode: set" > coverage.txt
           for pkg in $(go list ./... | grep -v vendor); do
@@ -100,7 +97,7 @@ jobs:
                   list=$(echo "$list" | cut -f1 -d ' ' | sort -u | paste -sd, -)
               fi
 
-              go test "${args[@]}" -timeout 5m --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
+              go test -p 1 -timeout 5m --coverpkg="$list" -coverprofile=$(echo $pkg | tr / -).coverage $pkg
           done
           grep -h -v "^mode:" *.coverage >> coverage.txt
           rm -f *.coverage
@@ -132,11 +129,10 @@ jobs:
           set -x
           go version
           export GOMAXPROCS=1
-          args=("-p" "2" "-race")
           cat go.mod | grep go.k6.io/k6
           # Get the latest master version of k6
           go get go.k6.io/k6@master
           go mod tidy
           cat go.mod | grep go.k6.io/k6
           export K6_BROWSER_HEADLESS=true
-          go test "${args[@]}" -timeout 5m ./...
+          go test -p 1 -timeout 5m ./...
