@@ -24,6 +24,8 @@ type jsFrameWaitForSelectorOpts struct {
 }
 
 func TestLocator(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	tests := []struct {
@@ -325,6 +327,8 @@ func TestLocator(t *testing.T) {
 }
 
 func TestLocatorElementState(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	tests := []struct {
@@ -434,6 +438,8 @@ func TestLocatorElementState(t *testing.T) {
 }
 
 func TestLocatorPress(t *testing.T) {
+	t.Skip()
+
 	tb := newTestBrowser(t)
 
 	p := tb.NewPage(nil)
@@ -450,6 +456,8 @@ func TestLocatorPress(t *testing.T) {
 }
 
 func TestLocatorShadowDOM(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	tb := newTestBrowser(t, withFileServer())

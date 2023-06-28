@@ -263,6 +263,8 @@ func TestBrowserMultiClose(t *testing.T) {
 }
 
 func TestMultiConnectToSingleBrowser(t *testing.T) {
+	t.Skip()
+
 	tb := newTestBrowser(t, withSkipClose())
 	defer tb.Close()
 

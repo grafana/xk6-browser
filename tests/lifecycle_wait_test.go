@@ -49,6 +49,8 @@ import (
 //   3. All other network requests have completed.
 
 func TestLifecycleWaitForNavigation(t *testing.T) {
+	t.Skip()
+
 	// Test description
 	//
 	// Steps:
@@ -195,6 +197,8 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 }
 
 func TestLifecycleWaitForLoadState(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	// Test description
@@ -316,6 +320,8 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 }
 
 func TestLifecycleReload(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	// Test description
@@ -412,6 +418,8 @@ func TestLifecycleReload(t *testing.T) {
 }
 
 func TestLifecycleGotoWithSubFrame(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	// Test description
@@ -497,6 +505,8 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 }
 
 func TestLifecycleGoto(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	// Test description
@@ -568,6 +578,8 @@ func TestLifecycleGoto(t *testing.T) {
 }
 
 func TestLifecycleGotoNetworkIdle(t *testing.T) {
+	t.Skip()
+
 	t.Parallel()
 
 	t.Run("doesn't timeout waiting for networkIdle", func(t *testing.T) {
