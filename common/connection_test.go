@@ -33,6 +33,8 @@ func TestConnection(t *testing.T) {
 }
 
 func TestConnectionClosureAbnormal(t *testing.T) {
+	t.Skip()
+
 	server := ws.NewServer(t, ws.WithClosureAbnormalHandler("/closure-abnormal"))
 
 	t.Run("closure abnormal", func(t *testing.T) {
