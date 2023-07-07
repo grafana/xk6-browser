@@ -276,13 +276,13 @@ func (b *BrowserType) ExecutablePath() (execPath string) {
 		// Unix-like
 		"headless_shell",
 		"headless-shell",
-		"chromium",
-		"chromium-browser",
 		"google-chrome",
 		"google-chrome-stable",
 		"google-chrome-beta",
 		"google-chrome-unstable",
 		"/usr/bin/google-chrome",
+		"chromium",
+		"chromium-browser",
 		// Windows
 		"chrome",
 		"chrome.exe", // in case PATHEXT is misconfigured
