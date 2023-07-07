@@ -37,6 +37,9 @@ jobs:
       - name: Print chromium version
         run: |
           /usr/bin/chromium --version
+      - name: Print google-chrome version
+        run: |
+          /usr/bin/google-chrome --version
       - name: Run tests
         run: |
           set -x

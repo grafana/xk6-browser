@@ -297,7 +297,6 @@ func (b *BrowserType) ExecutablePath() (execPath string) {
 	}
 	for _, path := range paths {
 		if _, err := exec.LookPath(path); err == nil {
-			fmt.Println(">>>>>>> Found", path)
 			return path
 		}
 	}
