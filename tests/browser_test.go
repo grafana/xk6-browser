@@ -263,8 +263,10 @@ func TestBrowserMultiClose(t *testing.T) {
 }
 
 func TestMultiConnectToSingleBrowser(t *testing.T) {
+	// time.Sleep(time.Millisecond * 50)
+
 	tb := newTestBrowser(t, withSkipClose())
-	defer tb.Close()
+	// defer tb.Close()
 
 	ctx := context.Background()
 
@@ -280,12 +282,21 @@ func TestMultiConnectToSingleBrowser(t *testing.T) {
 	bctx2, err := b2.NewContext(nil)
 	require.NoError(t, err)
 
+	// time.Sleep(time.Millisecond * 50)
+
 	err = p1.Close(nil)
 	require.NoError(t, err, "failed to close page #1")
-	bctx1.Close()
+	// bctx1.Close()
+
+	// time.Sleep(time.Millisecond * 50)
+
+	// Theory 1: Race condition within Chrome where the session is not created before the page on the target.
+	// Theory 2: Issue with page.close which is closing all sessions, and maybe causing the all browserContexts to close their sessions.
 
 	p2, err := bctx2.NewPage()
 	require.NoError(t, err, "failed to create page #2")
 	err = p2.Close(nil)
 	require.NoError(t, err, "failed to close page #2")
+
+	tb.Close()
 }

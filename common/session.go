@@ -47,7 +47,7 @@ func NewSession(
 
 		logger: logger,
 	}
-	s.logger.Debugf("Session:NewSession", "sid:%v tid:%v", id, tid)
+	s.logger.Infof("Session:NewSession", "sid:%v tid:%v", id, tid)
 	go s.readLoop()
 	return &s
 }
@@ -63,7 +63,7 @@ func (s *Session) TargetID() target.ID {
 }
 
 func (s *Session) close() {
-	s.logger.Debugf("Session:close", "sid:%v tid:%v", s.id, s.targetID)
+	s.logger.Infof("Session:close", "sid:%v tid:%v", s.id, s.targetID)
 	if s.closed {
 		s.logger.Debugf("Session:close", "already closed, sid:%v tid:%v", s.id, s.targetID)
 		return

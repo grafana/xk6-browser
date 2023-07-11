@@ -266,6 +266,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 			}
 			r.setBrowser(data.Iteration, b)
 		case k6event.IterEnd:
+			r.vu.State().Logger.Info("received iterEnd event")
 			r.deleteBrowser(data.Iteration)
 		default:
 			r.vu.State().Logger.Warnf("received unexpected event type: %v", e.Type)
@@ -280,6 +281,7 @@ func (r *browserRegistry) handleExitEvent(exitCh <-chan *k6event.Event) {
 	if !ok {
 		return
 	}
+	r.vu.State().Logger.Info("received exit event")
 	defer e.Done()
 	r.clear()
 }

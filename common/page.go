@@ -423,7 +423,7 @@ func (p *Page) Click(selector string, opts goja.Value) error {
 
 // Close closes the page.
 func (p *Page) Close(opts goja.Value) error {
-	p.logger.Debugf("Page:Close", "sid:%v", p.sessionID())
+	p.logger.Infof("Page:Close", "sid:%v tid:%v", p.sessionID(), p.targetID)
 
 	add := runtime.RemoveBinding(webVitalBinding)
 	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
@@ -433,6 +433,7 @@ func (p *Page) Close(opts goja.Value) error {
 	action := target.CloseTarget(p.targetID)
 	err := action.Do(cdp.WithExecutor(p.ctx, p.session))
 	if err != nil {
+		p.logger.Infof("Page:Close:err", "sid:%v tid:%v err:%v", p.sessionID(), p.targetID, err.Error())
 		// When a close target command is sent to the browser via CDP,
 		// the browser will start to cleanup and the first thing it
 		// will do is return a target.EventDetachedFromTarget, which in
