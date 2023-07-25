@@ -452,7 +452,7 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) {
 		action := fetch.ContinueRequest(event.RequestID)
 		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
 			m.logger.Errorf("NetworkManager:onRequestPaused",
-				"continuing request: %s", err)
+				"continuing request: %s url: %s", err, event.Request.URL)
 		}
 	}()
 
