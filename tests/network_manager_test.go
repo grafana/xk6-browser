@@ -10,9 +10,6 @@ import (
 
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/common"
-
-	k6lib "go.k6.io/k6/lib"
-	k6types "go.k6.io/k6/lib/types"
 )
 
 func TestURLSkipRequest(t *testing.T) {
@@ -28,44 +25,6 @@ func TestURLSkipRequest(t *testing.T) {
 	_, err = p.Goto("blob:something", nil)
 	require.NoError(t, err)
 	tb.logCache.assertContains(t, "skipping request handling of blob URL")
-}
-
-func TestBlockHostnames(t *testing.T) {
-	tb := newTestBrowser(t, withHTTPServer(), withLogCache())
-
-	blocked, err := k6types.NewNullHostnameTrie([]string{"*.test"})
-	require.NoError(t, err)
-	tb.vu.State().Options.BlockedHostnames = blocked
-
-	p := tb.NewPage(nil)
-
-	res, err := p.Goto("http://host.test/", nil)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	tb.logCache.assertContains(t, "was interrupted: hostname host.test is in a blocked pattern")
-
-	res, err = p.Goto(tb.url("/get"), nil)
-	require.NoError(t, err)
-	assert.NotNil(t, res)
-}
-
-func TestBlockIPs(t *testing.T) {
-	tb := newTestBrowser(t, withHTTPServer(), withLogCache())
-
-	ipnet, err := k6lib.ParseCIDR("10.0.0.0/8")
-	require.NoError(t, err)
-	tb.vu.State().Options.BlacklistIPs = []*k6lib.IPNet{ipnet}
-
-	p := tb.NewPage(nil)
-	res, err := p.Goto("http://10.0.0.1:8000/", nil)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	tb.logCache.assertContains(t, `was interrupted: IP 10.0.0.1 is in a blacklisted range "10.0.0.0/8"`)
-
-	// Ensure other requests go through
-	res, err = p.Goto(tb.url("/get"), nil)
-	require.NoError(t, err)
-	assert.NotNil(t, res)
 }
 
 func TestBasicAuth(t *testing.T) {

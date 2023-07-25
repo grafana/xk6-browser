@@ -438,7 +438,6 @@ func (fs *FrameSession) initOptions() error {
 	var (
 		opts       = fs.manager.page.browserCtx.opts
 		optActions = []Action{}
-		state      = fs.vu.State()
 	)
 
 	if fs.isMainFrame() {
@@ -480,12 +479,8 @@ func (fs *FrameSession) initOptions() error {
 	}
 	fs.updateExtraHTTPHeaders(true)
 
-	var reqIntercept bool
-	if state.Options.BlockedHostnames.Trie != nil ||
-		len(state.Options.BlacklistIPs) > 0 {
-		reqIntercept = true
-	}
-	if err := fs.updateRequestInterception(reqIntercept); err != nil {
+	// Ignore k6 inherited blacklists and do not intercept
+	if err := fs.updateRequestInterception(false); err != nil {
 		return err
 	}
 
