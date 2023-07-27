@@ -385,31 +385,34 @@ func (c *Connection) recvLoop() {
 				"Connection:recvLoop:msg.ID:msg.Error: lost error message",
 				"msg:%v", msg,
 			)
-			c.sessionsMu.RLock()
-			for _, s := range c.sessions {
-				select {
-				case s.readCh <- &msg:
-					c.logger.Infof(
-						"Connection:recvLoop:msg.ID:msg.Error: sent to session",
-						"sid:%v tid:%v msg:%v", s.id, s.targetID, msg,
-					)
-				case code := <-c.closeCh:
-					c.logger.Debugf(
-						"Connection:recvLoop:msg.ID:msg.Error:<-c.closeCh",
-						"sid:%v tid:%v crashed:%t",
-						s.id, s.targetID, s.crashed,
-					)
-					_ = c.close(code)
-				case <-c.done:
-					c.logger.Debugf(
-						"Connection:recvLoop:msg.ID:msg.Error:<-c.done",
-						"sid:%v tid:%v crashed:%t",
-						s.id, s.targetID, s.crashed,
-					)
-					return
+			func() {
+				c.sessionsMu.RLock()
+				defer c.sessionsMu.RUnlock()
+
+				for _, s := range c.sessions {
+					select {
+					case s.readCh <- &msg:
+						c.logger.Infof(
+							"Connection:recvLoop:msg.ID:msg.Error: sent to session",
+							"sid:%v tid:%v msg:%v", s.id, s.targetID, msg,
+						)
+					case code := <-c.closeCh:
+						c.logger.Debugf(
+							"Connection:recvLoop:msg.ID:msg.Error:<-c.closeCh",
+							"sid:%v tid:%v crashed:%t",
+							s.id, s.targetID, s.crashed,
+						)
+						_ = c.close(code)
+					case <-c.done:
+						c.logger.Debugf(
+							"Connection:recvLoop:msg.ID:msg.Error:<-c.done",
+							"sid:%v tid:%v crashed:%t",
+							s.id, s.targetID, s.crashed,
+						)
+						return
+					}
 				}
-			}
-			c.sessionsMu.RUnlock()
+			}()
 			c.emit("", &msg)
 			c.logger.Infof(
 				"Connection:recvLoop:msg.ID:msg.Error: sent to connection",
