@@ -381,28 +381,40 @@ func (c *Connection) recvLoop() {
 		// a test iteration) we need to send it to all sessions and the
 		// connection's event loop.
 		case msg.ID != 0 && msg.Error != nil && msg.SessionID == "":
+			c.logger.Infof(
+				"Connection:recvLoop:msg.ID:msg.Error: lost error message",
+				"msg:%v", msg,
+			)
 			c.sessionsMu.RLock()
 			for _, s := range c.sessions {
 				select {
 				case s.readCh <- &msg:
+					c.logger.Infof(
+						"Connection:recvLoop:msg.ID:msg.Error: sent to session",
+						"sid:%v tid:%v msg:%v", s.id, s.targetID, msg,
+					)
 				case code := <-c.closeCh:
 					c.logger.Debugf(
 						"Connection:recvLoop:msg.ID:msg.Error:<-c.closeCh",
-						"sid:%v tid:%v wsURL:%v crashed:%t",
-						s.id, s.targetID, c.wsURL, s.crashed,
+						"sid:%v tid:%v crashed:%t",
+						s.id, s.targetID, s.crashed,
 					)
 					_ = c.close(code)
 				case <-c.done:
 					c.logger.Debugf(
 						"Connection:recvLoop:msg.ID:msg.Error:<-c.done",
-						"sid:%v tid:%v wsURL:%v crashed:%t",
-						s.id, s.targetID, c.wsURL, s.crashed,
+						"sid:%v tid:%v crashed:%t",
+						s.id, s.targetID, s.crashed,
 					)
 					return
 				}
 			}
 			c.sessionsMu.RUnlock()
 			c.emit("", &msg)
+			c.logger.Infof(
+				"Connection:recvLoop:msg.ID:msg.Error: sent to connection",
+				"msg:%v", msg,
+			)
 
 		case msg.Method != "":
 			c.logger.Debugf("Connection:recvLoop:msg.Method:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
