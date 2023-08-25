@@ -393,8 +393,9 @@ func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRe
 	}
 
 	return &tracesRegistry{
-		tp: tp,
-		m:  make(map[int64]*trace),
+		ctx: ctx,
+		tp:  tp,
+		m:   make(map[int64]*trace),
 	}, nil
 }
 
