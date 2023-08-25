@@ -779,17 +779,6 @@ func mapBrowser(vu moduleVU) mapping {
 	}
 }
 
-// TODO: With the inclusion of traces this would be called too many times,
-// so avoid multiple calls to this method and/or generating ID based on
-// concatenation of VUID-scenario-iterID.
-func iterID(vu moduleVU) string {
-	return fmt.Sprintf("%d-%s-%d",
-		vu.State().VUID,
-		k6ext.GetScenarioName(vu.Context()),
-		vu.State().Iteration,
-	)
-}
-
 func panicIfFatalError(ctx context.Context, err error) {
 	if errors.Is(err, k6error.ErrFatal) {
 		k6ext.Abort(ctx, err.Error())
