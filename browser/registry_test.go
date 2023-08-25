@@ -203,8 +203,11 @@ func TestBrowserRegistry(t *testing.T) {
 	t.Run("init_and_close_browsers_on_iter_events", func(t *testing.T) {
 		t.Parallel()
 
+		tr, err := newTracesRegistry(context.Background(), env.Lookup)
+		require.NoError(t, err)
+
 		vu := k6test.NewVU(t)
-		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{})
+		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{}, tr)
 
 		vu.ActivateVU()
 
@@ -232,8 +235,11 @@ func TestBrowserRegistry(t *testing.T) {
 	t.Run("close_browsers_on_exit_event", func(t *testing.T) {
 		t.Parallel()
 
+		tr, err := newTracesRegistry(context.Background(), env.Lookup)
+		require.NoError(t, err)
+
 		vu := k6test.NewVU(t)
-		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{})
+		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{}, tr)
 
 		vu.ActivateVU()
 
@@ -264,8 +270,11 @@ func TestBrowserRegistry(t *testing.T) {
 	t.Run("unsubscribe_on_non_browser_vu", func(t *testing.T) {
 		t.Parallel()
 
+		tr, err := newTracesRegistry(context.Background(), env.Lookup)
+		require.NoError(t, err)
+
 		vu := k6test.NewVU(t)
-		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{})
+		browserRegistry := newBrowserRegistry(vu, remoteRegistry, &pidRegistry{}, tr)
 
 		vu.ActivateVU()
 

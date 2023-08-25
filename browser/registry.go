@@ -170,6 +170,7 @@ func (r *remoteRegistry) isRemoteBrowser() (string, bool) {
 // indexed per iteration.
 type browserRegistry struct {
 	vu k6modules.VU
+	tr *tracesRegistry
 
 	mu sync.RWMutex
 	m  map[int64]api.Browser
@@ -181,7 +182,7 @@ type browserRegistry struct {
 
 type browserBuildFunc func(ctx context.Context) (api.Browser, error)
 
-func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegistry) *browserRegistry {
+func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegistry, tr *tracesRegistry) *browserRegistry {
 	bt := chromium.NewBrowserType(vu)
 	builder := func(ctx context.Context) (api.Browser, error) {
 		var (
@@ -211,6 +212,7 @@ func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegist
 		vu:      vu,
 		m:       make(map[int64]api.Browser),
 		buildFn: builder,
+		tr:      tr,
 	}
 
 	exitSubID, exitCh := vu.Events().Global.Subscribe(
@@ -270,7 +272,8 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 
 		switch e.Type { //nolint:exhaustive
 		case k6event.IterStart:
-			b, err := r.buildFn(ctx)
+			tracedCtx := r.tr.traceCtx(ctx, data.Iteration)
+			b, err := r.buildFn(tracedCtx)
 			if err != nil {
 				e.Done()
 				k6ext.Abort(vuCtx, "error building browser on IterStart: %v", err)
@@ -282,6 +285,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 			r.setBrowser(data.Iteration, b)
 		case k6event.IterEnd:
 			r.deleteBrowser(data.Iteration)
+			r.tr.endTrace(data.Iteration)
 		default:
 			r.vu.State().Logger.Warnf("received unexpected event type: %v", e.Type)
 		}
@@ -291,6 +295,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 }
 
 func (r *browserRegistry) handleExitEvent(exitCh <-chan *k6event.Event, unsubscribeFn func()) {
+	defer r.tr.shutdown()
 	defer unsubscribeFn()
 
 	e, ok := <-exitCh
@@ -361,7 +366,7 @@ type tracesRegistry struct {
 	tp  otel.TraceProvider
 
 	mu sync.Mutex
-	m  map[string]*trace
+	m  map[int64]*trace
 }
 
 func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRegistry, error) {
@@ -369,7 +374,7 @@ func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRe
 		return &tracesRegistry{
 			ctx: ctx,
 			tp:  otel.NewNoopTraceProvider(),
-			m:   make(map[string]*trace),
+			m:   make(map[int64]*trace),
 		}, nil
 	}
 
@@ -389,7 +394,7 @@ func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRe
 
 	return &tracesRegistry{
 		tp: tp,
-		m:  make(map[string]*trace),
+		m:  make(map[int64]*trace),
 	}, nil
 }
 
@@ -412,7 +417,7 @@ func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto string, insec
 	return endpoint, proto, insecure
 }
 
-func (r *tracesRegistry) traceCtx(id string) context.Context {
+func (r *tracesRegistry) traceCtx(ctx context.Context, id int64) context.Context {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -420,9 +425,7 @@ func (r *tracesRegistry) traceCtx(id string) context.Context {
 		return t.ctx
 	}
 
-	// TODO: Move trace initialization to IterStart event handling
-	// once integrated with k6 event system.
-	spanCtx, span := otel.Trace(r.ctx, "IterStart")
+	spanCtx, span := otel.Trace(ctx, "IterStart")
 
 	r.m[id] = &trace{
 		ctx:      spanCtx,
@@ -432,9 +435,7 @@ func (r *tracesRegistry) traceCtx(id string) context.Context {
 	return spanCtx
 }
 
-// TODO: Move trace end to IterEnd event handling
-// once integrated with k6 event system.
-func (r *tracesRegistry) endTrace(id string) {
+func (r *tracesRegistry) endTrace(id int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -442,4 +443,8 @@ func (r *tracesRegistry) endTrace(id string) {
 		t.rootSpan.End()
 		delete(r.m, id)
 	}
+}
+
+func (r *tracesRegistry) shutdown() {
+	r.tp.Shutdown(r.ctx)
 }

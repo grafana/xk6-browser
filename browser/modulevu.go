@@ -19,7 +19,6 @@ type moduleVU struct {
 	*pidRegistry
 	*browserRegistry
 	*remoteRegistry
-	*tracesRegistry
 }
 
 // browser returns the VU browser instance for the current iteration.

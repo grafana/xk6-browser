@@ -69,9 +69,8 @@ func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 			Browser: mapBrowserToGoja(moduleVU{
 				VU:              vu,
 				pidRegistry:     m.PidRegistry,
-				browserRegistry: newBrowserRegistry(vu, m.remoteRegistry, m.PidRegistry),
+				browserRegistry: newBrowserRegistry(vu, m.remoteRegistry, m.PidRegistry, m.tracesRegistry),
 				remoteRegistry:  m.remoteRegistry,
-				tracesRegistry:  m.tracesRegistry,
 			}),
 			Devices: common.GetDevices(),
 		},
