@@ -29,14 +29,10 @@ var ErrUnsupportedProto = errors.New("unsupported protocol")
 type TraceProvider interface {
 	Tracer(name string, options ...trace.TracerOption) trace.Tracer
 	Shutdown(ctx context.Context) error
-	// TODO: Remove support for ForceFlush once we can call Shutdown on 'test end'
-	// event after integrating with k6 event system
-	ForceFlush(ctx context.Context) error
 }
 
 type (
-	traceProvShutdownFunc   func(ctx context.Context) error
-	traceProvForceFlushFunc func(ctx context.Context) error
+	traceProvShutdownFunc func(ctx context.Context) error
 )
 
 type traceProvider struct {
@@ -44,8 +40,7 @@ type traceProvider struct {
 
 	noop bool
 
-	shutdown   traceProvShutdownFunc
-	forceFlush traceProvForceFlushFunc
+	shutdown traceProvShutdownFunc
 }
 
 // NewTraceProvider creates a new trace provider.
@@ -72,7 +67,6 @@ func NewTraceProvider(
 	return &traceProvider{
 		TracerProvider: prov,
 		shutdown:       prov.Shutdown,
-		forceFlush:     prov.ForceFlush,
 	}, nil
 }
 
@@ -123,16 +117,6 @@ func (tp *traceProvider) Shutdown(ctx context.Context) error {
 	}
 
 	return tp.shutdown(ctx)
-}
-
-// TODO: Remove once we can call Shutdown on 'test end' event after integrating with
-// k6 event system.
-func (tp *traceProvider) ForceFlush(ctx context.Context) error {
-	if tp.noop {
-		return nil
-	}
-
-	return tp.forceFlush(ctx)
 }
 
 // Trace generates a trace span and a context containing the generated span.
