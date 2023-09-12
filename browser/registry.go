@@ -453,5 +453,15 @@ func (r *tracesRegistry) endIterationTrace(id int64) {
 }
 
 func (r *tracesRegistry) shutdown() {
-	r.tp.Shutdown(r.ctx)
+	// End all iteration traces
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for k, v := range r.m {
+		v.rootSpan.End()
+		delete(r.m, k)
+	}
+
+	// TODO: Handle shutdown errors
+	_ = r.tp.Shutdown(r.ctx)
 }
