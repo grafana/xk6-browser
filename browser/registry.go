@@ -426,7 +426,7 @@ func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) cont
 		return t.ctx
 	}
 
-	spanCtx, span := otel.Trace(ctx, "IterStart")
+	spanCtx, span := otel.Trace(ctx, "iteration")
 
 	r.m[id] = &trace{
 		ctx:      spanCtx,
