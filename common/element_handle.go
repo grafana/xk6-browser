@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/common/js"
 	"github.com/grafana/xk6-browser/k6ext"
+	"github.com/grafana/xk6-browser/otel"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
@@ -1179,13 +1180,20 @@ func (h *ElementHandle) setChecked(apiCtx context.Context, checked bool, p *Posi
 }
 
 func (h *ElementHandle) Screenshot(opts goja.Value) goja.ArrayBuffer {
+	sCtx, span := otel.TraceAPICall(
+		h.ctx,
+		h.frame.page.targetID.String(),
+		"elementHandle.screenshot",
+	)
+	defer span.End()
+
 	rt := h.execCtx.vu.Runtime()
 	parsedOpts := NewElementHandleScreenshotOptions(h.defaultTimeout())
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing screenshot options: %w", err)
 	}
 
-	s := newScreenshotter(h.ctx)
+	s := newScreenshotter(sCtx, span)
 	buf, err := s.screenshotElement(h, parsedOpts)
 	if err != nil {
 		k6ext.Panic(h.ctx, "taking screenshot: %w", err)

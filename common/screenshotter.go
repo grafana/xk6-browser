@@ -14,14 +14,17 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type screenshotter struct {
-	ctx context.Context
+	ctx  context.Context
+	span trace.Span
 }
 
-func newScreenshotter(ctx context.Context) *screenshotter {
-	return &screenshotter{ctx}
+func newScreenshotter(ctx context.Context, span trace.Span) *screenshotter {
+	return &screenshotter{ctx, span}
 }
 
 func (s *screenshotter) fullPageSize(p *Page) (*Size, error) {
@@ -185,6 +188,8 @@ func (s *screenshotter) screenshot(
 		if err := ioutil.WriteFile(path, buf, 0o644); err != nil {
 			return nil, fmt.Errorf("saving screenshot to %q: %w", path, err)
 		}
+
+		s.span.SetAttributes(attribute.String("path", path))
 	}
 
 	return &buf, nil
