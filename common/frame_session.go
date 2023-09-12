@@ -759,8 +759,7 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 		newFrame := fs.manager.getFrameByID(frame.ID)
 		if newFrame != nil {
 			k6Obj := "window.k6SpanId = '" + spanID + "';"
-			k6ObjGoja := fs.vu.Runtime().ToValue(k6Obj)
-			err := newFrame.Evaluate(k6ObjGoja)
+			err := newFrame.noExecCtxEvaluate(fs.ctx, k6Obj)
 			if err != nil {
 				fs.logger.Errorf("FrameSession:onFrameNavigated", "error on evaluating window.k6SpanId: %v", err)
 			}
