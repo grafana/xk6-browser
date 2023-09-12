@@ -141,3 +141,29 @@ type liveSpan struct {
 // TODO: Move out of package scope.
 var liveSpansMu = &sync.RWMutex{}
 var liveSpans = map[string]*liveSpan{}
+
+// TracePageNavigation is to only be used when a frame has been navigated.
+// This span should record when a navigation starts until either:
+//  1. A new navigation occurs.
+//  2. The test iteration ends.
+//  3. The whole test run ends.
+//
+// If we do not correctly end this span, then child spans will end up being
+// linked to the root span. For one main frame, there is only ever
+// one inflight PageNavigation span.
+func TracePageNavigation(ctx context.Context, targetID string, url string, opts ...trace.SpanStartOption) trace.Span {
+	liveSpansMu.Lock()
+	defer liveSpansMu.Unlock()
+
+	// TODO: Maybe we should keep track of all spans even ones that are closed to
+	// ensure we associate web vitals to the spans in the current iteration.
+	ls := liveSpans[targetID]
+	if ls == nil {
+		ls = &liveSpan{}
+	}
+
+	ls.ctx, ls.span = Trace(ctx, url, opts...)
+	liveSpans[targetID] = ls
+
+	return ls.span
+}
