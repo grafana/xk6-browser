@@ -18,14 +18,14 @@ import (
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/chromedp/cdproto"
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 	"github.com/grafana/xk6-browser/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	k6modules "go.k6.io/k6/js/modules"
 )
@@ -710,10 +710,15 @@ func (p *Page) GoForward(opts goja.Value) api.Response {
 // Goto will navigate the page to the specified URL and return a HTTP response object.
 func (p *Page) Goto(ctx context.Context, url string, opts goja.Value) (api.Response, error) {
 	p.logger.Debugf("Page:Goto", "sid:%v url:%q", p.sessionID(), url)
-	ctx, span := otel.Trace(ctx, "Page.Goto", trace.WithAttributes(attribute.String("url", url)))
+	_, span := otel.TraceAPICall(
+		p.ctx,
+		p.targetID.String(),
+		"page.goto",
+		trace.WithAttributes(attribute.String("url", url)),
+	)
 	defer span.End()
 
-	return p.MainFrame().Goto(ctx, url, opts)
+	return p.MainFrame().Goto(p.ctx, url, opts)
 }
 
 func (p *Page) Hover(selector string, opts goja.Value) {
