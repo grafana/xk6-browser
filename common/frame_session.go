@@ -13,6 +13,9 @@ import (
 	"github.com/grafana/xk6-browser/api"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	k6modules "go.k6.io/k6/js/modules"
 	k6metrics "go.k6.io/k6/metrics"
@@ -66,6 +69,8 @@ type FrameSession struct {
 	logger *log.Logger
 	// logger that will properly serialize RemoteObject instances
 	serializer *log.Logger
+
+	mainFrameSpan trace.Span
 }
 
 // NewFrameSession initializes and returns a new FrameSession.
@@ -209,6 +214,12 @@ func (fs *FrameSession) initEvents() {
 	}
 
 	go func() {
+		defer func() {
+			if fs.mainFrameSpan != nil {
+				fs.mainFrameSpan.End()
+				fs.mainFrameSpan = nil
+			}
+		}()
 		fs.logger.Debugf("NewFrameSession:initEvents:go",
 			"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 		defer fs.logger.Debugf("NewFrameSession:initEvents:go:return",
@@ -721,6 +732,22 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 	if err != nil {
 		k6ext.Panic(fs.ctx, "handling frameNavigated event to %q: %w",
 			frame.URL+frame.URLFragment, err)
+	}
+
+	// We only want to track the main frame (i.e. the whole page).
+	// TODO: How will this affect sub frames like iframes?
+	isMainFrame := frame.ParentID == ""
+	if isMainFrame {
+		// End the previous PageNavigation span. This occurs when
+		// a navigation occurs on the existing main frame.
+		if fs.mainFrameSpan != nil {
+			fs.mainFrameSpan.End()
+			fs.mainFrameSpan = nil
+		}
+
+		fs.mainFrameSpan = otel.TracePageNavigation(fs.ctx, fs.targetID.String(), frame.URL, trace.WithAttributes(
+			attribute.String("url", frame.URL),
+		))
 	}
 }
 
