@@ -237,7 +237,7 @@ func (b *BrowserContext) NewCDPSession() api.CDPSession {
 // NewPage creates a new page inside this browser context.
 func (b *BrowserContext) NewPage(ctx context.Context) (api.Page, error) {
 	b.logger.Debugf("BrowserContext:NewPage", "bctxid:%v", b.id)
-	_, span := otel.Trace(ctx, "BrowserContext.NewPage")
+	_, span := otel.TraceAPICall(b.ctx, "", "browserContext.newPage")
 	defer span.End()
 
 	p, err := b.browser.newPageInContext(b.id)
