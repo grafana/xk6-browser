@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/grafana/xk6-browser/log"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -166,4 +168,33 @@ func TracePageNavigation(ctx context.Context, targetID string, url string, opts 
 	liveSpans[targetID] = ls
 
 	return ls.span
+}
+
+// AddEventToTrace will add the given event to the current PageNavigation
+// span. It's to be used for async events such as web vitals.
+//
+// If the targetID passed in doesn't match the live PageNavigation's
+// targetID then the event will be ignored (but an error will be logged).
+//
+// If the spanID passed in doesn't match the live PageNavigation's
+// spanID then the event will be ignored (but an error will be logged).
+func AddEventToTrace(logger *log.Logger, targetID string, eventName string, spanID string, options ...trace.EventOption) {
+	liveSpansMu.Lock()
+	defer liveSpansMu.Unlock()
+
+	ls := liveSpans[targetID]
+	if ls == nil {
+		// TODO: Should we try to add this event to the iteration trace instead when this occurs?
+		logger.Errorf("AddEventToTrace", "missing targetID %q, skipping event for %q with %v, have %q", targetID, eventName, spanID, options)
+		return
+	}
+
+	sid := ls.span.SpanContext().SpanID().String()
+	if sid != spanID {
+		// TODO: Should we try to add this event to the iteration trace instead when this occurs?
+		logger.Errorf("AddEventToTrace", "skipping %q event for %q with %v, have %q", eventName, spanID, options, sid)
+		return
+	}
+
+	ls.span.AddEvent(eventName, options...)
 }
