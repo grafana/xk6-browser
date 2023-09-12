@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -130,3 +131,13 @@ func (tp *traceProvider) Shutdown(ctx context.Context) error {
 func Trace(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	return otel.Tracer(tracerName).Start(ctx, spanName, opts...)
 }
+
+type liveSpan struct {
+	ctx  context.Context
+	span trace.Span
+}
+
+// TODO: Need to reset `liveSpans` on a new iteration.
+// TODO: Move out of package scope.
+var liveSpansMu = &sync.RWMutex{}
+var liveSpans = map[string]*liveSpan{}
