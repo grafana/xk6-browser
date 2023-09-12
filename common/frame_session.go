@@ -754,6 +754,17 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 		fs.mainFrameSpan = otel.TracePageNavigation(fs.ctx, fs.targetID.String(), frame.URL, trace.WithAttributes(
 			attribute.String("url", frame.URL),
 		))
+
+		spanID := fs.mainFrameSpan.SpanContext().SpanID().String()
+		newFrame := fs.manager.getFrameByID(frame.ID)
+		if newFrame != nil {
+			k6Obj := "window.k6SpanId = '" + spanID + "';"
+			k6ObjGoja := fs.vu.Runtime().ToValue(k6Obj)
+			err := newFrame.Evaluate(k6ObjGoja)
+			if err != nil {
+				fs.logger.Errorf("FrameSession:onFrameNavigated", "error on evaluating window.k6SpanId: %v", err)
+			}
+		}
 	}
 }
 
