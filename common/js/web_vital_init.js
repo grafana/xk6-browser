@@ -8,6 +8,7 @@ function print(metric) {
     numEntries: metric.entries.length,
     navigationType: metric.navigationType,
     url: window.location.href,
+    spanID: window.k6SpanId,
   }
   window.k6browserSendWebVitalMetric(JSON.stringify(m))
 }
