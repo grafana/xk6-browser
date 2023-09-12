@@ -910,7 +910,14 @@ func (f *Frame) getAttribute(selector, name string, opts *FrameBaseOptions) (goj
 
 // Goto will navigate the frame to the specified URL and return a HTTP response object.
 func (f *Frame) Goto(ctx context.Context, url string, opts goja.Value) (api.Response, error) {
-	_, span := otel.Trace(ctx, "Frame.Goto", trace.WithAttributes(attribute.String("url", url)))
+	// TODO: We don't want to expose internals (such as page.goto calls frame.goto)
+	// when we create traces.
+	_, span := otel.TraceAPICall(
+		ctx,
+		f.page.targetID.String(),
+		"frame.goto",
+		trace.WithAttributes(attribute.String("url", url)),
+	)
 	defer span.End()
 
 	var (
