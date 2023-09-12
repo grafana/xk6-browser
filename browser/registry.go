@@ -272,7 +272,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 
 		switch e.Type { //nolint:exhaustive
 		case k6event.IterStart:
-			tracedCtx := r.tr.traceCtx(ctx, data.Iteration)
+			tracedCtx := r.tr.startIterationTrace(ctx, data.Iteration)
 			b, err := r.buildFn(tracedCtx)
 			if err != nil {
 				e.Done()
@@ -418,7 +418,7 @@ func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto string, insec
 	return endpoint, proto, insecure
 }
 
-func (r *tracesRegistry) traceCtx(ctx context.Context, id int64) context.Context {
+func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) context.Context {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
