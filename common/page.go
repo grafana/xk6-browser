@@ -507,6 +507,9 @@ func (p *Page) Click(selector string, opts goja.Value) error {
 func (p *Page) Close(opts goja.Value) error {
 	p.logger.Debugf("Page:Close", "sid:%v", p.sessionID())
 
+	_, span := otel.TraceAPICall(p.ctx, p.targetID.String(), "page.close")
+	defer span.End()
+
 	// forcing the pagehide event to trigger web vitals metrics.
 	v := p.vu.Runtime().ToValue(`() => window.dispatchEvent(new Event('pagehide'))`)
 	ctx, cancel := context.WithTimeout(p.ctx, p.defaultTimeout())
@@ -1100,6 +1103,9 @@ func (p *Page) WaitForLoadState(state string, opts goja.Value) {
 // WaitForNavigation waits for the given navigation lifecycle event to happen.
 func (p *Page) WaitForNavigation(opts goja.Value) (api.Response, error) {
 	p.logger.Debugf("Page:WaitForNavigation", "sid:%v", p.sessionID())
+
+	_, span := otel.TraceAPICall(p.ctx, p.targetID.String(), "page.waitForNavigation")
+	defer span.End()
 
 	return p.frameManager.MainFrame().WaitForNavigation(opts)
 }
