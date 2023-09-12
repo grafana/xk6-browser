@@ -296,7 +296,6 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 }
 
 func (r *browserRegistry) handleExitEvent(exitCh <-chan *k6event.Event, unsubscribeFn func()) {
-	defer r.tr.shutdown()
 	defer unsubscribeFn()
 
 	e, ok := <-exitCh
@@ -305,6 +304,10 @@ func (r *browserRegistry) handleExitEvent(exitCh <-chan *k6event.Event, unsubscr
 	}
 	defer e.Done()
 	r.clear()
+
+	// TODO: Work out why shutdown doesn't work when deferred.
+	//       The traces aren't flushed when deferred.
+	r.tr.shutdown()
 }
 
 func (r *browserRegistry) setBrowser(id int64, b api.Browser) {
