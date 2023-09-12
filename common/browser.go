@@ -506,7 +506,7 @@ func (b *Browser) IsConnected() bool {
 
 // NewContext creates a new incognito-like browser context.
 func (b *Browser) NewContext(ctx context.Context, opts goja.Value) (api.BrowserContext, error) {
-	_, span := otel.Trace(ctx, "Browser.NewContext")
+	_, span := otel.TraceAPICall(b.ctx, "", "browser.newContext")
 	defer span.End()
 
 	if b.context != nil {
@@ -539,15 +539,15 @@ func (b *Browser) NewContext(ctx context.Context, opts goja.Value) (api.BrowserC
 
 // NewPage creates a new tab in the browser window.
 func (b *Browser) NewPage(ctx context.Context, opts goja.Value) (api.Page, error) {
-	ctx, span := otel.Trace(ctx, "Browser.NewPage")
+	_, span := otel.TraceAPICall(b.ctx, "", "browser.newPage")
 	defer span.End()
 
-	browserCtx, err := b.NewContext(ctx, opts)
+	browserCtx, err := b.NewContext(b.ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("new page: %w", err)
 	}
 
-	return browserCtx.NewPage(ctx)
+	return browserCtx.NewPage(b.ctx)
 }
 
 // On returns a Promise that is resolved when the browser process is disconnected.
