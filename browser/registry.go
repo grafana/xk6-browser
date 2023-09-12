@@ -21,6 +21,7 @@ import (
 	k6event "go.k6.io/k6/event"
 	k6modules "go.k6.io/k6/js/modules"
 
+	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -426,7 +427,9 @@ func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) cont
 		return t.ctx
 	}
 
-	spanCtx, span := otel.Trace(ctx, "iteration")
+	spanCtx, span := otel.Trace(ctx, "iteration", oteltrace.WithAttributes(
+		attribute.Int64("number", id),
+	))
 
 	r.m[id] = &trace{
 		ctx:      spanCtx,
