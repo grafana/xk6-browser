@@ -17,6 +17,7 @@ import (
 
 	k6modules "go.k6.io/k6/js/modules"
 
+	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
@@ -745,6 +746,33 @@ func (f *Frame) Evaluate(pageFunc goja.Value, args ...goja.Value) any {
 	}
 
 	return result
+}
+
+func (f *Frame) noExecCtxEvaluate(apiCtx context.Context, js string) error {
+	// NOTE: not using ContextID in this command vs
+	//       the one used in eval in execution_context.go.
+	//       With this approach we seem to avoid the error
+	//       where the context changes during a navigation.
+	action := runtime.Evaluate(js).
+		WithAwaitPromise(true)
+
+	var (
+		exceptionDetails *runtime.ExceptionDetails
+		err              error
+	)
+	if _, exceptionDetails, err = action.Do(cdp.WithExecutor(apiCtx, f.manager.session)); err != nil {
+		var cdpe *cdproto.Error
+		if errors.As(err, &cdpe) && cdpe.Code == -32000 {
+			err = errors.New("execution context changed; most likely because of a navigation")
+		}
+		return err
+	}
+
+	if exceptionDetails != nil {
+		return fmt.Errorf("%s", parseExceptionDetails(exceptionDetails))
+	}
+
+	return err
 }
 
 // EvaluateHandle will evaluate provided page function within an execution context.
