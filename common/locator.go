@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
+	"github.com/grafana/xk6-browser/otel"
 
 	"github.com/dop251/goja"
 )
@@ -32,6 +33,9 @@ func NewLocator(ctx context.Context, selector string, f *Frame, l *log.Logger) *
 
 // Click on an element using locator's selector with strict mode on.
 func (l *Locator) Click(opts goja.Value) error {
+	_, span := otel.TraceAPICall(l.ctx, l.frame.page.targetID.String(), "locator.click")
+	defer span.End()
+
 	l.log.Debugf("Locator:Click", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameClickOptions(l.frame.defaultTimeout())
@@ -511,6 +515,9 @@ func (l *Locator) Type(text string, opts goja.Value) {
 		"Locator:Type", "fid:%s furl:%q sel:%q text:%q opts:%+v",
 		l.frame.ID(), l.frame.URL(), l.selector, text, opts,
 	)
+
+	_, span := otel.TraceAPICall(l.ctx, l.frame.page.targetID.String(), "locator.type")
+	defer span.End()
 
 	var err error
 	defer func() { panicOrSlowMo(l.ctx, err) }()
