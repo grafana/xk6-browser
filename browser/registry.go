@@ -285,7 +285,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 			r.setBrowser(data.Iteration, b)
 		case k6event.IterEnd:
 			r.deleteBrowser(data.Iteration)
-			r.tr.endTrace(data.Iteration)
+			r.tr.endIterationTrace(data.Iteration)
 		default:
 			r.vu.State().Logger.Warnf("received unexpected event type: %v", e.Type)
 		}
@@ -436,7 +436,7 @@ func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) cont
 	return spanCtx
 }
 
-func (r *tracesRegistry) endTrace(id int64) {
+func (r *tracesRegistry) endIterationTrace(id int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
