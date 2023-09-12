@@ -198,3 +198,23 @@ func AddEventToTrace(logger *log.Logger, targetID string, eventName string, span
 
 	ls.span.AddEvent(eventName, options...)
 }
+
+// TraceAPICall will attach a new span to the associated current
+// PageNavigation span.
+//
+// The context will be used if a live PageNavigation span is not
+// found with the given targetID.
+//
+// TODO: Could retrieve the ctx given the targetID in the mapping
+// layer allowing API calls to just work with the Trace method above.
+func TraceAPICall(ctx context.Context, targetID string, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	liveSpansMu.Lock()
+	defer liveSpansMu.Unlock()
+
+	ls := liveSpans[targetID]
+	if ls == nil {
+		return otel.Tracer(tracerName).Start(ctx, spanName, opts...)
+	}
+
+	return otel.Tracer(tracerName).Start(ls.ctx, spanName, opts...)
+}
