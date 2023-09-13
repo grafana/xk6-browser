@@ -384,14 +384,14 @@ func newTracesRegistry(ctx context.Context, envLookup env.LookupFunc) (*tracesRe
 
 	// TODO: Default fallback to HTTP and localhost:4318?
 	// Seems like we are missing logging in registries/mapping layer
-	endpoint, proto, insecure := parseTracingConfig(envLookup)
+	endpoint, proto, username, password, insecure := parseTracingConfig(envLookup)
 	if endpoint == "" || proto == "" {
 		return nil, errors.New(
 			"tracing is enabled but K6_BROWSER_TRACING_ENDPOINT or K6_BROWSER_TRACING_PROTO were not set",
 		)
 	}
 
-	tp, err := otel.NewTraceProvider(ctx, proto, endpoint, insecure)
+	tp, err := otel.NewTraceProvider(ctx, proto, endpoint, username, password, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("creating trace provider: %w", err)
 	}
@@ -413,13 +413,15 @@ func isTracingEnabled(envLookup env.LookupFunc) bool {
 	return err == nil && v
 }
 
-func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto string, insecure bool) {
+func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto, username, password string, insecure bool) {
 	endpoint, _ = envLookup(env.TracingEndpoint)
 	proto, _ = envLookup(env.TracingProto)
+	username, _ = envLookup(env.TracingUsername)
+	password, _ = envLookup(env.TracingPassword)
 	insecureStr, _ := envLookup(env.TracingInsecure)
 	insecure, _ = strconv.ParseBool(insecureStr)
 
-	return endpoint, proto, insecure
+	return endpoint, proto, username, password, insecure
 }
 
 func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) context.Context {

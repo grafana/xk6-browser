@@ -3,6 +3,7 @@ package otel
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -48,9 +49,9 @@ type traceProvider struct {
 
 // NewTraceProvider creates a new trace provider.
 func NewTraceProvider(
-	ctx context.Context, proto, endpoint string, insecure bool,
+	ctx context.Context, proto, endpoint, username, password string, insecure bool,
 ) (TraceProvider, error) {
-	client, err := newClient(proto, endpoint, insecure)
+	client, err := newClient(proto, endpoint, username, password, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("creating exporter client: %w", err)
 	}
@@ -80,19 +81,25 @@ func newResource() *resource.Resource {
 	)
 }
 
-func newClient(proto, endpoint string, insecure bool) (otlptrace.Client, error) {
+func newClient(proto, endpoint, username, password string, insecure bool) (otlptrace.Client, error) {
 	// TODO: Support gRPC
 	switch strings.ToLower(proto) {
 	case "http":
-		return newHTTPClient(endpoint, insecure), nil
+		return newHTTPClient(endpoint, username, password, insecure), nil
 	default:
 		return nil, ErrUnsupportedProto
 	}
 }
 
-func newHTTPClient(endpoint string, insecure bool) otlptrace.Client {
+func newHTTPClient(endpoint, username, password string, insecure bool) otlptrace.Client {
+	headers := map[string]string{}
+	if username != "" && password != "" {
+		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
+	}
+
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(endpoint),
+		otlptracehttp.WithHeaders(headers),
 	}
 	if insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
