@@ -13,6 +13,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -86,6 +87,8 @@ func newClient(proto, endpoint, username, password string, insecure bool) (otlpt
 	switch strings.ToLower(proto) {
 	case "http":
 		return newHTTPClient(endpoint, username, password, insecure), nil
+	case "grpc":
+		return newGRPCClient(endpoint, username, password, insecure), nil
 	default:
 		return nil, ErrUnsupportedProto
 	}
@@ -110,6 +113,19 @@ func newHTTPClient(endpoint, username, password string, insecure bool) otlptrace
 		opts = append(opts, otlptracehttp.WithInsecure())
 	}
 	return otlptracehttp.NewClient(opts...)
+}
+
+func newGRPCClient(endpoint, username, password string, insecure bool) otlptrace.Client {
+	headers := setHeaders(username, password)
+
+	opts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithHeaders(headers),
+	}
+	if insecure {
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	}
+	return otlptracegrpc.NewClient(opts...)
 }
 
 // NewNoopTraceProvider creates a new noop trace provider.
