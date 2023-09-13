@@ -83,6 +83,14 @@ const (
 	// TracingInsecure is an environment variable that can be used to
 	// allow pushing traces through an insecure channel without using TLS.
 	TracingInsecure = "K6_BROWSER_TRACING_INSECURE"
+
+	// TracingUsername is an environment variable that needs to be used
+	// with TracingPassword. They are used for the basic auth credentials.
+	TracingUsername = "K6_BROWSER_TRACING_USERNAME"
+
+	// TracingPassword is an environment variable that needs to be used
+	// with TracingUsername. They are used for the basic auth credentials.
+	TracingPassword = "K6_BROWSER_TRACING_PASSWORD"
 )
 
 // LookupFunc defines a function to look up a key from the environment.
