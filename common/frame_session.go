@@ -758,8 +758,18 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 		spanID := fs.mainFrameSpan.SpanContext().SpanID().String()
 		newFrame := fs.manager.getFrameByID(frame.ID)
 		if newFrame != nil {
+			// TODO: We're getting a deadlock in some integration tests where we
+			// expect to handle further events such as TestFrameDismissDialogBox.
+			// This test waits on onEventJavascriptDialogOpening. The
+			// event handler is ran on one goroutine, so we should handle
+			// onFrameNavigated, and not perform any other CDP commands.
+			// Would be great if this can be put on the event loop which would
+			// unblock the goroutine to handle onEventJavascriptDialogOpening.
+			// For now adding a 1sec timeout to allow tests to complete.
 			k6Obj := "window.k6SpanId = '" + spanID + "';"
-			err := newFrame.noExecCtxEvaluate(fs.ctx, k6Obj)
+			ctx, cancel := context.WithTimeout(fs.ctx, time.Second)
+			defer cancel()
+			err := newFrame.noExecCtxEvaluate(ctx, k6Obj)
 			if err != nil {
 				fs.logger.Errorf("FrameSession:onFrameNavigated", "error on evaluating window.k6SpanId: %v", err)
 			}
