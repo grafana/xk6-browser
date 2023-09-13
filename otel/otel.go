@@ -91,6 +91,14 @@ func newClient(proto, endpoint, username, password string, insecure bool) (otlpt
 	}
 }
 
+func setHeaders(username, password string) map[string]string {
+	headers := map[string]string{}
+	if username != "" && password != "" {
+		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
+	}
+	return headers
+}
+
 func newHTTPClient(endpoint, username, password string, insecure bool) otlptrace.Client {
 	headers := map[string]string{}
 	if username != "" && password != "" {
