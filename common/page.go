@@ -873,6 +873,9 @@ func (p *Page) QueryAll(selector string) ([]api.ElementHandle, error) {
 func (p *Page) Reload(opts goja.Value) api.Response {
 	p.logger.Debugf("Page:Reload", "sid:%v", p.sessionID())
 
+	_, span := otel.TraceAPICall(p.ctx, p.targetID.String(), "page.reload")
+	defer span.End()
+
 	parsedOpts := NewPageReloadOptions(
 		LifecycleEventLoad,
 		p.timeoutSettings.navigationTimeout(),
