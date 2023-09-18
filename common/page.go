@@ -862,7 +862,7 @@ func (p *Page) Reload(opts goja.Value) api.Response {
 
 	parsedOpts := NewPageReloadOptions(
 		LifecycleEventLoad,
-		time.Duration(p.timeoutSettings.navigationTimeout())*time.Second,
+		p.timeoutSettings.navigationTimeout(),
 	)
 	if err := parsedOpts.Parse(p.ctx, opts); err != nil {
 		k6ext.Panic(p.ctx, "parsing reload options: %w", err)
