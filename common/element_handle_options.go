@@ -200,7 +200,7 @@ func (o *ElementHandleClickOptions) Parse(ctx context.Context, opts goja.Value) 
 				o.Button = opts.Get(k).String()
 			case "clickCount":
 				o.ClickCount = opts.Get(k).ToInteger()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			case "modifiers":
 				var m []string
@@ -242,7 +242,7 @@ func (o *ElementHandleDblclickOptions) Parse(ctx context.Context, opts goja.Valu
 			switch k {
 			case "button":
 				o.Button = opts.Get(k).String()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			case "modifiers":
 				var m []string
@@ -306,7 +306,7 @@ func (o *ElementHandlePressOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
@@ -437,7 +437,7 @@ func (o *ElementHandleTypeOptions) Parse(ctx context.Context, opts goja.Value) e
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()

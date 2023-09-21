@@ -46,7 +46,7 @@ func (o *MouseClickOptions) Parse(ctx context.Context, opts goja.Value) error {
 				o.Button = opts.Get(k).String()
 			case "clickCount":
 				o.ClickCount = opts.Get(k).ToInteger()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			}
 		}
@@ -76,7 +76,7 @@ func (o *MouseDblClickOptions) Parse(ctx context.Context, opts goja.Value) error
 			switch k {
 			case "button":
 				o.Button = opts.Get(k).String()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			}
 		}
