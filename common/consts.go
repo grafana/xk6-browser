@@ -29,4 +29,5 @@ const (
 	OptionsReferer        = "referer"
 	OptionsWaitUntil      = "waitUntil"
 	OptionsPolling        = "polling"
+	OptionsURL            = "url"
 )
