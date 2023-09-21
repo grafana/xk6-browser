@@ -19,4 +19,5 @@ const (
 	OptionsTimeout     = "timeout"
 	OptionsPredicate   = "predicate"
 	OptionsNoWaitAfter = "noWaitAfter"
+	OptionsForce       = "force"
 )

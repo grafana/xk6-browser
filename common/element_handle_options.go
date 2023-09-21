@@ -123,7 +123,7 @@ func (o *ElementHandleBaseOptions) Parse(ctx context.Context, opts goja.Value) e
 	gopts := opts.ToObject(k6ext.Runtime(ctx))
 	for _, k := range gopts.Keys() {
 		switch k {
-		case "force":
+		case OptionsForce:
 			o.Force = gopts.Get(k).ToBoolean()
 		case OptionsNoWaitAfter:
 			o.NoWaitAfter = gopts.Get(k).ToBoolean()
