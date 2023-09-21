@@ -15,8 +15,7 @@ const (
 
 	// BrowserContext
 
-	EventBrowserContextClose string = "close"
-	EventBrowserContextPage  string = "page"
+	EventBrowserContextPage string = "page"
 
 	// Connection
 
