@@ -123,7 +123,7 @@ func (o *PageScreenshotOptions) Parse(ctx context.Context, opts goja.Value) erro
 				o.Path = opts.Get(k).String()
 			case "quality":
 				o.Quality = opts.Get(k).ToInteger()
-			case "type":
+			case OptionsType:
 				if f, ok := imageFormatToID[opts.Get(k).String()]; ok {
 					o.Format = f
 					formatSpecified = true

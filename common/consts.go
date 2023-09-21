@@ -22,4 +22,5 @@ const (
 	OptionsForce          = "force"
 	OptionsDelay          = "delay"
 	OptionsOmitBackground = "omitBackground"
+	OptionsType           = "type"
 )
