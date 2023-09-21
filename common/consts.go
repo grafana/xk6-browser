@@ -23,4 +23,5 @@ const (
 	OptionsDelay          = "delay"
 	OptionsOmitBackground = "omitBackground"
 	OptionsType           = "type"
+	OptionsQuality        = "quality"
 )

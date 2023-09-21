@@ -121,7 +121,7 @@ func (o *PageScreenshotOptions) Parse(ctx context.Context, opts goja.Value) erro
 				o.OmitBackground = opts.Get(k).ToBoolean()
 			case "path":
 				o.Path = opts.Get(k).String()
-			case "quality":
+			case OptionsQuality:
 				o.Quality = opts.Get(k).ToInteger()
 			case OptionsType:
 				if f, ok := imageFormatToID[opts.Get(k).String()]; ok {
