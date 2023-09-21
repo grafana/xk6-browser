@@ -78,7 +78,7 @@ func (o *PageReloadOptions) Parse(ctx context.Context, opts goja.Value) error {
 				} else {
 					return fmt.Errorf("%q is not a valid lifecycle", lifeCycle)
 				}
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}

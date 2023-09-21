@@ -155,7 +155,7 @@ func (o *FrameBaseOptions) Parse(ctx context.Context, opts goja.Value) error {
 			switch k {
 			case "strict":
 				o.Strict = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -275,7 +275,7 @@ func (o *FrameGotoOptions) Parse(ctx context.Context, opts goja.Value) error {
 			switch k {
 			case "referer":
 				o.Referer = opts.Get(k).String()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			case "waitUntil":
 				lifeCycle := opts.Get(k).String()
@@ -480,7 +480,7 @@ func (o *FrameSetContentOptions) Parse(ctx context.Context, opts goja.Value) err
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			case "waitUntil":
 				lifeCycle := opts.Get(k).String()
@@ -592,7 +592,7 @@ func (o *FrameWaitForFunctionOptions) Parse(ctx context.Context, opts goja.Value
 		for _, k := range opts.Keys() {
 			v := opts.Get(k)
 			switch k {
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(v.ToInteger()) * time.Millisecond
 			case "polling":
 				switch v.ExportType().Kind() { //nolint: exhaustive
@@ -628,7 +628,7 @@ func (o *FrameWaitForLoadStateOptions) Parse(ctx context.Context, opts goja.Valu
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -652,7 +652,7 @@ func (o *FrameWaitForNavigationOptions) Parse(ctx context.Context, opts goja.Val
 			switch k {
 			case "url":
 				o.URL = opts.Get(k).String()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			case "waitUntil":
 				lifeCycle := opts.Get(k).String()
@@ -689,7 +689,7 @@ func (o *FrameWaitForSelectorOptions) Parse(ctx context.Context, opts goja.Value
 				}
 			case "strict":
 				o.Strict = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}

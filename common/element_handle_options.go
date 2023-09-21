@@ -127,7 +127,7 @@ func (o *ElementHandleBaseOptions) Parse(ctx context.Context, opts goja.Value) e
 			o.Force = gopts.Get(k).ToBoolean()
 		case "noWaitAfter": //nolint:goconst
 			o.NoWaitAfter = gopts.Get(k).ToBoolean()
-		case "timeout":
+		case OptionsTimeout:
 			o.Timeout = time.Duration(gopts.Get(k).ToInteger()) * time.Millisecond
 		}
 	}
@@ -310,7 +310,7 @@ func (o *ElementHandlePressOptions) Parse(ctx context.Context, opts goja.Value) 
 				o.Delay = opts.Get(k).ToInteger()
 			case "noWaitAfter":
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -354,7 +354,7 @@ func (o *ElementHandleScreenshotOptions) Parse(ctx context.Context, opts goja.Va
 					o.Format = f
 					formatSpecified = true
 				}
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -441,7 +441,7 @@ func (o *ElementHandleTypeOptions) Parse(ctx context.Context, opts goja.Value) e
 				o.Delay = opts.Get(k).ToInteger()
 			case "noWaitAfter":
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -469,7 +469,7 @@ func (o *ElementHandleWaitForElementStateOptions) Parse(ctx context.Context, opt
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
