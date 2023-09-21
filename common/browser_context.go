@@ -364,7 +364,11 @@ func (b *BrowserContext) WaitForEvent(event string, optsOrPredicate goja.Value) 
 	return b.waitForEvent(waitForEventType(event), parsedOpts.PredicateFn, parsedOpts.Timeout)
 }
 
-func (b *BrowserContext) waitForEvent(event waitForEventType, predicateFn goja.Callable, timeout time.Duration) (any, error) {
+func (b *BrowserContext) waitForEvent(
+	event waitForEventType,
+	predicateFn goja.Callable,
+	timeout time.Duration,
+) (any, error) {
 	if event != waitForEventTypePage {
 		return nil, fmt.Errorf("incorrect event %q, %q is the only event supported", event, waitForEventTypePage)
 	}
