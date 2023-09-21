@@ -28,4 +28,5 @@ const (
 	OptionsStrict         = "strict"
 	OptionsReferer        = "referer"
 	OptionsWaitUntil      = "waitUntil"
+	OptionsPolling        = "polling"
 )

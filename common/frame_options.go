@@ -594,7 +594,7 @@ func (o *FrameWaitForFunctionOptions) Parse(ctx context.Context, opts goja.Value
 			switch k {
 			case OptionsTimeout:
 				o.Timeout = time.Duration(v.ToInteger()) * time.Millisecond
-			case "polling":
+			case OptionsPolling:
 				switch v.ExportType().Kind() { //nolint: exhaustive
 				case reflect.Int64:
 					o.Polling = PollingInterval
