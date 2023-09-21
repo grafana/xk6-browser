@@ -24,4 +24,5 @@ const (
 	OptionsOmitBackground = "omitBackground"
 	OptionsType           = "type"
 	OptionsQuality        = "quality"
+	OptionsPath           = "path"
 )

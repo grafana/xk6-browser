@@ -119,7 +119,7 @@ func (o *PageScreenshotOptions) Parse(ctx context.Context, opts goja.Value) erro
 				o.FullPage = opts.Get(k).ToBoolean()
 			case OptionsOmitBackground:
 				o.OmitBackground = opts.Get(k).ToBoolean()
-			case "path":
+			case OptionsPath:
 				o.Path = opts.Get(k).String()
 			case OptionsQuality:
 				o.Quality = opts.Get(k).ToInteger()

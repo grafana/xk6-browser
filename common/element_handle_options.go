@@ -345,7 +345,7 @@ func (o *ElementHandleScreenshotOptions) Parse(ctx context.Context, opts goja.Va
 			switch k {
 			case OptionsOmitBackground:
 				o.OmitBackground = opts.Get(k).ToBoolean()
-			case "path":
+			case OptionsPath:
 				o.Path = opts.Get(k).String()
 			case OptionsQuality:
 				o.Quality = opts.Get(k).ToInteger()
