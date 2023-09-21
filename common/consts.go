@@ -16,6 +16,7 @@ const (
 
 	// Options consts.
 
-	OptionsTimeout   = "timeout"
-	OptionsPredicate = "predicate"
+	OptionsTimeout     = "timeout"
+	OptionsPredicate   = "predicate"
+	OptionsNoWaitAfter = "noWaitAfter"
 )

@@ -125,7 +125,7 @@ func (o *ElementHandleBaseOptions) Parse(ctx context.Context, opts goja.Value) e
 		switch k {
 		case "force":
 			o.Force = gopts.Get(k).ToBoolean()
-		case "noWaitAfter": //nolint:goconst
+		case OptionsNoWaitAfter:
 			o.NoWaitAfter = gopts.Get(k).ToBoolean()
 		case OptionsTimeout:
 			o.Timeout = time.Duration(gopts.Get(k).ToInteger()) * time.Millisecond
@@ -308,7 +308,7 @@ func (o *ElementHandlePressOptions) Parse(ctx context.Context, opts goja.Value) 
 			switch k {
 			case "delay":
 				o.Delay = opts.Get(k).ToInteger()
-			case "noWaitAfter":
+			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
@@ -439,7 +439,7 @@ func (o *ElementHandleTypeOptions) Parse(ctx context.Context, opts goja.Value) e
 			switch k {
 			case "delay":
 				o.Delay = opts.Get(k).ToInteger()
-			case "noWaitAfter":
+			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
