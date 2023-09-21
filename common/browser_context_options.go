@@ -170,7 +170,7 @@ func (w *WaitForEventOptions) Parse(ctx context.Context, optsOrPredicate goja.Va
 	opts := optsOrPredicate.ToObject(rt)
 	for _, k := range opts.Keys() {
 		switch k {
-		case "predicate":
+		case OptionsPredicate:
 			w.PredicateFn, isCallable = goja.AssertFunction(opts.Get(k))
 			if !isCallable {
 				return errors.New("predicate function is not callable")
