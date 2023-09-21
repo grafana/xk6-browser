@@ -202,7 +202,7 @@ func (o *ElementHandleClickOptions) Parse(ctx context.Context, opts goja.Value) 
 				o.ClickCount = opts.Get(k).ToInteger()
 			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -244,7 +244,7 @@ func (o *ElementHandleDblclickOptions) Parse(ctx context.Context, opts goja.Valu
 				o.Button = opts.Get(k).String()
 			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -280,7 +280,7 @@ func (o *ElementHandleHoverOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -411,7 +411,7 @@ func (o *ElementHandleTapOptions) Parse(ctx context.Context, opts goja.Value) er
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err

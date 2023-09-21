@@ -32,4 +32,5 @@ const (
 	OptionsURL            = "url"
 	OptionsButton         = "button"
 	OptionsClickCount     = "clickCount"
+	OptionsModifiers      = "modifiers"
 )

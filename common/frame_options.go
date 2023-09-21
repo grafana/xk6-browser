@@ -511,7 +511,7 @@ func (o *FrameTapOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
