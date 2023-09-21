@@ -27,4 +27,5 @@ const (
 	OptionsPath           = "path"
 	OptionsStrict         = "strict"
 	OptionsReferer        = "referer"
+	OptionsWaitUntil      = "waitUntil"
 )

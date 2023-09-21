@@ -71,7 +71,7 @@ func (o *PageReloadOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "waitUntil":
+			case OptionsWaitUntil:
 				lifeCycle := opts.Get(k).String()
 				if l, ok := lifecycleEventToID[lifeCycle]; ok {
 					o.WaitUntil = l

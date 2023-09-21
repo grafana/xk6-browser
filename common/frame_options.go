@@ -277,7 +277,7 @@ func (o *FrameGotoOptions) Parse(ctx context.Context, opts goja.Value) error {
 				o.Referer = opts.Get(k).String()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
-			case "waitUntil":
+			case OptionsWaitUntil:
 				lifeCycle := opts.Get(k).String()
 				if err := o.WaitUntil.UnmarshalText([]byte(lifeCycle)); err != nil {
 					return fmt.Errorf("parsing goto options: %w", err)
@@ -482,7 +482,7 @@ func (o *FrameSetContentOptions) Parse(ctx context.Context, opts goja.Value) err
 			switch k {
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
-			case "waitUntil":
+			case OptionsWaitUntil:
 				lifeCycle := opts.Get(k).String()
 				if err := o.WaitUntil.UnmarshalText([]byte(lifeCycle)); err != nil {
 					return fmt.Errorf("parsing setContent options: %w", err)
@@ -654,7 +654,7 @@ func (o *FrameWaitForNavigationOptions) Parse(ctx context.Context, opts goja.Val
 				o.URL = opts.Get(k).String()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
-			case "waitUntil":
+			case OptionsWaitUntil:
 				lifeCycle := opts.Get(k).String()
 				if err := o.WaitUntil.UnmarshalText([]byte(lifeCycle)); err != nil {
 					return fmt.Errorf("parsing waitForNavigation options: %w", err)
