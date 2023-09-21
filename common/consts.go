@@ -30,4 +30,5 @@ const (
 	OptionsWaitUntil      = "waitUntil"
 	OptionsPolling        = "polling"
 	OptionsURL            = "url"
+	OptionsButton         = "button"
 )

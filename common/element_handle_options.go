@@ -196,7 +196,7 @@ func (o *ElementHandleClickOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
 			case "clickCount":
 				o.ClickCount = opts.Get(k).ToInteger()
@@ -240,7 +240,7 @@ func (o *ElementHandleDblclickOptions) Parse(ctx context.Context, opts goja.Valu
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
 			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
