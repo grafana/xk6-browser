@@ -198,7 +198,7 @@ func (o *ElementHandleClickOptions) Parse(ctx context.Context, opts goja.Value) 
 			switch k {
 			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "clickCount":
+			case OptionsClickCount:
 				o.ClickCount = opts.Get(k).ToInteger()
 			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()

@@ -31,4 +31,5 @@ const (
 	OptionsPolling        = "polling"
 	OptionsURL            = "url"
 	OptionsButton         = "button"
+	OptionsClickCount     = "clickCount"
 )
