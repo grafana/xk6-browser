@@ -26,4 +26,5 @@ const (
 	OptionsQuality        = "quality"
 	OptionsPath           = "path"
 	OptionsStrict         = "strict"
+	OptionsReferer        = "referer"
 )

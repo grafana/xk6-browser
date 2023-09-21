@@ -273,7 +273,7 @@ func (o *FrameGotoOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "referer":
+			case OptionsReferer:
 				o.Referer = opts.Get(k).String()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
