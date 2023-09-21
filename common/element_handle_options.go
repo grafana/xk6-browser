@@ -387,7 +387,7 @@ func (o *ElementHandleSetCheckedOptions) Parse(ctx context.Context, opts goja.Va
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}

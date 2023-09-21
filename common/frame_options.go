@@ -153,7 +153,7 @@ func (o *FrameBaseOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
@@ -179,7 +179,7 @@ func (o *FrameCheckOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -203,7 +203,7 @@ func (o *FrameClickOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -227,7 +227,7 @@ func (o *FrameDblclickOptions) Parse(ctx context.Context, opts goja.Value) error
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -251,7 +251,7 @@ func (o *FrameFillOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -304,7 +304,7 @@ func (o *FrameHoverOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -458,7 +458,7 @@ func (o *FrameSelectOptionOptions) Parse(ctx context.Context, opts goja.Value) e
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -517,7 +517,7 @@ func (o *FrameTapOptions) Parse(ctx context.Context, opts goja.Value) error {
 					return err
 				}
 				o.Modifiers = m
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -567,7 +567,7 @@ func (o *FrameUncheckOptions) Parse(ctx context.Context, opts goja.Value) error 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -687,7 +687,7 @@ func (o *FrameWaitForSelectorOptions) Parse(ctx context.Context, opts goja.Value
 				} else {
 					return fmt.Errorf("%q is not a valid DOM state", state)
 				}
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond

@@ -25,4 +25,5 @@ const (
 	OptionsType           = "type"
 	OptionsQuality        = "quality"
 	OptionsPath           = "path"
+	OptionsStrict         = "strict"
 )
