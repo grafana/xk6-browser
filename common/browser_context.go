@@ -436,7 +436,10 @@ func (b *BrowserContext) runWaitForEventHandler(
 			}
 
 			if retVal, err := predicateFn(b.vu.Runtime().ToValue(p)); err == nil && retVal.ToBoolean() {
-				b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:return", "bctxid:%v", b.id)
+				b.logger.Debugf(
+					"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:return",
+					"bctxid:%v", b.id,
+				)
 				return
 			}
 		}
