@@ -24,7 +24,7 @@ func (o *KeyboardOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			}
 		}

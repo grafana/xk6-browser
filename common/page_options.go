@@ -71,14 +71,14 @@ func (o *PageReloadOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "waitUntil":
+			case OptionsWaitUntil:
 				lifeCycle := opts.Get(k).String()
 				if l, ok := lifecycleEventToID[lifeCycle]; ok {
 					o.WaitUntil = l
 				} else {
 					return fmt.Errorf("%q is not a valid lifecycle", lifeCycle)
 				}
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -117,13 +117,13 @@ func (o *PageScreenshotOptions) Parse(ctx context.Context, opts goja.Value) erro
 				}
 			case "fullPage":
 				o.FullPage = opts.Get(k).ToBoolean()
-			case "omitBackground":
+			case OptionsOmitBackground:
 				o.OmitBackground = opts.Get(k).ToBoolean()
-			case "path":
+			case OptionsPath:
 				o.Path = opts.Get(k).String()
-			case "quality":
+			case OptionsQuality:
 				o.Quality = opts.Get(k).ToInteger()
-			case "type":
+			case OptionsType:
 				if f, ok := imageFormatToID[opts.Get(k).String()]; ok {
 					o.Format = f
 					formatSpecified = true

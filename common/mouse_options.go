@@ -42,11 +42,11 @@ func (o *MouseClickOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "clickCount":
+			case OptionsClickCount:
 				o.ClickCount = opts.Get(k).ToInteger()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			}
 		}
@@ -74,9 +74,9 @@ func (o *MouseDblClickOptions) Parse(ctx context.Context, opts goja.Value) error
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
 			}
 		}
@@ -103,9 +103,9 @@ func (o *MouseDownUpOptions) Parse(ctx context.Context, opts goja.Value) error {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "clickCount":
+			case OptionsClickCount:
 				o.ClickCount = opts.Get(k).ToInteger()
 			}
 		}

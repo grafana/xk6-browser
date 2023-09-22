@@ -123,11 +123,11 @@ func (o *ElementHandleBaseOptions) Parse(ctx context.Context, opts goja.Value) e
 	gopts := opts.ToObject(k6ext.Runtime(ctx))
 	for _, k := range gopts.Keys() {
 		switch k {
-		case "force":
+		case OptionsForce:
 			o.Force = gopts.Get(k).ToBoolean()
-		case "noWaitAfter": //nolint:goconst
+		case OptionsNoWaitAfter:
 			o.NoWaitAfter = gopts.Get(k).ToBoolean()
-		case "timeout":
+		case OptionsTimeout:
 			o.Timeout = time.Duration(gopts.Get(k).ToInteger()) * time.Millisecond
 		}
 	}
@@ -196,13 +196,13 @@ func (o *ElementHandleClickOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "clickCount":
+			case OptionsClickCount:
 				o.ClickCount = opts.Get(k).ToInteger()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -240,11 +240,11 @@ func (o *ElementHandleDblclickOptions) Parse(ctx context.Context, opts goja.Valu
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "button":
+			case OptionsButton:
 				o.Button = opts.Get(k).String()
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -280,7 +280,7 @@ func (o *ElementHandleHoverOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -306,11 +306,11 @@ func (o *ElementHandlePressOptions) Parse(ctx context.Context, opts goja.Value) 
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "noWaitAfter":
+			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -343,18 +343,18 @@ func (o *ElementHandleScreenshotOptions) Parse(ctx context.Context, opts goja.Va
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "omitBackground":
+			case OptionsOmitBackground:
 				o.OmitBackground = opts.Get(k).ToBoolean()
-			case "path":
+			case OptionsPath:
 				o.Path = opts.Get(k).String()
-			case "quality":
+			case OptionsQuality:
 				o.Quality = opts.Get(k).ToInteger()
-			case "type":
+			case OptionsType:
 				if f, ok := imageFormatToID[opts.Get(k).String()]; ok {
 					o.Format = f
 					formatSpecified = true
 				}
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -387,7 +387,7 @@ func (o *ElementHandleSetCheckedOptions) Parse(ctx context.Context, opts goja.Va
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "strict":
+			case OptionsStrict:
 				o.Strict = opts.Get(k).ToBoolean()
 			}
 		}
@@ -411,7 +411,7 @@ func (o *ElementHandleTapOptions) Parse(ctx context.Context, opts goja.Value) er
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "modifiers":
+			case OptionsModifiers:
 				var m []string
 				if err := rt.ExportTo(opts.Get(k), &m); err != nil {
 					return err
@@ -437,11 +437,11 @@ func (o *ElementHandleTypeOptions) Parse(ctx context.Context, opts goja.Value) e
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "delay":
+			case OptionsDelay:
 				o.Delay = opts.Get(k).ToInteger()
-			case "noWaitAfter":
+			case OptionsNoWaitAfter:
 				o.NoWaitAfter = opts.Get(k).ToBoolean()
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}
@@ -469,7 +469,7 @@ func (o *ElementHandleWaitForElementStateOptions) Parse(ctx context.Context, opt
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
-			case "timeout":
+			case OptionsTimeout:
 				o.Timeout = time.Duration(opts.Get(k).ToInteger()) * time.Millisecond
 			}
 		}

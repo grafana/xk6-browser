@@ -13,4 +13,24 @@ const (
 	// Life-cycle consts
 
 	LifeCycleNetworkIdleTimeout time.Duration = 500 * time.Millisecond
+
+	// Options consts.
+
+	OptionsTimeout        = "timeout"
+	OptionsPredicate      = "predicate"
+	OptionsNoWaitAfter    = "noWaitAfter"
+	OptionsForce          = "force"
+	OptionsDelay          = "delay"
+	OptionsOmitBackground = "omitBackground"
+	OptionsType           = "type"
+	OptionsQuality        = "quality"
+	OptionsPath           = "path"
+	OptionsStrict         = "strict"
+	OptionsReferer        = "referer"
+	OptionsWaitUntil      = "waitUntil"
+	OptionsPolling        = "polling"
+	OptionsURL            = "url"
+	OptionsButton         = "button"
+	OptionsClickCount     = "clickCount"
+	OptionsModifiers      = "modifiers"
 )
