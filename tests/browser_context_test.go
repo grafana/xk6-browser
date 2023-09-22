@@ -757,7 +757,6 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 			err = tb.run(
 				ctx,
 				func() error {
-					// Call waitForEvent.
 					op := optsOrPredicateToGojaValue(t, tb, tc.optsOrPredicate)
 					resp, err := bc.WaitForEvent(tc.event, op)
 					if resp != nil {
@@ -768,14 +767,12 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 					return err
 				},
 				func() error {
-					// Call newPage.
 					var err error
 					p2, err = bc.NewPage()
 					return err
 				},
 			)
 
-			// For the happy paths.
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 				// We want to make sure that the page that was created with
@@ -784,7 +781,6 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 				return
 			}
 
-			// For the failure cases.
 			assert.ErrorContains(t, err, tc.wantErr)
 		})
 	}
