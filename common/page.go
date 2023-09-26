@@ -801,6 +801,10 @@ func (p *Page) createTaskQueue() {
 	})
 }
 
+func (p *Page) queueTask(t taskqueue.Task) {
+	p.tq.Queue(t)
+}
+
 // On subscribes to a page event for which the given handler will be executed
 // passing in the ConsoleMessage associated with the event.
 // The only accepted event value is 'console'.
