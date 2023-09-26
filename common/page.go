@@ -89,7 +89,7 @@ type Page struct {
 	routes           []api.Route
 	vu               k6modules.VU
 
-	tqOnce sync.Once
+	tqOnce *sync.Once
 	tq     *taskqueue.TaskQueue
 
 	logger *log.Logger
@@ -127,6 +127,7 @@ func NewPage(
 		routes:           make([]api.Route, 0),
 		vu:               k6ext.GetVU(ctx),
 		logger:           logger,
+		tqOnce:           &sync.Once{},
 	}
 
 	p.logger.Debugf("Page:NewPage", "sid:%v tid:%v backgroundPage:%t",

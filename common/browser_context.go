@@ -439,14 +439,59 @@ func (b *BrowserContext) runWaitForEventHandler(
 				return
 			}
 
-			if retVal, err := predicateFn(b.vu.Runtime().ToValue(p)); err == nil && retVal.ToBoolean() {
+			// TODO: Find a better place to instantiate a page/context/iteration
+			//       scoped taskqueue.
+			p.createTaskQueue()
+
+			tempPassed := make(chan bool)
+			tempErrOut := make(chan error)
+			// TODO: Is this is a suitable place to add the predicate function to
+			//       the taskqueue?
+			p.queueTask(func() error {
+				retVal, err := predicateFn(b.vu.Runtime().ToValue(p))
+				if err != nil {
+					tempErrOut <- fmt.Errorf("executing predicate function: %w", err)
+					return nil
+				}
+
+				tempPassed <- retVal.ToBoolean()
+				return nil
+			})
+
+			select {
+			case <-ctx.Done():
 				b.logger.Debugf(
-					"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:return",
+					"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:contextCanceled",
 					"bctxid:%v", b.id,
 				)
-				out <- p
+				return
+			case v := <-tempPassed:
+				if !v {
+					b.logger.Debugf(
+						"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:false",
+						"bctxid:%v", b.id,
+					)
+
+					// Predicate didn't pass so wait and try again on the next
+					// EventBrowserContextPage event.
+					continue
+				}
+			case err := <-tempErrOut:
+				b.logger.Debugf(
+					"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:error",
+					"bctxid:%v", b.id,
+				)
+				errOut <- err
 				return
 			}
+
+			b.logger.Debugf(
+				"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:passed",
+				"bctxid:%v", b.id,
+			)
+			out <- p
+
+			return
 		}
 	}
 }
