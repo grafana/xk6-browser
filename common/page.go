@@ -89,7 +89,8 @@ type Page struct {
 	routes           []api.Route
 	vu               k6modules.VU
 
-	tq *taskqueue.TaskQueue
+	tqOnce sync.Once
+	tq     *taskqueue.TaskQueue
 
 	logger *log.Logger
 }
@@ -794,6 +795,12 @@ func (p *Page) MainFrame() api.Frame {
 	return mf
 }
 
+func (p *Page) createTaskQueue() {
+	p.tqOnce.Do(func() {
+		p.tq = taskqueue.New(p.vu.RegisterCallback)
+	})
+}
+
 // On subscribes to a page event for which the given handler will be executed
 // passing in the ConsoleMessage associated with the event.
 // The only accepted event value is 'console'.
@@ -805,9 +812,7 @@ func (p *Page) On(event string, handler func(*api.ConsoleMessage) error) error {
 	// Once the TaskQueue is initialized, it has to be closed so the event loop can finish.
 	// Therefore, instead of doing it in the constructor, we initialize it only when page.on()
 	// is called, so the user is only required to close the page it using this method.
-	if p.tq == nil {
-		p.tq = taskqueue.New(p.vu.RegisterCallback)
-	}
+	p.createTaskQueue()
 
 	p.eventHandlersMu.Lock()
 	defer p.eventHandlersMu.Unlock()
