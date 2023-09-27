@@ -20,6 +20,8 @@ updates:
         dependency-type: "all"
       - dependency-name: "github.com/mccutchen/go-httpbin"
         dependency-type: "all"
+      - dependency-name: "github.com/dop251/goja"
+        dependency-type: "all"
     target-branch: "main"
     commit-message:
       prefix: "Bump "
