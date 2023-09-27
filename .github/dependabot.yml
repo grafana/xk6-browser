@@ -10,8 +10,6 @@ updates:
         dependency-type: "all"
       - dependency-name: "github.com/chromedp/cdproto"
         dependency-type: "all"
-      - dependency-name: "github.com/mailru/easyjson"
-        dependency-type: "all"
       - dependency-name: "github.com/mstoykov/k6-taskqueue-lib"
         dependency-type: "all"
       - dependency-name: "github.com/stretchr/testify"
