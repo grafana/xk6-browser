@@ -1153,18 +1153,24 @@ func (p *Page) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICalled) {
 		return
 	}
 
+	tempQueue := make([]taskqueue.Task, 0)
+
 	p.eventHandlersMu.RLock()
-	defer p.eventHandlersMu.RUnlock()
 	for _, h := range p.eventHandlers[eventPageConsoleAPICalled] {
 		h := h
 		// Use TaskQueue in order to synchronize handlers execution in the event loop,
 		// as it is not thread safe and events are processed from a background goroutine
-		p.tq.Queue(func() error {
+		tempQueue = append(tempQueue, func() error {
 			if err := h(m); err != nil {
 				return fmt.Errorf("executing onConsoleAPICalled handler: %w", err)
 			}
 			return nil
 		})
+	}
+	p.eventHandlersMu.RUnlock()
+
+	for _, t := range tempQueue {
+		p.tq.Queue(t)
 	}
 }
 
