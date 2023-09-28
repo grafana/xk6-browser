@@ -89,8 +89,8 @@ type Page struct {
 	routes           []api.Route
 	vu               k6modules.VU
 
-	tqOnce *sync.Once
-	tq     *taskqueue.TaskQueue
+	tqMu sync.RWMutex
+	tq   *taskqueue.TaskQueue
 
 	logger *log.Logger
 }
@@ -191,6 +191,9 @@ func (p *Page) initEvents() {
 			// TaskQueue is only initialized when calling page.on() method
 			// so users are not always required to close the page in order
 			// to let the iteration finish.
+			p.tqMu.Lock()
+			defer p.tqMu.Unlock()
+
 			if p.tq != nil {
 				p.tq.Close()
 			}
@@ -797,12 +800,16 @@ func (p *Page) MainFrame() api.Frame {
 }
 
 func (p *Page) createTaskQueue() {
-	p.tqOnce.Do(func() {
-		p.tq = taskqueue.New(p.vu.RegisterCallback)
-	})
+	p.tqMu.Lock()
+	defer p.tqMu.Unlock()
+
+	p.tq = taskqueue.New(p.vu.RegisterCallback)
 }
 
 func (p *Page) queueTask(t taskqueue.Task) {
+	p.tqMu.RLock()
+	defer p.tqMu.RUnlock()
+
 	p.tq.Queue(t)
 }
 
