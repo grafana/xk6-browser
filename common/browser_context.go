@@ -439,10 +439,6 @@ func (b *BrowserContext) runWaitForEventHandler(
 				return
 			}
 
-			// TODO: Find a better place to instantiate a page/context/iteration
-			//       scoped taskqueue.
-			p.createTaskQueue()
-
 			tempPassed := make(chan bool)
 			tempErrOut := make(chan error)
 			// TODO: Is this is a suitable place to add the predicate function to

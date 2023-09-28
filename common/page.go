@@ -105,6 +105,8 @@ func NewPage(
 	bp bool,
 	logger *log.Logger,
 ) (*Page, error) {
+	vu := k6ext.GetVU(ctx)
+
 	p := Page{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
 		ctx:              ctx,
@@ -125,9 +127,9 @@ func NewPage(
 		frameSessions:    make(map[cdp.FrameID]*FrameSession),
 		workers:          make(map[target.SessionID]*Worker),
 		routes:           make([]api.Route, 0),
-		vu:               k6ext.GetVU(ctx),
+		vu:               vu,
 		logger:           logger,
-		tqOnce:           &sync.Once{},
+		tq:               taskqueue.New(vu.RegisterCallback),
 	}
 
 	p.logger.Debugf("Page:NewPage", "sid:%v tid:%v backgroundPage:%t",
@@ -799,13 +801,6 @@ func (p *Page) MainFrame() api.Frame {
 	return mf
 }
 
-func (p *Page) createTaskQueue() {
-	p.tqMu.Lock()
-	defer p.tqMu.Unlock()
-
-	p.tq = taskqueue.New(p.vu.RegisterCallback)
-}
-
 func (p *Page) queueTask(t taskqueue.Task) {
 	p.tqMu.RLock()
 	defer p.tqMu.RUnlock()
@@ -820,11 +815,6 @@ func (p *Page) On(event string, handler func(*api.ConsoleMessage) error) error {
 	if event != eventPageConsoleAPICalled {
 		return fmt.Errorf("unknown page event: %q, must be %q", event, eventPageConsoleAPICalled)
 	}
-
-	// Once the TaskQueue is initialized, it has to be closed so the event loop can finish.
-	// Therefore, instead of doing it in the constructor, we initialize it only when page.on()
-	// is called, so the user is only required to close the page it using this method.
-	p.createTaskQueue()
 
 	p.eventHandlersMu.Lock()
 	defer p.eventHandlersMu.Unlock()
