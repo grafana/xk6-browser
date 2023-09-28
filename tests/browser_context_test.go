@@ -742,7 +742,10 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tb := newTestBrowser(t)
+			// Use withSkipClose() opt as we will close it manually to force the
+			// page.TaskQueue closing, which seems to be a requirement otherwise
+			// it doesn't complete the test.
+			tb := newTestBrowser(t, withSkipClose())
 
 			bc, err := tb.NewContext(nil)
 			require.NoError(t, err)
@@ -750,34 +753,73 @@ func TestBrowserContextWaitForEvent(t *testing.T) {
 			ctx, cancel := context.WithTimeout(tb.context(), 5*time.Second)
 			defer cancel()
 
-			var p1, p2 api.Page
-			// We need to run waitForEvent in parallel to the page creation.
-			// If we run them synchronously then waitForEvent will wait
-			// indefinitely and eventually the test will timeout.
-			err = tb.run(
-				ctx,
-				func() error {
-					op := optsOrPredicateToGojaValue(t, tb, tc.optsOrPredicate)
-					resp, err := bc.WaitForEvent(tc.event, op)
-					if resp != nil {
-						var ok bool
-						p1, ok = resp.(api.Page)
-						require.True(t, ok)
-					}
-					return err
-				},
-				func() error {
-					var err error
-					p2, err = bc.NewPage()
-					return err
-				},
+			var (
+				aboutToCallWait = make(chan bool)
+				waitDone        = make(chan bool)
+				allDone         = make(chan bool)
+				pageDone        = make(chan bool)
+				p1ID, p2ID      string
 			)
+
+			// We need to wait for the two operations to complete otherwise
+			// there's a possibility of a race condition where we cannot retrieve
+			// the id from the new page before the wait completes and the browser
+			// is closed.
+			go func() {
+				defer tb.Close()
+
+				<-pageDone
+				<-waitDone
+
+				close(allDone)
+			}()
+
+			// The call to waitForEvent needs to occur before the page is created.
+			// waitForEvent needs to be called in a goroutine since it's a blocking
+			// API call. The event loop (started with tb.vu.Loop.Start) only works
+			// once it returns from the call to Start, otherwise it will block until
+			// it does so.
+			_ = tb.vu.Loop.Start(func() error {
+				go func() {
+					defer close(waitDone)
+
+					op := optsOrPredicateToGojaValue(t, tb, tc.optsOrPredicate)
+					var resp any
+					close(aboutToCallWait)
+					resp, err = bc.WaitForEvent(tc.event, op)
+					if resp != nil {
+						p, ok := resp.(api.Page)
+						require.True(t, ok)
+
+						p1ID = p.MainFrame().ID()
+					}
+				}()
+
+				<-aboutToCallWait
+
+				if tc.wantErr == "" {
+					p, err := bc.NewPage()
+					require.NoError(t, err)
+
+					p2ID = p.MainFrame().ID()
+				}
+
+				close(pageDone)
+
+				return nil
+			})
+
+			select {
+			case <-allDone:
+			case <-ctx.Done():
+				err = ctx.Err()
+			}
 
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 				// We want to make sure that the page that was created with
 				// newPage matches the return value from waitForEvent.
-				assert.Equal(t, p1.MainFrame().ID(), p2.MainFrame().ID())
+				assert.Equal(t, p1ID, p2ID)
 				return
 			}
 
