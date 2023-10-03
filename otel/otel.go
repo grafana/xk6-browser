@@ -206,25 +206,26 @@ func TracePageNavigation(ctx context.Context, targetID string, url string, opts 
 //
 // If the spanID passed in doesn't match the live PageNavigation's
 // spanID then the event will be ignored (but an error will be logged).
-func AddEventToTrace(logger *log.Logger, targetID string, eventName string, spanID string, options ...trace.EventOption) {
+func AddEventToTrace(ctx context.Context, logger *log.Logger, targetID string, eventName string, spanID string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
 	liveSpansMu.Lock()
 	defer liveSpansMu.Unlock()
 
 	ls := liveSpans[targetID]
 	if ls == nil {
-		// TODO: Should we try to add this event to the iteration trace instead when this occurs?
-		logger.Errorf("AddEventToTrace", "missing targetID %q, skipping event for %q with %v, have %q", targetID, eventName, spanID, options)
-		return
+		// TODO: Should we try to ignore this data point instead and return a NOOP span?
+		//       It doesn't seem correct to add it to the root span from ctx.
+		return otel.Tracer(tracerName).Start(ctx, eventName, options...)
 	}
 
 	sid := ls.span.SpanContext().SpanID().String()
 	if sid != spanID {
-		// TODO: Should we try to add this event to the iteration trace instead when this occurs?
-		logger.Errorf("AddEventToTrace", "skipping %q event for %q with %v, have %q", eventName, spanID, options, sid)
-		return
+		// TODO: Should we try to ignore this data point instead and return a NOOP span?
+		//       At the moment it gets added to the current live span which has a different span id.
+		//       This is incorrect behavior.
+		return otel.Tracer(tracerName).Start(ls.ctx, eventName, options...)
 	}
 
-	ls.span.AddEvent(eventName, options...)
+	return otel.Tracer(tracerName).Start(ls.ctx, eventName, options...)
 }
 
 // TraceAPICall will attach a new span to the associated current

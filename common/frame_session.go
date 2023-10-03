@@ -342,10 +342,11 @@ func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
 		},
 	})
 
-	defer otel.AddEventToTrace(fs.logger, fs.targetID.String(), "web_vital", wv.SpanID, trace.WithAttributes(
+	_, span := otel.AddEventToTrace(fs.vu.Context(), fs.logger, fs.targetID.String(), "web_vital", wv.SpanID, trace.WithAttributes(
 		attribute.Float64(wv.Name, value),
 		attribute.String("rating", wv.Rating),
 	))
+	defer span.End()
 
 	return nil
 }
