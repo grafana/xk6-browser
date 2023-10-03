@@ -273,7 +273,7 @@ func (r *browserRegistry) handleIterEvents(eventsCh <-chan *k6event.Event, unsub
 
 		switch e.Type { //nolint:exhaustive
 		case k6event.IterStart:
-			tracedCtx := r.tr.startIterationTrace(ctx, data.Iteration)
+			tracedCtx := r.tr.startIterationTrace(ctx, data)
 			b, err := r.buildFn(tracedCtx)
 			if err != nil {
 				e.Done()
@@ -424,19 +424,21 @@ func parseTracingConfig(envLookup env.LookupFunc) (endpoint, proto, username, pa
 	return endpoint, proto, username, password, insecure
 }
 
-func (r *tracesRegistry) startIterationTrace(ctx context.Context, id int64) context.Context {
+func (r *tracesRegistry) startIterationTrace(ctx context.Context, data k6event.IterData) context.Context {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if t, ok := r.m[id]; ok {
+	if t, ok := r.m[data.Iteration]; ok {
 		return t.ctx
 	}
 
 	spanCtx, span := otel.Trace(ctx, "iteration", oteltrace.WithAttributes(
-		attribute.Int64("number", id),
+		attribute.Int64("number", data.Iteration),
+		attribute.Int64("vu", int64(data.VUID)),
+		attribute.String("scenario", data.ScenarioName),
 	))
 
-	r.m[id] = &trace{
+	r.m[data.Iteration] = &trace{
 		ctx:      spanCtx,
 		rootSpan: span,
 	}
