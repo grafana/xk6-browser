@@ -36,30 +36,30 @@ func New(logger logrus.FieldLogger, iterID string) *Logger {
 		iterID: iterID,
 	}
 
-	if logger == nil {
-		ll.Warnf("Logger", "no logger supplied, using default")
-	} else if l, ok := logger.(*logrus.Logger); !ok {
-		ll.Warnf("Logger", "invalid logger type %T, using default", logger)
-	} else {
-		ll.Logger = l
-	}
+	// if logger == nil {
+	// 	ll.Warnf("Logger", "no logger supplied, using default")
+	// } else if l, ok := logger.(*logrus.Logger); !ok {
+	// 	ll.Warnf("Logger", "invalid logger type %T, using default", logger)
+	// } else {
+	// 	ll.Logger = l
+	// }
 
 	return ll
 }
 
 // Tracef logs a trace message.
 func (l *Logger) Tracef(category string, msg string, args ...any) {
-	l.Logf(logrus.TraceLevel, category, msg, args...)
+	l.Logf(logrus.WarnLevel, category, msg, args...)
 }
 
 // Debugf logs a debug message.
 func (l *Logger) Debugf(category string, msg string, args ...any) {
-	l.Logf(logrus.DebugLevel, category, msg, args...)
+	l.Logf(logrus.WarnLevel, category, msg, args...)
 }
 
 // Errorf logs an error message.
 func (l *Logger) Errorf(category string, msg string, args ...any) {
-	l.Logf(logrus.ErrorLevel, category, msg, args...)
+	l.Logf(logrus.WarnLevel, category, msg, args...)
 }
 
 // Infof logs an info message.
