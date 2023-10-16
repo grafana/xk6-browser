@@ -413,7 +413,10 @@ func (b *BrowserContext) runWaitForEventHandler(
 		case ev := <-chEvHandler:
 			if ev.typ == EventBrowserContextClose {
 				b.logger.Debugf("BrowserContext:WaitForEvent:go():EventBrowserContextClose:return", "bctxid:%v", b.id)
-				out <- nil
+				select {
+				case out <- nil:
+				case <-ctx.Done():
+				}
 				close(out)
 
 				// We wait for one matching event only,
@@ -426,7 +429,11 @@ func (b *BrowserContext) runWaitForEventHandler(
 				p, _ := ev.data.(*Page)
 				if retVal, err := predicateFn(b.vu.Runtime().ToValue(p)); err == nil && retVal.ToBoolean() {
 					b.logger.Debugf("BrowserContext:WaitForEvent:go():EventBrowserContextPage:return", "bctxid:%v", b.id)
-					out <- p
+					select {
+					case out <- p:
+					case <-ctx.Done():
+					}
+
 					close(out)
 
 					// We wait for one matching event only,
