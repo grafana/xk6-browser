@@ -462,9 +462,13 @@ func (b *Browser) Close() {
 
 	// If the browser is not being executed remotely, send the Browser.close CDP
 	// command, which triggers the browser process to exit.
+	const timeout = time.Second
+
+	ctx, cancel := context.WithTimeout(b.ctx, timeout)
+	defer cancel()
 	if !b.browserOpts.isRemoteBrowser {
 		var closeErr *websocket.CloseError
-		err := cdpbrowser.Close().Do(cdp.WithExecutor(b.ctx, b.conn))
+		err := cdpbrowser.Close().Do(cdp.WithExecutor(ctx, b.conn))
 		if err != nil && !errors.As(err, &closeErr) {
 			b.logger.Errorf("Browser:Close", "closing the browser: %v", err)
 		}
@@ -473,7 +477,6 @@ func (b *Browser) Close() {
 	// Wait for all outstanding events (e.g. Target.detachedFromTarget) to be
 	// processed, and for the process to exit gracefully. Otherwise kill it
 	// forcefully after the timeout.
-	timeout := time.Second
 	select {
 	case <-b.browserProc.processDone:
 	case <-time.After(timeout):
