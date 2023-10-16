@@ -728,8 +728,15 @@ func (fs *FrameSession) onFrameRequestedNavigation(event *cdppage.EventFrameRequ
 	fs.logger.Debugf("FrameSession:onFrameRequestedNavigation",
 		"sid:%v tid:%v fid:%v url:%q",
 		fs.session.ID(), fs.targetID, event.FrameID, event.URL)
+	defer fs.logger.Debugf("FrameSession:onFrameRequestedNavigation:return",
+		"sid:%v tid:%v fid:%v url:%q",
+		fs.session.ID(), fs.targetID, event.FrameID, event.URL)
 
 	if event.Disposition == "currentTab" {
+		fs.logger.Debugf("FrameSession:onFrameRequestedNavigation",
+			"sid:%v tid:%v fid:%v url:%q - currentTab",
+			fs.session.ID(), fs.targetID, event.FrameID, event.URL)
+
 		err := fs.manager.frameRequestedNavigation(event.FrameID, event.URL, "")
 		if err != nil {
 			k6ext.Panic(fs.ctx, "handling frameRequestedNavigation event to %q: %w", event.URL, err)
@@ -739,6 +746,9 @@ func (fs *FrameSession) onFrameRequestedNavigation(event *cdppage.EventFrameRequ
 
 func (fs *FrameSession) onFrameStartedLoading(frameID cdp.FrameID) {
 	fs.logger.Debugf("FrameSession:onFrameStartedLoading",
+		"sid:%v tid:%v fid:%v",
+		fs.session.ID(), fs.targetID, frameID)
+	fs.logger.Debugf("FrameSession:onFrameStartedLoading:return",
 		"sid:%v tid:%v fid:%v",
 		fs.session.ID(), fs.targetID, frameID)
 
@@ -784,6 +794,9 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 
 	frame := fs.manager.getFrameByID(event.FrameID)
 	if frame == nil {
+		fs.logger.Debugf("FrameSession:onPageLifecycle",
+			"sid:%v tid:%v fid:%v event:%s eventTime:%q - nil frame",
+			fs.session.ID(), fs.targetID, event.FrameID, event.Name, event.Timestamp.Time())
 		return
 	}
 
@@ -794,6 +807,10 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventDOMContentLoad)
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
+	default:
+		fs.logger.Warnf("FrameSession:onPageLifecycle",
+			"sid:%v tid:%v fid:%v event:%s eventTime:%q - unhandled lifecycle event",
+			fs.session.ID(), fs.targetID, event.FrameID, event.Name, event.Timestamp.Time())
 	}
 }
 
@@ -933,6 +950,7 @@ func (fs *FrameSession) onDetachedFromTarget(event *target.EventDetachedFromTarg
 
 func (fs *FrameSession) onTargetCrashed(event *inspector.EventTargetCrashed) {
 	fs.logger.Debugf("FrameSession:onTargetCrashed", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
+	defer fs.logger.Debugf("FrameSession:onTargetCrashed:return", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
 	// TODO:?
 	s, ok := fs.session.(*Session)

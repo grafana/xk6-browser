@@ -140,12 +140,20 @@ func parseTTL(ttlS string) (time.Duration, error) {
 }
 
 func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
+	m.logger.Debugf("NetworkManager:deleteRequestByID", "rid:%s", reqID)
+	defer m.logger.Debugf("NetworkManager:deleteRequestByID:return", "rid:%s", reqID)
+
 	m.reqsMu.Lock()
 	defer m.reqsMu.Unlock()
 	delete(m.reqIDToRequest, reqID)
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
+	m.logger.Debugf("NetworkManager:emitRequestMetrics", "url:%s method:%s rid:%s",
+		req.url, req.method, req.requestID)
+	defer m.logger.Debugf("NetworkManager:emitRequestMetrics:return", "url:%s method:%s rid:%s",
+		req.url, req.method, req.requestID)
+
 	state := m.vu.State()
 
 	tags := state.Tags.GetCurrentValues().Tags
@@ -168,6 +176,11 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
+	m.logger.Debugf("NetworkManager:emitResponseMetrics",
+		"url:%s method:%s", req.url, req.method)
+	defer m.logger.Debugf("NetworkManager:emitResponseMetrics:return",
+		"url:%s method:%s", req.url, req.method)
+
 	state := m.vu.State()
 
 	// In some scenarios we might not receive a ResponseReceived CDP event, in
@@ -198,7 +211,7 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 		}
 	} else {
 		m.logger.Debugf("NetworkManager:emitResponseMetrics",
-			"response is nil url:%s method:%s", req.url, req.method)
+			"url:%s method:%s - nil response", req.url, req.method)
 	}
 
 	tags := state.Tags.GetCurrentValues().Tags
@@ -250,7 +263,10 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 	}
 }
 
-func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdp.MonotonicTime) {
+func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdp.MonotonicTime) { //nolint:lll
+	m.logger.Debugf("NetworkManager:handleRequestRedirect", "url:%s method:%s rid:%s",
+		req.url, req.method, req.requestID)
+
 	resp := NewHTTPResponse(m.ctx, req, redirectResponse, timestamp)
 	req.responseMu.Lock()
 	req.response = resp
@@ -335,8 +351,12 @@ func (m *NetworkManager) handleEvents(in <-chan Event) bool {
 }
 
 func (m *NetworkManager) onLoadingFailed(event *network.EventLoadingFailed) {
+	m.logger.Debugf("NetworkManager:onLoadingFailed", "rid:%s", event.RequestID)
+	defer m.logger.Debugf("NetworkManager:onLoadingFailed", "rid:%s", event.RequestID)
+
 	req := m.requestFromID(event.RequestID)
 	if req == nil {
+		m.logger.Warnf("NetworkManager:onLoadingFailed", "rid:%s - nil request", event.RequestID)
 		// TODO: add handling of iframe document requests starting in one session and ending up in another
 		return
 	}
@@ -383,14 +403,30 @@ func isInternalURL(u *url.URL) bool {
 }
 
 func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interceptionID string) {
-	var redirectChain []*Request = nil
+	m.logger.Debugf("NetworkManager:onRequest", "url:%s method:%s type:%s fid:%s",
+		event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID)
+	defer m.logger.Debugf("NetworkManager:onRequest:return", "url:%s method:%s type:%s fid:%s",
+		event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID)
+
+	var redirectChain []*Request
 	if event.RedirectResponse != nil {
+		m.logger.Debugf("NetworkManager:onRequest:redirect", "url:%s method:%s type:%s fid:%s rid:%s",
+			event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID, event.RequestID)
+
 		req := m.requestFromID(event.RequestID)
 		if req != nil {
 			m.handleRequestRedirect(req, event.RedirectResponse, event.Timestamp)
 			redirectChain = req.redirectChain
 		}
+		if req == nil {
+			m.logger.Debugf("NetworkManager:onRequest:redirect",
+				"nil requesturl:%s method:%s type:%s fid:%s rid:%s - nil request",
+				event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID, event.RequestID)
+		}
 	} else {
+		m.logger.Debugf("NetworkManager:onRequest:redirect", "url:%s method:%s type:%s fid:%s rid:%s - new redirect chain",
+			event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID, event.RequestID)
+
 		redirectChain = make([]*Request, 0)
 	}
 
@@ -398,7 +434,7 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 		m.emitRequestMetrics(r)
 	}
 
-	var frame *Frame = nil
+	var frame *Frame
 	if event.FrameID != "" {
 		frame = m.frameManager.getFrameByID(event.FrameID)
 	}
@@ -406,6 +442,10 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 		m.logger.Debugf("NetworkManager:onRequest", "url:%s method:%s type:%s fid:%s frame is nil",
 			event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID)
 	}
+
+	m.logger.Debugf("NetworkManager:onRequest:newRequest",
+		"nil requesturl:%s method:%s type:%s fid:%s rid:%s",
+		event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID, event.RequestID)
 
 	req, err := NewRequest(m.ctx, NewRequestParams{
 		event:             event,
@@ -423,6 +463,11 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 		m.logger.Debugf("NetworkManager", "skipping request handling of %s URL", req.url.Scheme)
 		return
 	}
+
+	m.logger.Debugf("NetworkManager:onRequest:beforeRequestStarted",
+		"nil requesturl:%s method:%s type:%s fid:%s rid:%s",
+		event.Request.URL, event.Request.Method, event.Initiator.Type, event.FrameID, event.RequestID)
+
 	m.reqsMu.Lock()
 	m.reqIDToRequest[event.RequestID] = req
 	m.reqsMu.Unlock()
@@ -459,6 +504,7 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //no
 		}
 		action := fetch.ContinueRequest(event.RequestID)
 		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
+			m.logger.Warnf("NetworkManager:onRequestPaused", "err:%s", err)
 			// Avoid logging as error when context is canceled.
 			// Most probably this happens when trying to continue a site's background request
 			// while the iteration is ending and therefore the browser context is being closed.
@@ -466,8 +512,8 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //no
 				m.logger.Debug("NetworkManager:onRequestPaused", "context canceled continuing request")
 				return
 			}
-			m.logger.Errorf("NetworkManager:onRequestPaused", "continuing request: %s", err)
 		}
+		m.logger.Debugf("NetworkManager:onRequestPaused", "continuing request")
 	}()
 
 	purl, err := url.Parse(event.Request.URL)
@@ -494,7 +540,7 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //no
 	// Do one last check of the resolved IP
 	ip, err = m.resolver.LookupIP(host)
 	if err != nil {
-		m.logger.Debugf("NetworkManager:onRequestPaused",
+		m.logger.Warnf("NetworkManager:onRequestPaused",
 			"resolving %q: %s", host, err)
 		return
 	}

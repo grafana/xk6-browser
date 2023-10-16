@@ -118,6 +118,7 @@ func (f *Frame) addChildFrame(child *Frame) {
 
 func (f *Frame) addRequest(id network.RequestID) {
 	f.log.Debugf("Frame:addRequest", "fid:%s furl:%q rid:%s", f.ID(), f.URL(), id)
+	defer f.log.Debugf("Frame:addRequest:return", "fid:%s furl:%q rid:%s", f.ID(), f.URL(), id)
 
 	f.inflightRequestsMu.Lock()
 	defer f.inflightRequestsMu.Unlock()
@@ -127,6 +128,7 @@ func (f *Frame) addRequest(id network.RequestID) {
 
 func (f *Frame) deleteRequest(id network.RequestID) {
 	f.log.Debugf("Frame:deleteRequest", "fid:%s furl:%q rid:%s", f.ID(), f.URL(), id)
+	defer f.log.Debugf("Frame:deleteRequest:return", "fid:%s furl:%q rid:%s", f.ID(), f.URL(), id)
 
 	f.inflightRequestsMu.Lock()
 	defer f.inflightRequestsMu.Unlock()
@@ -155,6 +157,7 @@ func (f *Frame) cloneInflightRequests() map[network.RequestID]bool {
 
 func (f *Frame) clearLifecycle() {
 	f.log.Debugf("Frame:clearLifecycle", "fid:%s furl:%q", f.ID(), f.URL())
+	defer f.log.Debugf("Frame:clearLifecycle:return ", "fid:%s furl:%q", f.ID(), f.URL())
 
 	// clear lifecycle events
 	f.lifecycleEventsMu.Lock()
@@ -299,7 +302,8 @@ func (f *Frame) nullContext(execCtxID runtime.ExecutionContextID) {
 }
 
 func (f *Frame) onLifecycleEvent(event LifecycleEvent) {
-	f.log.Debugf("Frame:onLifecycleEvent", "fid:%s furl:%q event:%s", f.ID(), f.URL(), event)
+	f.log.Debugf("Frame:onLifecycleEvent", "fid:%s furl:%q event:%s - EventFrameAddLifecycle", f.ID(), f.URL(), event)
+	defer f.log.Debugf("Frame:onLifecycleEvent", "fid:%s furl:%q event:%s - EventFrameAddLifecycle", f.ID(), f.URL(), event) //nolint:lll
 
 	f.lifecycleEventsMu.Lock()
 	f.lifecycleEvents[event] = true
@@ -1734,10 +1738,8 @@ func (f *Frame) WaitForLoadState(state string, opts goja.Value) {
 //
 //nolint:funlen,cyclop
 func (f *Frame) WaitForNavigation(opts goja.Value) (api.Response, error) {
-	f.log.Debugf("Frame:WaitForNavigation",
-		"fid:%s furl:%s", f.ID(), f.URL())
-	defer f.log.Debugf("Frame:WaitForNavigation:return",
-		"fid:%s furl:%s", f.ID(), f.URL())
+	f.log.Debugf("Frame:WaitForNavigation", "fid:%s furl:%s", f.ID(), f.URL())
+	defer f.log.Debugf("Frame:WaitForNavigation:return", "fid:%s furl:%s", f.ID(), f.URL())
 
 	parsedOpts := NewFrameWaitForNavigationOptions(
 		f.manager.timeoutSettings.timeout())
@@ -1749,6 +1751,8 @@ func (f *Frame) WaitForNavigation(opts goja.Value) (api.Response, error) {
 
 	navEvtCh, navEvtCancel := createWaitForEventHandler(timeoutCtx, f, []string{EventFrameNavigation},
 		func(data any) bool {
+			f.log.Debugf("Frame:WaitForNavigation", "fid:%s furl:%s received EventFrameNavigation", f.ID(), f.URL())
+
 			return true // Both successful and failed navigations are considered
 		})
 
@@ -1787,20 +1791,28 @@ func (f *Frame) WaitForNavigation(opts goja.Value) (api.Response, error) {
 	)
 	select {
 	case evt := <-navEvtCh:
+		f.log.Debugf("Frame:WaitForNavigation:navEvtCh", "fid:%s furl:%s", f.ID(), f.URL())
+
 		if e, ok := evt.(*NavigationEvent); ok {
 			if e.newDocument == nil {
+				f.log.Warnf("Frame:WaitForNavigation:navEvtCh", "fid:%s furl:%s sameDocNav", f.ID(), f.URL())
 				sameDocNav = true
 				break
 			}
 			// request could be nil if navigating to e.g. BlankPage.
 			req := e.newDocument.request
 			if req != nil {
+				f.log.Warnf("Frame:WaitForNavigation:navEvtCh", "fid:%s furl:%s response set", f.ID(), f.URL())
+
 				req.responseMu.RLock()
 				resp = req.response
 				req.responseMu.RUnlock()
+			} else {
+				f.log.Warnf("Frame:WaitForNavigation:navEvtCh", "fid:%s furl:%s request nil", f.ID(), f.URL())
 			}
 		}
 	case <-timeoutCtx.Done():
+		f.log.Warnf("Frame:WaitForNavigation:navEvtCh", "fid:%s furl:%s timeoutCtx", f.ID(), f.URL())
 		return nil, handleTimeoutError(timeoutCtx.Err())
 	}
 
@@ -1808,9 +1820,13 @@ func (f *Frame) WaitForNavigation(opts goja.Value) (api.Response, error) {
 	// document, so don't wait for it. The event might've also already been
 	// fired once we're here, so also skip waiting in that case.
 	if !sameDocNav && !f.hasLifecycleEventFired(parsedOpts.WaitUntil) {
+		f.log.Debugf("Frame:WaitForNavigation:notSameDocNav", "fid:%s furl:%s", f.ID(), f.URL())
+
 		select {
 		case <-lifecycleEvtCh:
+			f.log.Debugf("Frame:WaitForNavigation:notSameDocNav", "fid:%s furl:%s lifecycleEvtCh", f.ID(), f.URL())
 		case <-timeoutCtx.Done():
+			f.log.Warnf("Frame:WaitForNavigation:notSameDocNav", "fid:%s furl:%s timeoutCtx", f.ID(), f.URL())
 			return nil, handleTimeoutError(timeoutCtx.Err())
 		}
 	}
@@ -1818,6 +1834,7 @@ func (f *Frame) WaitForNavigation(opts goja.Value) (api.Response, error) {
 	// Since response will be in an interface, it will never be nil,
 	// so we need to return nil explicitly.
 	if resp == nil {
+		f.log.Debugf("Frame:WaitForNavigation", "fid:%s furl:%s nil response", f.ID(), f.URL())
 		return nil, nil
 	}
 

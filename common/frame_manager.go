@@ -190,6 +190,9 @@ func (m *FrameManager) frameLifecycleEvent(frameID cdp.FrameID, event LifecycleE
 	m.logger.Debugf("FrameManager:frameLifecycleEvent",
 		"fmid:%d fid:%v event:%s",
 		m.ID(), frameID, lifecycleEventToString[event])
+	defer m.logger.Debugf("FrameManager:frameLifecycleEvent",
+		"fmid:%d fid:%v event:%s",
+		m.ID(), frameID, lifecycleEventToString[event])
 
 	frame := m.getFrameByID(frameID)
 	if frame != nil {
@@ -349,15 +352,14 @@ func (m *FrameManager) frameNavigatedWithinDocument(frameID cdp.FrameID, url str
 func (m *FrameManager) frameRequestedNavigation(frameID cdp.FrameID, url string, documentID string) error {
 	m.logger.Debugf("FrameManager:frameRequestedNavigation",
 		"fmid:%d fid:%v url:%s docid:%s", m.ID(), frameID, url, documentID)
+	defer m.logger.Debugf("FrameManager:frameRequestedNavigation:return",
+		"fmid:%d fid:%v url:%s docid:%s", m.ID(), frameID, url, documentID)
 
 	m.framesMu.Lock()
 	defer m.framesMu.Unlock()
 
 	frame := m.frames[frameID]
 	if frame == nil {
-		m.logger.Debugf("FrameManager:frameRequestedNavigation:nilFrame:return",
-			"fmid:%d fid:%v url:%s docid:%s", m.ID(), frameID, url, documentID)
-
 		return fmt.Errorf("no frame exists with ID %s", frameID)
 	}
 
@@ -374,20 +376,14 @@ func (m *FrameManager) frameRequestedNavigation(frameID cdp.FrameID, url string,
 	defer frame.pendingDocumentMu.Unlock()
 
 	if frame.pendingDocument != nil && frame.pendingDocument.documentID == documentID {
-		m.logger.Debugf("FrameManager:frameRequestedNavigation:return",
-			"fmid:%d fid:%v furl:%s url:%s docid:%s pdocid:%s pdoc:dontSet",
-			m.ID(), frameID, frame.URL(), url, documentID,
-			frame.pendingDocument.documentID)
+		m.logger.Warn("FrameManager:frameRequestedNavigation", "pdoc:noOverride")
 
 		// Do not override request with nil
 		return nil
 	}
 
-	m.logger.Debugf("FrameManager:frameRequestedNavigation:return",
-		"fmid:%d fid:%v furl:%s url:%s docid:%s pdoc:set",
-		m.ID(), frameID, frame.URL(), url, documentID)
-
 	frame.pendingDocument = &DocumentInfo{documentID: documentID}
+
 	return nil
 }
 
@@ -433,6 +429,7 @@ func (m *FrameManager) removeFramesRecursively(frame *Frame) {
 
 func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 	m.logger.Debugf("FrameManager:requestFailed", "fmid:%d rurl:%s", m.ID(), req.URL())
+	defer m.logger.Debugf("FrameManager:requestFailed", "fmid:%d rurl:%s", m.ID(), req.URL())
 
 	defer m.page.emit(EventPageRequestFailed, req)
 
@@ -510,6 +507,7 @@ func (m *FrameManager) requestReceivedResponse(res *Response) {
 
 func (m *FrameManager) requestStarted(req *Request) {
 	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s", m.ID(), req.URL())
+	defer m.logger.Debugf("FrameManager:requestStarted:return", "fmid:%d rurl:%s", m.ID(), req.URL())
 
 	m.framesMu.Lock()
 	defer m.framesMu.Unlock()
@@ -517,7 +515,7 @@ func (m *FrameManager) requestStarted(req *Request) {
 
 	frame := req.getFrame()
 	if frame == nil {
-		m.logger.Debugf("FrameManager:requestStarted:return",
+		m.logger.Warnf("FrameManager:requestStarted:return",
 			"fmid:%d rurl:%s frame:nil", m.ID(), req.URL())
 		return
 	}
@@ -527,6 +525,8 @@ func (m *FrameManager) requestStarted(req *Request) {
 		frame.pendingDocumentMu.Lock()
 		frame.pendingDocument = &DocumentInfo{documentID: req.documentID, request: req}
 		frame.pendingDocumentMu.Unlock()
+		m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:set", m.ID(), req.URL())
+		return
 	}
 	m.logger.Debugf("FrameManager:requestStarted", "fmid:%d rurl:%s pdoc:nil", m.ID(), req.URL())
 }
@@ -602,13 +602,19 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 			// otherwise, we will get a lifecycle event for the initial blank page
 			// and return prematurely before waiting for the navigation to complete.
 			if url != BlankPage && le.URL == BlankPage {
-				m.logger.Debugf(
+				m.logger.Warnf(
 					"FrameManager:NavigateFrame:createWaitForEventPredicateHandler",
 					"fmid:%d fid:%v furl:%s url:%s waitUntil:%s event.lifecycle:%q event.url:%q skipping %s",
 					fmid, fid, furl, url, parsedOpts.WaitUntil, le.Event, le.URL, BlankPage,
 				)
 				return false
 			}
+
+			m.logger.Debugf(
+				"FrameManager:NavigateFrame:createWaitForEventPredicateHandler",
+				"fmid:%d fid:%v furl:%s url:%s waitUntil:%s captured WaitUntil event",
+				fmid, fid, furl, url, parsedOpts.WaitUntil,
+			)
 
 			return le.Event == parsedOpts.WaitUntil
 		})
@@ -628,10 +634,22 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 	}
 	newDocumentID, err := fs.navigateFrame(frame, url, parsedOpts.Referer)
 	if err != nil {
+		m.logger.Warnf(
+			"FrameManager:NavigateFrame:navigateFrame",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s err:%v",
+			fmid, fid, furl, url, parsedOpts.WaitUntil, err,
+		)
+
 		return nil, fmt.Errorf("navigating to %q: %w", url, err)
 	}
 
 	if newDocumentID == "" {
+		m.logger.Warnf(
+			"FrameManager:NavigateFrame",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s newDocumentID is empty",
+			fmid, fid, furl, url, parsedOpts.WaitUntil,
+		)
+
 		// It's a navigation within the same document (e.g. via anchor links or
 		// the History API), so don't wait for a response nor any lifecycle
 		// events.
@@ -659,6 +677,12 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 	var resp *Response
 	select {
 	case evt := <-navEvtCh:
+		m.logger.Debugf(
+			"FrameManager:NavigateFrame:navEvtCh",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s navigation event received:%v",
+			fmid, fid, furl, url, parsedOpts.WaitUntil, evt,
+		)
+
 		if e, ok := evt.(*NavigationEvent); ok {
 			req := e.newDocument.request
 			// Request could be nil in case of navigation to e.g. BlankPage.
@@ -666,15 +690,45 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 				req.responseMu.RLock()
 				resp = req.response
 				req.responseMu.RUnlock()
+			} else {
+				m.logger.Warnf(
+					"FrameManager:NavigateFrame:navEvtCh",
+					"fmid:%d fid:%v furl:%s url:%s waitUntil:%s request is nil",
+					fmid, fid, furl, url, parsedOpts.WaitUntil,
+				)
 			}
+		} else {
+			m.logger.Warnf(
+				"FrameManager:NavigateFrame:navEvtCh",
+				"fmid:%d fid:%v furl:%s url:%s waitUntil:%s not a NavigationEvent:%v",
+				fmid, fid, furl, url, parsedOpts.WaitUntil, evt,
+			)
 		}
 	case <-timeoutCtx.Done():
+		m.logger.Warnf(
+			"FrameManager:NavigateFrame:timeoutCtx",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s timed out",
+			fmid, fid, furl, url, parsedOpts.WaitUntil,
+		)
+
 		return nil, wrapTimeoutError(timeoutCtx.Err())
 	}
 
 	select {
 	case <-lifecycleEvtCh:
+		m.logger.Debugf(
+			"FrameManager:NavigateFrame:lifecycleEvtCh",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s",
+			fmid, fid, furl, url, parsedOpts.WaitUntil,
+		)
+
 	case <-timeoutCtx.Done():
+		m.logger.Warnf(
+			"FrameManager:NavigateFrame:timeoutCtx TWO",
+			"fmid:%d fid:%v furl:%s url:%s waitUntil:%s",
+			fmid, fid, furl, url, parsedOpts.WaitUntil,
+		)
+
 		return nil, wrapTimeoutError(timeoutCtx.Err())
 	}
 

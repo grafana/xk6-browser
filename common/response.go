@@ -116,6 +116,9 @@ func NewHTTPResponse(ctx context.Context, req *Request, resp *network.Response, 
 }
 
 func (r *Response) fetchBody() error {
+	r.logger.Debug("Response:fetchBody", "url:%s", r.url)
+	defer r.logger.Debug("Response:fetchBody", "url:%s", r.url)
+
 	cached := func() bool {
 		r.bodyMu.RLock()
 		defer r.bodyMu.RUnlock()
@@ -173,6 +176,9 @@ func (r *Response) Body() goja.ArrayBuffer {
 
 // bodySize returns the size in bytes of the response body.
 func (r *Response) bodySize() int64 {
+	r.logger.Debug("Response:bodySize", "url:%s", r.url)
+	defer r.logger.Debug("Response:bodySize:return", "url:%s", r.url)
+
 	// Skip redirect responses
 	if r.status >= 300 && r.status <= 399 {
 		return 0

@@ -503,6 +503,7 @@ func (p *Page) Click(selector string, opts goja.Value) error {
 // Close closes the page.
 func (p *Page) Close(opts goja.Value) error {
 	p.logger.Debugf("Page:Close", "sid:%v", p.sessionID())
+	defer p.logger.Debugf("Page:Close:return", "sid:%v", p.sessionID())
 
 	// forcing the pagehide event to trigger web vitals metrics.
 	v := p.vu.Runtime().ToValue(`() => window.dispatchEvent(new Event('pagehide'))`)
@@ -513,14 +514,18 @@ func (p *Page) Close(opts goja.Value) error {
 		p.logger.Warnf("Page:Close", "failed to hide page: %v", err)
 	}
 
+	p.logger.Debugf("Page:Close:RemoveBinding", "sid:%v", p.sessionID())
 	add := runtime.RemoveBinding(webVitalBinding)
 	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
 		return fmt.Errorf("internal error while removing binding from page: %w", err)
 	}
 
+	p.logger.Debugf("Page:Close:CloseTarget", "sid:%v", p.sessionID())
 	action := target.CloseTarget(p.targetID)
 	err = action.Do(cdp.WithExecutor(p.ctx, p.session))
 	if err != nil {
+		p.logger.Debugf("Page:Close:CloseTarget", "sid:%v err:%v", p.sessionID(), err)
+
 		// When a close target command is sent to the browser via CDP,
 		// the browser will start to cleanup and the first thing it
 		// will do is return a target.EventDetachedFromTarget, which in

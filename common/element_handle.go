@@ -742,17 +742,26 @@ func (h *ElementHandle) BoundingBox() *api.Rect {
 // TODO: look into making more robust using retries
 // (see: https://github.com/microsoft/playwright/blob/master/src/server/dom.ts#L298)
 func (h *ElementHandle) Click(opts goja.Value) error {
+	h.logger.Debug("ElementHandle:Click")
+	defer h.logger.Debug("ElementHandle:Click")
+
 	actionOpts := NewElementHandleClickOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing element click options: %v", err)
 	}
 	click := h.newPointerAction(
 		func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
-			return nil, handle.click(p, actionOpts.ToMouseClickOptions())
+			h.logger.Debug("ElementHandle:Click", "pointer action")
+			err := handle.click(p, actionOpts.ToMouseClickOptions())
+			if err != nil {
+				h.logger.Warnf("ElementHandle:Click", "pointer action err:%v", err)
+			}
+			return nil, err
 		},
 		&actionOpts.ElementHandleBasePointerOptions,
 	)
 	if _, err := call(h.ctx, click, actionOpts.Timeout); err != nil {
+		h.logger.Debug("ElementHandle:Click", "err:%v", err)
 		return fmt.Errorf("clicking on element: %w", err)
 	}
 	applySlowMo(h.ctx)
