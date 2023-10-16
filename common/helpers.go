@@ -184,7 +184,12 @@ func createWaitForEventPredicateHandler(
 			case ev := <-chEvHandler:
 				if stringSliceContains(events, ev.typ) &&
 					predicateFn != nil && predicateFn(ev.data) {
-					ch <- ev.data
+					select {
+					case ch <- ev.data:
+					case <-evCancelCtx.Done():
+						close(ch)
+						evCancelFn()
+					}
 					close(ch)
 					evCancelFn()
 					return
