@@ -506,13 +506,13 @@ func (p *Page) Close(opts goja.Value) error {
 	defer p.logger.Debugf("Page:Close:return", "sid:%v", p.sessionID())
 
 	// forcing the pagehide event to trigger web vitals metrics.
-	v := p.vu.Runtime().ToValue(`() => window.dispatchEvent(new Event('pagehide'))`)
-	ctx, cancel := context.WithTimeout(p.ctx, p.defaultTimeout())
-	defer cancel()
-	_, err := p.MainFrame().EvaluateWithContext(ctx, v)
-	if err != nil {
-		p.logger.Warnf("Page:Close", "failed to hide page: %v", err)
-	}
+	// v := p.vu.Runtime().ToValue(`() => window.dispatchEvent(new Event('pagehide'))`)
+	// ctx, cancel := context.WithTimeout(p.ctx, p.defaultTimeout())
+	// defer cancel()
+	// _, err := p.MainFrame().EvaluateWithContext(ctx, v)
+	// if err != nil {
+	// 	p.logger.Warnf("Page:Close", "failed to hide page: %v", err)
+	// }
 
 	p.logger.Debugf("Page:Close:RemoveBinding", "sid:%v", p.sessionID())
 	add := runtime.RemoveBinding(webVitalBinding)
@@ -522,7 +522,7 @@ func (p *Page) Close(opts goja.Value) error {
 
 	p.logger.Debugf("Page:Close:CloseTarget", "sid:%v", p.sessionID())
 	action := target.CloseTarget(p.targetID)
-	err = action.Do(cdp.WithExecutor(p.ctx, p.session))
+	err := action.Do(cdp.WithExecutor(p.ctx, p.session))
 	if err != nil {
 		p.logger.Debugf("Page:Close:CloseTarget", "sid:%v err:%v", p.sessionID(), err)
 
