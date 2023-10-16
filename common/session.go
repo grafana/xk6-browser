@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
@@ -70,6 +71,7 @@ func (s *Session) close() {
 	}
 
 	// Stop the read loop
+	fmt.Println("close Session s.done")
 	close(s.done)
 	s.closed = true
 
@@ -135,6 +137,7 @@ func (s *Session) Execute(ctx context.Context, method string, params easyjson.Ma
 					select {
 					case <-evCancelCtx.Done():
 						s.logger.Debugf("Session:Execute:<-evCancelCtx.Done():2:return", "sid:%v tid:%v method:%q", s.id, s.targetID, method)
+						return
 					case ch <- msg:
 						// We expect only one response with the matching message ID,
 						// then remove event handler by cancelling context and stopping goroutine.

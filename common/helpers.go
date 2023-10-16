@@ -154,6 +154,7 @@ func createWaitForEventHandler(
 						case <-evCancelCtx.Done():
 						}
 					}
+					fmt.Println("close createWaitForEventHandler ch")
 					close(ch)
 
 					// We wait for one matching event only,
@@ -194,6 +195,7 @@ func createWaitForEventPredicateHandler(
 					case ch <- ev.data:
 					case <-evCancelCtx.Done():
 					}
+					fmt.Println("close createWaitForEventPredicateHandler ch")
 					close(ch)
 					evCancelFn()
 					return

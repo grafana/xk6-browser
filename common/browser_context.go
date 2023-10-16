@@ -417,6 +417,7 @@ func (b *BrowserContext) runWaitForEventHandler(
 				case out <- nil:
 				case <-ctx.Done():
 				}
+				fmt.Println("close runWaitForEventHandler out")
 				close(out)
 
 				// We wait for one matching event only,
@@ -434,6 +435,7 @@ func (b *BrowserContext) runWaitForEventHandler(
 					case <-ctx.Done():
 					}
 
+					fmt.Println("close runWaitForEventHandler out 2")
 					close(out)
 
 					// We wait for one matching event only,

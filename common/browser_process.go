@@ -103,6 +103,7 @@ func (p *BrowserProcess) handleClose(ctx context.Context) {
 }
 
 func (p *BrowserProcess) didLoseConnection() {
+	fmt.Println("close p.lostConnection")
 	close(p.lostConnection)
 }
 
@@ -119,6 +120,7 @@ func (p *BrowserProcess) isConnected() bool {
 // GracefulClose triggers a graceful closing of the browser process.
 func (p *BrowserProcess) GracefulClose() {
 	p.logger.Debugf("Browser:GracefulClose", "")
+	fmt.Println("close p.processIsGracefullyClosing")
 	close(p.processIsGracefullyClosing)
 }
 
@@ -186,6 +188,7 @@ func execute(
 			if err := dataDir.Cleanup(); err != nil {
 				logger.Errorf("browser", "cleaning up the user data directory: %v", err)
 			}
+			fmt.Println("close execute done")
 			close(done)
 		}()
 
@@ -209,6 +212,7 @@ func parseDevToolsURL(ctx context.Context, cmd command) (_ string, err error) {
 	go func() {
 		for parser.scan() {
 		}
+		fmt.Println("close parseDevToolsURL done")
 		close(done)
 	}()
 	for err == nil {

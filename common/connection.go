@@ -186,6 +186,7 @@ func (c *Connection) close(code int) error {
 	c.shutdownOnce.Do(func() {
 		defer func() {
 			// Stop the main control loop
+			fmt.Println("close Connection.done")
 			close(c.done)
 			_ = c.conn.Close()
 		}()
@@ -567,6 +568,7 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 // IgnoreIOErrors signals that the connection will soon be closed, so that any
 // received IO errors can be disregarded.
 func (c *Connection) IgnoreIOErrors() {
+	fmt.Println("close Connection IgnoreIOErrors done")
 	close(c.closing)
 }
 
