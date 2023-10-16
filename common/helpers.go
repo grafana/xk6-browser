@@ -143,10 +143,16 @@ func createWaitForEventHandler(
 				if stringSliceContains(events, ev.typ) {
 					if predicateFn != nil {
 						if predicateFn(ev.data) {
-							ch <- ev.data
+							select {
+							case ch <- ev.data:
+							case <-evCancelCtx.Done():
+							}
 						}
 					} else {
-						ch <- nil
+						select {
+						case ch <- nil:
+						case <-evCancelCtx.Done():
+						}
 					}
 					close(ch)
 
@@ -187,8 +193,6 @@ func createWaitForEventPredicateHandler(
 					select {
 					case ch <- ev.data:
 					case <-evCancelCtx.Done():
-						close(ch)
-						evCancelFn()
 					}
 					close(ch)
 					evCancelFn()
