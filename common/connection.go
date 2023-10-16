@@ -561,7 +561,7 @@ func (c *Connection) Execute(ctx context.Context, method string, params easyjson
 		Params: buf,
 	}
 
-	return c.send(c.ctx, msg, ch, res)
+	return c.send(ctx, msg, ch, res)
 }
 
 // IgnoreIOErrors signals that the connection will soon be closed, so that any

@@ -408,6 +408,7 @@ func (f *Frame) waitForExecutionContext(world executionWorld) {
 	for {
 		select {
 		case <-t.C:
+			f.log.Debugf("Frame:waitForExecutionContext", "%s for fid:%s furl:%s", world, f.ID(), f.URL())
 			if f.hasContext(world) {
 				return
 			}
