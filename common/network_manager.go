@@ -176,10 +176,8 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
-	m.logger.Debugf("NetworkManager:emitResponseMetrics",
-		"url:%s method:%s", req.url, req.method)
-	defer m.logger.Debugf("NetworkManager:emitResponseMetrics:return",
-		"url:%s method:%s", req.url, req.method)
+	m.logger.Debugf("NetworkManager:emitResponseMetrics", "url:%s method:%s rid:%s", req.url, req.method, req.requestID)
+	defer m.logger.Debugf("NetworkManager:emitResponseMetrics:return", "url:%s method:%s rid:%s", req.url, req.method, req.requestID) //nolint:lll
 
 	state := m.vu.State()
 
@@ -264,8 +262,8 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 }
 
 func (m *NetworkManager) handleRequestRedirect(req *Request, redirectResponse *network.Response, timestamp *cdp.MonotonicTime) { //nolint:lll
-	m.logger.Debugf("NetworkManager:handleRequestRedirect", "url:%s method:%s rid:%s",
-		req.url, req.method, req.requestID)
+	m.logger.Debugf("NetworkManager:handleRequestRedirect", "url:%s method:%s rid:%s", req.url, req.method, req.requestID)
+	defer m.logger.Debugf("NetworkManager:handleRequestRedirect", "url:%s method:%s rid:%s", req.url, req.method, req.requestID)
 
 	resp := NewHTTPResponse(m.ctx, req, redirectResponse, timestamp)
 	req.responseMu.Lock()
@@ -367,14 +365,23 @@ func (m *NetworkManager) onLoadingFailed(event *network.EventLoadingFailed) {
 }
 
 func (m *NetworkManager) onLoadingFinished(event *network.EventLoadingFinished) {
+	m.logger.Debugf("NetworkManager:onLoadingFinished", "rid:%s", event.RequestID)
+	defer m.logger.Debugf("NetworkManager:onLoadingFinished:return", "rid:%s", event.RequestID)
+
 	req := m.requestFromID(event.RequestID)
 	if req == nil {
+		m.logger.Debugf("NetworkManager:onLoadingFinished", "rid:%s - nil request", event.RequestID)
+
 		// Handling of iframe document request starting in parent session and ending up in iframe session.
 		if m.parent != nil {
+			m.logger.Debugf("NetworkManager:onLoadingFinished", "rid:%s - parent is not nil", event.RequestID)
+
 			reqFromParent := m.parent.requestFromID(event.RequestID)
 
 			// Main requests have matching loaderID and requestID.
 			if reqFromParent != nil && reqFromParent.getDocumentID() == event.RequestID.String() {
+				m.logger.Debugf("NetworkManager:onLoadingFinished", "rid:%s - main request", event.RequestID)
+
 				m.reqsMu.Lock()
 				m.reqIDToRequest[event.RequestID] = reqFromParent
 				m.reqsMu.Unlock()
@@ -390,6 +397,8 @@ func (m *NetworkManager) onLoadingFinished(event *network.EventLoadingFinished) 
 	req.responseEndTiming = float64(event.Timestamp.Time().Unix()-req.timestamp.Unix()) * 1000
 	// Skip data and blob URLs when emitting metrics, since they're internal to the browser.
 	if !isInternalURL(req.url) {
+		m.logger.Debugf("NetworkManager:onLoadingFinished", "rid:%s - not an internal url:%s", event.RequestID, req.url)
+
 		req.responseMu.RLock()
 		m.emitResponseMetrics(req.response, req)
 		req.responseMu.RUnlock()
@@ -476,10 +485,8 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 }
 
 func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //nolint:funlen
-	m.logger.Debugf("NetworkManager:onRequestPaused",
-		"sid:%s url:%v", m.session.ID(), event.Request.URL)
-	defer m.logger.Debugf("NetworkManager:onRequestPaused:return",
-		"sid:%s url:%v", m.session.ID(), event.Request.URL)
+	m.logger.Debugf("NetworkManager:onRequestPaused", "sid:%s url:%v", m.session.ID(), event.Request.URL)
+	defer m.logger.Debugf("NetworkManager:onRequestPaused:return", "sid:%s url:%v", m.session.ID(), event.Request.URL)
 
 	var failErr error
 
@@ -607,6 +614,9 @@ func (m *NetworkManager) onAuthRequired(event *fetch.EventAuthRequired) {
 }
 
 func (m *NetworkManager) onRequestServedFromCache(event *network.EventRequestServedFromCache) {
+	m.logger.Debugf("NetworkManager:onRequestServedFromCache", "sid:%s rid:%s", m.session.ID(), event.RequestID)
+	defer m.logger.Debugf("NetworkManager:onRequestServedFromCache:return", "sid:%s rid:%s", m.session.ID(), event.RequestID)
+
 	req := m.requestFromID(event.RequestID)
 	if req != nil {
 		req.setLoadedFromCache(true)
@@ -614,10 +624,20 @@ func (m *NetworkManager) onRequestServedFromCache(event *network.EventRequestSer
 }
 
 func (m *NetworkManager) onResponseReceived(event *network.EventResponseReceived) {
+	m.logger.Debugf("NetworkManager:onResponseReceived", "sid:%s fid:%s lid:%s rid:%s",
+		m.session.ID(), event.FrameID, event.LoaderID, event.RequestID)
+	defer m.logger.Debugf("NetworkManager:onResponseReceived:return", "sid:%s fid:%s lid:%s rid:%s",
+		m.session.ID(), event.FrameID, event.LoaderID, event.RequestID)
+
 	req := m.requestFromID(event.RequestID)
 	if req == nil {
+		m.logger.Debugf("NetworkManager:onResponseReceived:return", "sid:%s fid:%s lid:%s rid:%s - nil request",
+			m.session.ID(), event.FrameID, event.LoaderID, event.RequestID)
 		return
 	}
+	m.logger.Debugf("NetworkManager:onResponseReceived:NewHTTPResponse", "sid:%s fid:%s lid:%s rid:%s",
+		m.session.ID(), event.FrameID, event.LoaderID, event.RequestID)
+
 	resp := NewHTTPResponse(m.ctx, req, event.Response, event.Timestamp)
 	req.responseMu.Lock()
 	req.response = resp

@@ -116,8 +116,8 @@ func NewHTTPResponse(ctx context.Context, req *Request, resp *network.Response, 
 }
 
 func (r *Response) fetchBody() error {
-	r.logger.Debug("Response:fetchBody", "url:%s", r.url)
-	defer r.logger.Debug("Response:fetchBody", "url:%s", r.url)
+	r.logger.Debug("Response:fetchBody", "url:%s rid:%s", r.url, r.requestIDForLog())
+	defer r.logger.Debug("Response:fetchBody:return", "url:%s rid:%s", r.url, r.requestIDForLog())
 
 	cached := func() bool {
 		r.bodyMu.RLock()
@@ -126,16 +126,19 @@ func (r *Response) fetchBody() error {
 		return r.body != nil || r.request.frame == nil
 	}
 	if cached() {
+		r.logger.Debug("Response:fetchBody", "url:%s rid:%s - cached", r.url, r.requestIDForLog())
 		return nil
 	}
 	action := network.GetResponseBody(r.request.requestID)
 	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
 	if err != nil {
+		r.logger.Warnf("Response:fetchBody:error", "url:%s rid:%s err:%s", r.url, r.requestIDForLog(), err)
 		return fmt.Errorf("fetching response body: %w", err)
 	}
 	r.bodyMu.Lock()
 	r.body = body
 	r.bodyMu.Unlock()
+
 	return nil
 }
 
@@ -176,8 +179,8 @@ func (r *Response) Body() goja.ArrayBuffer {
 
 // bodySize returns the size in bytes of the response body.
 func (r *Response) bodySize() int64 {
-	r.logger.Debug("Response:bodySize", "url:%s", r.url)
-	defer r.logger.Debug("Response:bodySize:return", "url:%s", r.url)
+	r.logger.Debug("Response:bodySize", "url:%s rid:%s", r.url, r.requestIDForLog())
+	defer r.logger.Debug("Response:bodySize:return", "url:%s rid:%s", r.url, r.requestIDForLog())
 
 	// Skip redirect responses
 	if r.status >= 300 && r.status <= 399 {
@@ -185,12 +188,12 @@ func (r *Response) bodySize() int64 {
 	}
 
 	if err := r.fetchBody(); err != nil {
-		r.logger.Debugf("Response:bodySize:fetchBody",
-			"url:%s method:%s err:%s", r.url, r.request.method, err)
+		r.logger.Warnf("Response:bodySize:fetchBody", "url:%s rid:%s method:%s err:%s", r.url, r.requestIDForLog(), r.request.method, err) //nolint:lll
 	}
 
 	r.bodyMu.RLock()
 	defer r.bodyMu.RUnlock()
+
 	return int64(len(r.body))
 }
 
@@ -299,6 +302,9 @@ func (r *Response) ServerAddr() goja.Value {
 }
 
 func (r *Response) Size() api.HTTPMessageSize {
+	r.logger.Debugf("Response:Size", "rid:%s rurl:%s", r.requestIDForLog(), r.url)
+	defer r.logger.Debugf("Response:Size", "rid:%s rurl:%s", r.requestIDForLog(), r.url)
+
 	return api.HTTPMessageSize{
 		Body:    r.bodySize(),
 		Headers: r.headersSize(),
@@ -328,4 +334,11 @@ func (r *Response) Text() string {
 // URL returns the request URL.
 func (r *Response) URL() string {
 	return r.url
+}
+
+func (r *Response) requestIDForLog() network.RequestID {
+	if r.request == nil {
+		return "?"
+	}
+	return r.request.requestID
 }

@@ -478,9 +478,10 @@ func (m *FrameManager) requestFailed(req *Request, canceled bool) {
 }
 
 func (m *FrameManager) requestFinished(req *Request) {
-	m.logger.Debugf("FrameManager:requestFinished", "fmid:%d rurl:%s",
-		m.ID(), req.URL())
+	m.logger.Debugf("FrameManager:requestFinished", "fmid:%d rurl:%s", m.ID(), req.URL())
+	defer m.logger.Debugf("FrameManager:requestFinished:return", "fmid:%d rurl:%s", m.ID(), req.URL())
 
+	// TODO: we throw this but we don't handle it anywhere
 	defer m.page.emit(EventPageRequestFinished, req)
 
 	frame := req.getFrame()
@@ -501,7 +502,9 @@ func (m *FrameManager) requestFinished(req *Request) {
 
 func (m *FrameManager) requestReceivedResponse(res *Response) {
 	m.logger.Debugf("FrameManager:requestReceivedResponse", "fmid:%d rurl:%s", m.ID(), res.URL())
+	defer m.logger.Debugf("FrameManager:requestReceivedResponse:return", "fmid:%d rurl:%s", m.ID(), res.URL())
 
+	// TODO: we throw this but we don't handle it anywhere
 	m.page.emit(EventPageResponse, res)
 }
 
