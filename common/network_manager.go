@@ -347,26 +347,14 @@ func (m *NetworkManager) onLoadingFailed(event *network.EventLoadingFailed) {
 }
 
 func (m *NetworkManager) onLoadingFinished(event *network.EventLoadingFinished) {
-	req := m.requestFromID(event.RequestID)
-	if req == nil {
-		// Handling of iframe document request starting in parent session and ending up in iframe session.
-		if m.parent != nil {
-			reqFromParent := m.parent.requestFromID(event.RequestID)
+	rid := event.RequestID
+	req := m.requestForOnLoadingFinished(rid)
 
-			// Main requests have matching loaderID and requestID.
-			if reqFromParent != nil && reqFromParent.getDocumentID() == event.RequestID.String() {
-				m.reqsMu.Lock()
-				m.reqIDToRequest[event.RequestID] = reqFromParent
-				m.reqsMu.Unlock()
-				m.parent.deleteRequestByID(event.RequestID)
-				req = reqFromParent
-			} else {
-				return
-			}
-		} else {
-			return
-		}
+	// the request was not created yet.
+	if req == nil {
+		return
 	}
+
 	req.responseEndTiming = float64(event.Timestamp.Time().Unix()-req.timestamp.Unix()) * 1000
 	// Skip data and blob URLs when emitting metrics, since they're internal to the browser.
 	if !isInternalURL(req.url) {
@@ -374,8 +362,35 @@ func (m *NetworkManager) onLoadingFinished(event *network.EventLoadingFinished) 
 		m.emitResponseMetrics(req.response, req)
 		req.responseMu.RUnlock()
 	}
-	m.deleteRequestByID(event.RequestID)
+	m.deleteRequestByID(rid)
 	m.frameManager.requestFinished(req)
+}
+
+// requestForOnLoadingFinished returns the request for the given request ID.
+func (m *NetworkManager) requestForOnLoadingFinished(rid network.RequestID) *Request {
+	r := m.requestFromID(rid)
+
+	// Immediately return if the request is not found.
+	if r != nil {
+		return r
+	}
+
+	// Handle IFrame document requests starting in one session and ending up in another.
+	if m.parent == nil {
+		return nil
+	}
+	// Main requests have matching loaderID and requestID.
+	pr := m.parent.requestFromID(rid)
+	if pr == nil || pr.getDocumentID() != rid.String() {
+		return nil
+	}
+	// Switch the request to the parent request.
+	m.reqsMu.Lock()
+	m.reqIDToRequest[rid] = pr
+	m.reqsMu.Unlock()
+	m.parent.deleteRequestByID(rid)
+
+	return pr
 }
 
 func isInternalURL(u *url.URL) bool {
