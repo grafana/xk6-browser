@@ -106,6 +106,7 @@ func newHTTPClient(endpoint, username, password string, insecure bool) otlptrace
 	headers := setHeaders(username, password)
 
 	opts := []otlptracehttp.Option{
+		otlptracehttp.WithURLPath("api/v1/tempo/v1/traces"),
 		otlptracehttp.WithEndpoint(endpoint),
 		otlptracehttp.WithHeaders(headers),
 	}
