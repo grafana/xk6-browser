@@ -433,6 +433,8 @@ func makeLogger(ctx context.Context, envLookup env.LookupFunc) (*log.Logger, err
 		k6Logger = k6ext.GetVU(ctx).State().Logger
 		logger   = log.New(k6Logger, common.GetIterationID(ctx))
 	)
+	logger.SetVUID(k6ext.GetVU(ctx).State().VUIDGlobal)
+	logger.SetRealIterID(k6ext.GetVU(ctx).State().Iteration)
 	if el, ok := envLookup(env.LogLevel); ok {
 		if logger.SetLevel(el) != nil {
 			return nil, fmt.Errorf(

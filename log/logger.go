@@ -18,6 +18,8 @@ type Logger struct {
 	mu             sync.Mutex
 	lastLogCall    int64
 	iterID         string
+	vuID           uint64
+	realIterID     int64
 	categoryFilter *regexp.Regexp
 }
 
@@ -45,6 +47,16 @@ func New(logger logrus.FieldLogger, iterID string) *Logger {
 	}
 
 	return ll
+}
+
+// SetVUID sets the VU ID for the logger.
+func (l *Logger) SetVUID(id uint64) {
+	l.vuID = id
+}
+
+// SetRealIterID sets the VU ID for the logger.
+func (l *Logger) SetRealIterID(id int64) {
+	l.realIterID = id
 }
 
 // Tracef logs a trace message.
@@ -103,6 +115,12 @@ func (l *Logger) Logf(level logrus.Level, category string, msg string, args ...a
 	}
 	if l.iterID != "" && l.GetLevel() > logrus.InfoLevel {
 		fields["iteration_id"] = l.iterID
+	}
+	if l.GetLevel() > logrus.InfoLevel {
+		fields["vu_id"] = l.vuID
+	}
+	if l.GetLevel() > logrus.InfoLevel {
+		fields["it_id"] = l.realIterID
 	}
 	entry := l.WithFields(fields)
 	if l.GetLevel() < level {
