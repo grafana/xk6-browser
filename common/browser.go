@@ -189,10 +189,10 @@ func (b *Browser) initEvents() error {
 			case event := <-chHandler:
 				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
 					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
-					b.onAttachedToTarget(ev)
+					go b.onAttachedToTarget(ev)
 				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
 					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
-					b.onDetachedFromTarget(ev)
+					go b.onDetachedFromTarget(ev)
 				} else if event.typ == EventConnectionClose {
 					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
 					return
@@ -401,6 +401,10 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 	)
 	defer removeEventHandler()
 
+	if b.conn.isClosing() {
+		return nil, fmt.Errorf("browser connection is closing")
+	}
+
 	// create a new page.
 	action := target.CreateTarget(BlankPage).WithBrowserContextID(id)
 	tid, err := action.Do(cdp.WithExecutor(ctx, b.conn))
@@ -428,6 +432,8 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 
 // Close shuts down the browser.
 func (b *Browser) Close() {
+	// debug.PrintStack()
+
 	if b.closed {
 		b.logger.Warnf(
 			"Browser:Close",

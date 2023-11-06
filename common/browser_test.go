@@ -192,3 +192,5 @@ func (c fakeConn) Execute(
 ) error {
 	return c.execute(ctx, method, params, res)
 }
+
+func (c fakeConn) isClosing() bool { return false }

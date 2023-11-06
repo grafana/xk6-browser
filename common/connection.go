@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -53,6 +54,7 @@ type connection interface {
 	Close(...goja.Value)
 	IgnoreIOErrors()
 	getSession(target.SessionID) *Session
+	isClosing() bool
 }
 
 type session interface {
@@ -176,6 +178,9 @@ func (c *Connection) close(code int) error {
 
 	var err error
 	c.shutdownOnce.Do(func() {
+		// print go stack trace
+		debug.PrintStack()
+
 		defer func() {
 			// Stop the main control loop
 			close(c.done)

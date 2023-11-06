@@ -192,7 +192,7 @@ func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegist
 		if isRemoteBrowser {
 			b, err = bt.Connect(ctx, wsURL)
 			if err != nil {
-				return nil, err //nolint:wrapcheck
+				return nil, fmt.Errorf("connecting to remote browser: %w", err)
 			}
 		} else {
 			var pid int

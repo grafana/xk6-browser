@@ -54,7 +54,6 @@ func sharedPanic(ctx context.Context, failFunc func(rt *goja.Runtime, a ...any),
 		}
 	}
 	defer failFunc(rt, a...)
-
 	// TODO: Remove this after moving k6ext.Panic into the mapping layer.
 	pidder, ok := GetVU(ctx).(interface {
 		Pids() []int
