@@ -105,9 +105,6 @@ func setHeaders(username, password string) map[string]string {
 func newHTTPClient(endpoint, username, password string, insecure bool) otlptrace.Client {
 	headers := setHeaders(username, password)
 
-	// Add temporary scope id headers
-	headers["X-Scope-OrgID"] = "k6-orgid-test"
-
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithURLPath("api/v1/tempo/v1/traces"),
 		otlptracehttp.WithEndpoint(endpoint),
