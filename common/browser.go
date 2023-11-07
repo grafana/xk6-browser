@@ -166,17 +166,37 @@ func (b *Browser) getPages() []*Page {
 func (b *Browser) initEvents() error {
 	var cancelCtx context.Context
 	cancelCtx, b.evCancelFn = context.WithCancel(b.ctx)
-	chHandler := make(chan Event)
+
+	attachments := make(chan Event)
 
 	b.conn.on(cancelCtx, []string{
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 		EventConnectionClose,
-	}, chHandler)
+	}, attachments)
+
+	closing := make(chan Event)
+	b.conn.on(cancelCtx, []string{EventConnectionClose}, closing)
 
 	go func() {
+		for {
+			select {
+			case <-cancelCtx.Done():
+				return
+			case event := <-attachments:
+				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
+					b.onAttachedToTarget(ev)
+				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
+					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
+					b.onDetachedFromTarget(ev)
+				}
+			}
+		}
+	}()
+	go func() {
 		defer func() {
-			b.logger.Debugf("Browser:initEvents:defer", "ctx err: %v", cancelCtx.Err())
+			b.logger.Debugf("Browser:initEvents:eventConnectionClose:defer", "ctx err: %v", cancelCtx.Err())
 			b.browserProc.didLoseConnection()
 			if b.cancelFn != nil {
 				b.cancelFn()
@@ -185,18 +205,15 @@ func (b *Browser) initEvents() error {
 		for {
 			select {
 			case <-cancelCtx.Done():
+				b.logger.Debugf("Browser:initEvents:eventConnectionClose:<-cancelCtx.Done()", "ctx err: %v", cancelCtx.Err())
 				return
-			case event := <-chHandler:
-				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
-					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
-					b.onAttachedToTarget(ev)
-				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
-					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
-					b.onDetachedFromTarget(ev)
-				} else if event.typ == EventConnectionClose {
-					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
-					return
+			case event := <-closing:
+				if event.typ != EventConnectionClose {
+					continue
 				}
+				b.logger.Debugf("Browser:initEvents:EventConnectionClose", "browserProc:%v", b.browserProc.isConnected())
+				b.evCancelFn()
+				return
 			}
 		}
 	}()
