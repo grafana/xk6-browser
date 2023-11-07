@@ -318,7 +318,7 @@ func (b *Browser) isPageAttachmentErrorIgnorable(ev *target.EventAttachedToTarge
 		isRunning = atomic.LoadInt64(&b.state) == BrowserStateOpen && b.IsConnected() // b.conn.isConnected()
 		wsErr     *websocket.CloseError
 	)
-	if !errors.As(err, &wsErr) && !isRunning {
+	if errors.As(err, &wsErr) && !isRunning {
 		// If we're no longer connected to browser, then ignore WebSocket errors
 		b.logger.Debugf("Browser:isPageAttachmentErrorIgnorable:return",
 			"sid:%v tid:%v pageType:%s websocket err:%v",
