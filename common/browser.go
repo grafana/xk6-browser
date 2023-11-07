@@ -221,6 +221,8 @@ func (b *Browser) initEvents() error {
 func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	b.logger.Debugf("Browser:onAttachedToTarget", "sid:%v tid:%v bctxid:%v",
 		ev.SessionID, ev.TargetInfo.TargetID, ev.TargetInfo.BrowserContextID)
+	b.logger.Debugf("Browser:onAttachedToTarget:return", "sid:%v tid:%v bctxid:%v",
+		ev.SessionID, ev.TargetInfo.TargetID, ev.TargetInfo.BrowserContextID)
 
 	var (
 		targetPage = ev.TargetInfo
@@ -228,11 +230,13 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	)
 
 	if !b.isAttachedPageValid(ev, browserCtx) {
+		b.logger.Warnf("Browser:onAttachedToTarget:isAttachedPageValid:false", "sid:%v tid:%v bctxid:%v",
+			ev.SessionID, targetPage.TargetID, targetPage.BrowserContextID)
 		return // Ignore this page.
 	}
 	session := b.conn.getSession(ev.SessionID)
 	if session == nil {
-		b.logger.Debugf("Browser:onAttachedToTarget",
+		b.logger.Warnf("Browser:onAttachedToTarget",
 			"session closed before attachToTarget is handled. sid:%v tid:%v",
 			ev.SessionID, targetPage.TargetID)
 		return // ignore
@@ -250,17 +254,24 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 		}
 		b.pagesMu.RUnlock()
 	}
-	p, err := NewPage(b.ctx, session, browserCtx, targetPage.TargetID, opener, isPage, b.logger)
+	p, err := NewPage(b.ctx, session, browserCtx, targetPage.TargetID, opener, !isPage, b.logger)
 	if err != nil && b.isPageAttachmentErrorIgnorable(ev, session, err) {
+		b.logger.Warnf("Browser:onAttachedToTarget:isPageAttachmentErrorIgnorable",
+			"sid:%v tid:%v pageType:%s err:%v",
+			ev.SessionID, targetPage.TargetID, targetPage.Type, err)
 		return // Ignore this page.
 	}
 	if err != nil {
+		b.logger.Errorf("Browser:onAttachedToTarget:error", "sid:%v tid:%v pageType:%s err:%v",
+			ev.SessionID, targetPage.TargetID, targetPage.Type, err)
 		k6ext.Panic(b.ctx, "creating a new %s: %w", targetPage.Type, err)
 	}
 	b.attachNewPage(p, ev) // Register the page as an active page.
 	// Emit the page event only for pages, not for background pages.
 	// Background pages are created by extensions.
 	if isPage {
+		b.logger.Debugf("Browser:onAttachedToTarget:EventBrowserContextPage", "sid:%v tid:%v pageType:%s",
+			ev.SessionID, targetPage.TargetID, targetPage.Type)
 		browserCtx.emit(EventBrowserContextPage, p)
 	}
 }
