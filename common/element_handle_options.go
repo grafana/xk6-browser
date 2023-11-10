@@ -74,6 +74,17 @@ type ElementHandleHoverOptions struct {
 	Modifiers []string `json:"modifiers"`
 }
 
+type File struct {
+	Name   string `json:"name"`
+	Buffer string `json:"buffer"`
+	Mime   string `json:"mime"`
+}
+
+type ElementHandleSetInputFilesOption struct {
+	ElementHandleBaseOptions
+	Payload []File `json:"payload"`
+}
+
 type ElementHandlePressOptions struct {
 	Delay       int64         `json:"delay"`
 	NoWaitAfter bool          `json:"noWaitAfter"`
@@ -175,6 +186,34 @@ func NewElementHandleCheckOptions(defaultTimeout time.Duration) *ElementHandleCh
 
 func (o *ElementHandleCheckOptions) Parse(ctx context.Context, opts goja.Value) error {
 	return o.ElementHandleBasePointerOptions.Parse(ctx, opts)
+}
+
+func NewElementHandleSetInputFilesOptions(defaultTimeout time.Duration) *ElementHandleSetInputFilesOption {
+	return &ElementHandleSetInputFilesOption{
+		ElementHandleBaseOptions: *NewElementHandleBaseOptions(defaultTimeout),
+		Payload:                  []File{},
+	}
+}
+
+func (o *ElementHandleSetInputFilesOption) Parse(ctx context.Context, opts goja.Value) error {
+	rt := k6ext.Runtime(ctx)
+	if err := o.ElementHandleBaseOptions.Parse(ctx, opts); err != nil {
+		return err
+	}
+	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
+		opts := opts.ToObject(rt)
+		for _, k := range opts.Keys() {
+			switch k {
+			case "payload":
+				var p []File
+				if err := rt.ExportTo(opts.Get(k), &p); err != nil {
+					return err
+				}
+				o.Payload = p
+			}
+		}
+	}
+	return nil
 }
 
 func NewElementHandleClickOptions(defaultTimeout time.Duration) *ElementHandleClickOptions {
