@@ -1250,7 +1250,7 @@ func (h *ElementHandle) SetInputFiles(opts goja.Value) {
 	actFn := h.newAction([]string{}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
 	_, err := call(h.ctx, actFn, actionOpts.Timeout)
 	if err != nil {
-		k6ext.Panic(h.ctx, "selecting text: %w", err)
+		k6ext.Panic(h.ctx, "setting input files: %w", err)
 	}
 }
 
