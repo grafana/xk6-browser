@@ -213,6 +213,7 @@ func (o *ElementHandleSetInputFilesOption) Parse(ctx context.Context, opts goja.
 			}
 		}
 	}
+
 	return nil
 }
 

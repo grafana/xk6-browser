@@ -1275,6 +1275,7 @@ func (h *ElementHandle) setInputFiles(apiCtx context.Context, payload []File) er
 			return errorFromDOMError(result)
 		}
 	}
+
 	return nil
 }
 
