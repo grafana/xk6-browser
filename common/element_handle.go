@@ -1238,6 +1238,7 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
+// SetInputFiles sets the Files given in the opts into the <input type="file"> element.
 func (h *ElementHandle) SetInputFiles(opts goja.Value) {
 	actionOpts := NewElementHandleSetInputFilesOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
@@ -1269,11 +1270,9 @@ func (h *ElementHandle) setInputFiles(apiCtx context.Context, payload []File) er
 	if err != nil {
 		return err
 	}
-	switch result := result.(type) {
-	case string: // Either we're done or an error happened (returned as "error:..." from JS)
-		if result != "done" {
-			return errorFromDOMError(result)
-		}
+	if res, ok := result.(string); ok && res != "done" {
+		// Either we're done or an error happened (returned as "error:..." from JS)
+		return errorFromDOMError(res)
 	}
 
 	return nil
