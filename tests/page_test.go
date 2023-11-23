@@ -1270,9 +1270,7 @@ func TestPageIsVisible(t *testing.T) {
 			name:     "first_div",
 			selector: "div",
 			options: common.FrameIsVisibleOptions{
-				FrameBaseOptions: common.FrameBaseOptions{
-					Strict: true,
-				},
+				Strict: true,
 			},
 			wantErr: "error:strictmodeviolation",
 		},
@@ -1337,9 +1335,7 @@ func TestPageIsHidden(t *testing.T) {
 			name:     "first_div",
 			selector: "div",
 			options: common.FrameIsVisibleOptions{
-				FrameBaseOptions: common.FrameBaseOptions{
-					Strict: true,
-				},
+				Strict: true,
 			},
 			wantErr: "error:strictmodeviolation",
 		},
