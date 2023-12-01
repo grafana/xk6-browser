@@ -195,7 +195,6 @@ func (o *ElementHandleCheckOptions) Parse(ctx context.Context, opts goja.Value) 
 func NewElementHandleSetInputFilesOptions(defaultTimeout time.Duration) *ElementHandleSetInputFilesOption {
 	return &ElementHandleSetInputFilesOption{
 		ElementHandleBaseOptions: *NewElementHandleBaseOptions(defaultTimeout),
-		Payload:                  []File{},
 	}
 }
 
@@ -205,17 +204,20 @@ func (o *ElementHandleSetInputFilesOption) Parse(ctx context.Context, opts goja.
 	if err := o.ElementHandleBaseOptions.Parse(ctx, opts); err != nil {
 		return err
 	}
-	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
-		opts := opts.ToObject(rt)
-		for _, k := range opts.Keys() {
-			if k == "payload" {
-				var p []File
-				if err := rt.ExportTo(opts.Get(k), &p); err != nil {
-					return fmt.Errorf("unable to parse SetInputFileOptions; reason: %w", err)
-				}
-				o.Payload = p
-			}
+	if !gojaValueExists(opts) {
+		return nil
+	}
+	gopts := opts.ToObject(rt)
+	for _, k := range gopts.Keys() {
+		if k != "payload" {
+			continue
 		}
+		var p []File
+		if err := rt.ExportTo(gopts.Get(k), &p); err != nil {
+			return fmt.Errorf("unable to parse SetInputFileOptions; reason: %w", err)
+		}
+		o.Payload = p
+
 	}
 
 	return nil
