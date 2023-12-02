@@ -100,8 +100,9 @@ type FrameSetContentOptions struct {
 	WaitUntil LifecycleEvent `json:"waitUntil" js:"waitUntil"`
 }
 
+// FrameSetInputFilesOptions are options for Frame.setInputFiles.
 type FrameSetInputFilesOptions struct {
-	ElementHandleSetInputFilesOption
+	ElementHandleSetInputFilesOptions
 	Strict bool `json:"strict"`
 }
 
@@ -491,16 +492,17 @@ func (o *FrameSetContentOptions) Parse(ctx context.Context, opts goja.Value) err
 	return nil
 }
 
+// NewFrameSetInputFilesOptions creates a new FrameSetInputFilesOptions.
 func NewFrameSetInputFilesOptions(defaultTimeout time.Duration) *FrameSetInputFilesOptions {
 	return &FrameSetInputFilesOptions{
-		ElementHandleSetInputFilesOption: *NewElementHandleSetInputFilesOptions(defaultTimeout),
-		Strict:                           false,
+		ElementHandleSetInputFilesOptions: *NewElementHandleSetInputFilesOptions(defaultTimeout),
+		Strict:                            false,
 	}
 }
 
+// Parse parses FrameSetInputFilesOptions from goja.Value.
 func (o *FrameSetInputFilesOptions) Parse(ctx context.Context, opts goja.Value) error {
-	//rt := k6ext.Runtime(ctx)
-	if err := o.ElementHandleSetInputFilesOption.Parse(ctx, opts); err != nil {
+	if err := o.ElementHandleSetInputFilesOptions.Parse(ctx, opts); err != nil {
 		return err
 	}
 	return nil
