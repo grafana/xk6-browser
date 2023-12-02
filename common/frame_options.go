@@ -100,6 +100,11 @@ type FrameSetContentOptions struct {
 	WaitUntil LifecycleEvent `json:"waitUntil" js:"waitUntil"`
 }
 
+type FrameSetInputFilesOptions struct {
+	ElementHandleSetInputFilesOption
+	Strict bool `json:"strict"`
+}
+
 type FrameTapOptions struct {
 	ElementHandleBasePointerOptions
 	Modifiers []string `json:"modifiers"`
@@ -483,6 +488,21 @@ func (o *FrameSetContentOptions) Parse(ctx context.Context, opts goja.Value) err
 		}
 	}
 
+	return nil
+}
+
+func NewFrameSetInputFilesOptions(defaultTimeout time.Duration) *FrameSetInputFilesOptions {
+	return &FrameSetInputFilesOptions{
+		ElementHandleSetInputFilesOption: *NewElementHandleSetInputFilesOptions(defaultTimeout),
+		Strict:                           false,
+	}
+}
+
+func (o *FrameSetInputFilesOptions) Parse(ctx context.Context, opts goja.Value) error {
+	//rt := k6ext.Runtime(ctx)
+	if err := o.ElementHandleSetInputFilesOption.Parse(ctx, opts); err != nil {
+		return err
+	}
 	return nil
 }
 
