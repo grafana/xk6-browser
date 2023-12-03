@@ -1169,7 +1169,7 @@ func (p *Page) SetExtraHTTPHeaders(headers map[string]string) {
 	p.updateExtraHTTPHeaders()
 }
 
-// SetInputFiles is not implemented.
+// SetInputFiles sets input files for the selected element.
 func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value) {
 	p.logger.Debugf("Page:SetInputFiles", "sid:%v selector:%s", p.sessionID(), selector)
 
