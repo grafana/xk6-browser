@@ -219,8 +219,7 @@ func handleParseRemoteObjectErr(ctx context.Context, err error, logger *logrus.E
 	)
 	var merr *multiError
 	if !errors.As(err, &merr) {
-		// If this panics it's a bug :)
-		k6ext.Panic(ctx, "parsing remote object value: %w", err)
+		logger.WithError(err).Error("error parsing remote object")
 	}
 	for _, e := range merr.Errors {
 		switch {
@@ -229,8 +228,7 @@ func handleParseRemoteObjectErr(ctx context.Context, err error, logger *logrus.E
 		case errors.As(e, &ope):
 			logger.WithError(ope).Error()
 		default:
-			// If this panics it's a bug :)
-			k6ext.Panic(ctx, "parsing remote object value: %w", e)
+			logger.WithError(e).Error("error parsing remote object")
 		}
 	}
 }
