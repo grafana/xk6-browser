@@ -291,6 +291,24 @@ func (b *Browser) attachNewPage(p *Page, ev *target.EventAttachedToTarget) {
 func (b *Browser) isAttachedPageValid(ev *target.EventAttachedToTarget, browserCtx *BrowserContext) bool {
 	targetPage := ev.TargetInfo
 
+	// Never use the default browser context for pages.
+	if browserCtx == nil {
+		b.logger.Warnf(
+			"Attaching page to a non-existing browser context",
+			"sid:%v tid:%v",
+			ev.SessionID, targetPage.TargetID,
+		)
+		return false
+	}
+	// We're not interested of the pages from other browser contexts.
+	if id := targetPage.BrowserContextID; id != browserCtx.id {
+		b.logger.Warnf("Attaching another browser context's page to the current browser context",
+			"sid:%v tid:%v bctxid:%v pageBctxID:%v",
+			ev.SessionID, targetPage.TargetID, browserCtx.id, targetPage.BrowserContextID,
+		)
+		return false
+	}
+
 	// We're not interested in the top-level browser target, other targets or DevTools targets right now.
 	isDevTools := strings.HasPrefix(targetPage.URL, "devtools://devtools")
 	if targetPage.Type == "browser" || targetPage.Type == "other" || isDevTools {
