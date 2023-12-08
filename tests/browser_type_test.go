@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/chromium"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
+	"github.com/grafana/xk6-browser/module"
 )
 
 func TestBrowserTypeConnect(t *testing.T) {
@@ -41,9 +41,9 @@ func TestBrowserTypeLaunchToConnect(t *testing.T) {
 	// We have to call launch method through JS API in Goja
 	// to take mapping layer into account, instead of calling
 	// BrowserType.Launch method directly
-	root := browser.New()
+	root := module.New()
 	mod := root.NewModuleInstance(vu)
-	jsMod, ok := mod.Exports().Default.(*browser.JSModule)
+	jsMod, ok := mod.Exports().Default.(*module.JSModule)
 	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
 
 	vu.ActivateVU()

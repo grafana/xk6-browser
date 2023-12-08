@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
+	"github.com/grafana/xk6-browser/module"
 )
 
 func TestBrowserNewPage(t *testing.T) {
@@ -221,8 +221,8 @@ func TestBrowserCrashErr(t *testing.T) {
 	// create a new VU in an environment that requires a bad remote-debugging-port.
 	vu := k6test.NewVU(t, env.ConstLookup(env.BrowserArguments, "remote-debugging-port=99999"))
 
-	mod := browser.New().NewModuleInstance(vu)
-	jsMod, ok := mod.Exports().Default.(*browser.JSModule)
+	mod := module.New().NewModuleInstance(vu)
+	jsMod, ok := mod.Exports().Default.(*module.JSModule)
 	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
 
 	vu.ActivateVU()
