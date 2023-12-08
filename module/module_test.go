@@ -15,7 +15,7 @@ func TestModuleNew(t *testing.T) {
 	t.Parallel()
 
 	vu := k6test.NewVU(t)
-	m, ok := New().NewModuleInstance(vu).(*ModuleInstance)
+	m, ok := New().NewModuleInstance(vu).(*Instance)
 	require.True(t, ok, "NewModuleInstance should return a ModuleInstance")
 	require.NotNil(t, m.mod, "Module should be set")
 	require.NotNil(t, m.mod.Browser, "Browser should be set")

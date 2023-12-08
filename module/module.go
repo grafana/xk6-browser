@@ -32,15 +32,15 @@ type (
 		NetworkProfiles map[string]common.NetworkProfile `js:"networkProfiles"`
 	}
 
-	// ModuleInstance represents an instance of the JS module.
-	ModuleInstance struct {
+	// Instance represents an instance of the JS module.
+	Instance struct {
 		mod *JS
 	}
 )
 
 var (
 	_ k6modules.Module   = &Root{}
-	_ k6modules.Instance = &ModuleInstance{}
+	_ k6modules.Instance = &Instance{}
 )
 
 // New returns a pointer to a new RootModule instance.
@@ -62,7 +62,7 @@ func (m *Root) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 	m.initOnce.Do(func() {
 		m.initialize(vu)
 	})
-	return &ModuleInstance{
+	return &Instance{
 		mod: &JS{
 			Browser: mapBrowserToGoja(moduleVU{
 				VU:                vu,
@@ -78,7 +78,7 @@ func (m *Root) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 
 // Exports returns the exports of the JS module so that it can be used in test
 // scripts.
-func (mi *ModuleInstance) Exports() k6modules.Exports {
+func (mi *Instance) Exports() k6modules.Exports {
 	return k6modules.Exports{Default: mi.mod}
 }
 
