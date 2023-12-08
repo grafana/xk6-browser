@@ -21,7 +21,7 @@ func TestNewContext(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		logger := log.NewNullLogger()
-		b := newBrowser(ctx, cancel, nil, NewLocalBrowserOptions(), logger)
+		b := newBrowser(ctx, cancel, nil, NewLocalOptions(), logger)
 
 		vu := k6test.NewVU(t)
 		ctx = k6ext.WithVU(ctx, vu)

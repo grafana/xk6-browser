@@ -17,8 +17,8 @@ import (
 // Script variables.
 const optType = "type"
 
-// BrowserOptions stores browser options.
-type BrowserOptions struct {
+// Options stores browser options.
+type Options struct {
 	Args              []string
 	Debug             bool
 	ExecutablePath    string
@@ -33,20 +33,20 @@ type BrowserOptions struct {
 	isRemoteBrowser bool // some options will be ignored if browser is in a remote machine
 }
 
-// NewLocalBrowserOptions returns a new BrowserOptions
+// NewLocalOptions returns a new Options
 // for a browser launched in the local machine.
-func NewLocalBrowserOptions() *BrowserOptions {
-	return &BrowserOptions{
+func NewLocalOptions() *Options {
+	return &Options{
 		Headless:          true,
 		LogCategoryFilter: ".*",
 		Timeout:           DefaultTimeout,
 	}
 }
 
-// NewRemoteBrowserOptions returns a new BrowserOptions
+// NewRemoteOptions returns a new Options
 // for a browser running in a remote machine.
-func NewRemoteBrowserOptions() *BrowserOptions {
-	return &BrowserOptions{
+func NewRemoteOptions() *Options {
+	return &Options{
 		Headless:          true,
 		LogCategoryFilter: ".*",
 		Timeout:           DefaultTimeout,
@@ -55,7 +55,7 @@ func NewRemoteBrowserOptions() *BrowserOptions {
 }
 
 // Parse parses browser options from a JS object.
-func (bo *BrowserOptions) Parse( //nolint:cyclop
+func (bo *Options) Parse( //nolint:cyclop
 	ctx context.Context, logger *log.Logger, opts map[string]any, envLookup env.LookupFunc,
 ) error {
 	// Parse opts
@@ -87,7 +87,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 			continue
 		}
 		if bo.shouldIgnoreIfBrowserIsRemote(e) {
-			logger.Warnf("BrowserOptions", "setting %s option is disallowed when browser is remote", e)
+			logger.Warnf("Options", "setting %s option is disallowed when browser is remote", e)
 			continue
 		}
 		var err error
@@ -115,7 +115,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 	return nil
 }
 
-func (bo *BrowserOptions) shouldIgnoreIfBrowserIsRemote(opt string) bool {
+func (bo *Options) shouldIgnoreIfBrowserIsRemote(opt string) bool {
 	if !bo.isRemoteBrowser {
 		return false
 	}

@@ -12,10 +12,10 @@ import (
 	"github.com/grafana/xk6-browser/log"
 )
 
-func TestBrowserOptionsParse(t *testing.T) {
+func TestOptionsParse(t *testing.T) {
 	t.Parallel()
 
-	defaultOptions := &BrowserOptions{
+	defaultOptions := &Options{
 		Headless:          true,
 		LogCategoryFilter: ".*",
 		Timeout:           DefaultTimeout,
@@ -24,7 +24,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 	for name, tt := range map[string]struct {
 		opts            map[string]any
 		envLookupper    env.LookupFunc
-		assert          func(testing.TB, *BrowserOptions)
+		assert          func(testing.TB, *Options)
 		err             string
 		isRemoteBrowser bool
 	}{
@@ -33,7 +33,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.EmptyLookup,
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Equal(t, defaultOptions, lo)
 			},
@@ -43,7 +43,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.EmptyLookup,
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Equal(t, defaultOptions, lo)
 			},
@@ -75,9 +75,9 @@ func TestBrowserOptionsParse(t *testing.T) {
 					return "", false
 				}
 			},
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
-				assert.Equal(t, &BrowserOptions{
+				assert.Equal(t, &Options{
 					// disallowed:
 					Headless: true,
 					// allowed:
@@ -96,9 +96,9 @@ func TestBrowserOptionsParse(t *testing.T) {
 			envLookupper: func(k string) (string, bool) {
 				return "", true
 			},
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
-				assert.Equal(tb, &BrowserOptions{
+				assert.Equal(tb, &Options{
 					Headless:          true,
 					LogCategoryFilter: ".*",
 					Timeout:           DefaultTimeout,
@@ -110,7 +110,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserArguments, "browser-arg1='value1,browser-arg2=value2,browser-flag"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				require.Len(tb, lo.Args, 3)
 				assert.Equal(tb, "browser-arg1='value1", lo.Args[0])
@@ -123,7 +123,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserEnableDebugging, "true"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.True(t, lo.Debug)
 			},
@@ -140,7 +140,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserExecutablePath, "cmd/somewhere"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Equal(t, "cmd/somewhere", lo.ExecutablePath)
 			},
@@ -150,7 +150,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserHeadless, "false"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.False(t, lo.Headless)
 			},
@@ -167,7 +167,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserIgnoreDefaultArgs, "--hide-scrollbars,--hide-something"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Len(t, lo.IgnoreDefaultArgs, 2)
 				assert.Equal(t, "--hide-scrollbars", lo.IgnoreDefaultArgs[0])
@@ -179,7 +179,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.LogCategoryFilter, "**"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Equal(t, "**", lo.LogCategoryFilter)
 			},
@@ -189,7 +189,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.ConstLookup(env.BrowserGlobalTimeout, "10s"),
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				assert.Equal(t, 10*time.Second, lo.Timeout)
 			},
@@ -206,7 +206,7 @@ func TestBrowserOptionsParse(t *testing.T) {
 				"type": "chromium",
 			},
 			envLookupper: env.EmptyLookup,
-			assert: func(tb testing.TB, lo *BrowserOptions) {
+			assert: func(tb testing.TB, lo *Options) {
 				tb.Helper()
 				// Noop, just expect no error
 			},
@@ -228,13 +228,13 @@ func TestBrowserOptionsParse(t *testing.T) {
 			t.Parallel()
 			var (
 				vu = k6test.NewVU(t)
-				lo *BrowserOptions
+				lo *Options
 			)
 
 			if tt.isRemoteBrowser {
-				lo = NewRemoteBrowserOptions()
+				lo = NewRemoteOptions()
 			} else {
-				lo = NewLocalBrowserOptions()
+				lo = NewLocalOptions()
 			}
 
 			err := lo.Parse(vu.Context(), log.NewNullLogger(), tt.opts, tt.envLookupper)

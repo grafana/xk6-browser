@@ -57,7 +57,7 @@ func NewBrowserType(vu k6modules.VU) *BrowserType {
 
 func (b *BrowserType) init(
 	ctx context.Context, isRemoteBrowser bool,
-) (context.Context, *browser.BrowserOptions, *log.Logger, error) {
+) (context.Context, *browser.Options, *log.Logger, error) {
 	ctx = b.initContext(ctx)
 
 	logger, err := makeLogger(ctx, b.envLookupper)
@@ -65,18 +65,18 @@ func (b *BrowserType) init(
 		return nil, nil, nil, fmt.Errorf("error setting up logger: %w", err)
 	}
 
-	var browserOpts *browser.BrowserOptions
+	var browserOpts *browser.Options
 	if isRemoteBrowser {
-		browserOpts = browser.NewRemoteBrowserOptions()
+		browserOpts = browser.NewRemoteOptions()
 	} else {
-		browserOpts = browser.NewLocalBrowserOptions()
+		browserOpts = browser.NewLocalOptions()
 	}
 
 	opts := k6ext.GetScenarioOpts(b.vu.Context(), b.vu)
 	if err = browserOpts.Parse(ctx, logger, opts, b.envLookupper); err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing browser options: %w", err)
 	}
-	ctx = browser.WithBrowserOptions(ctx, browserOpts)
+	ctx = browser.WithOptions(ctx, browserOpts)
 
 	if err := logger.SetCategoryFilter(browserOpts.LogCategoryFilter); err != nil {
 		return nil, nil, nil, fmt.Errorf("error setting category filter: %w", err)
@@ -116,7 +116,7 @@ func (b *BrowserType) Connect(ctx context.Context, wsEndpoint string) (*browser.
 }
 
 func (b *BrowserType) connect(
-	ctx context.Context, wsURL string, opts *browser.BrowserOptions, logger *log.Logger,
+	ctx context.Context, wsURL string, opts *browser.Options, logger *log.Logger,
 ) (*browser.Browser, error) {
 	browserProc, err := b.link(ctx, wsURL, logger)
 	if browserProc == nil {
@@ -171,7 +171,7 @@ func (b *BrowserType) Launch(ctx context.Context) (_ *browser.Browser, browserPr
 }
 
 func (b *BrowserType) launch(
-	ctx context.Context, opts *browser.BrowserOptions, logger *log.Logger,
+	ctx context.Context, opts *browser.Options, logger *log.Logger,
 ) (_ *browser.Browser, pid int, _ error) {
 	flags, err := prepareFlags(opts, &(b.vu.State()).Options)
 	if err != nil {
@@ -224,7 +224,7 @@ func (b *BrowserType) Name() string {
 
 // allocate starts a new Chromium browser process and returns it.
 func (b *BrowserType) allocate(
-	ctx context.Context, opts *browser.BrowserOptions,
+	ctx context.Context, opts *browser.Options,
 	flags map[string]any, dataDir *storage.Dir,
 	logger *log.Logger,
 ) (_ *browser.BrowserProcess, rerr error) {
@@ -316,7 +316,7 @@ func parseArgs(flags map[string]any) ([]string, error) {
 	return args, nil
 }
 
-func prepareFlags(lopts *browser.BrowserOptions, k6opts *k6lib.Options) (map[string]any, error) {
+func prepareFlags(lopts *browser.Options, k6opts *k6lib.Options) (map[string]any, error) {
 	// After Puppeteer's and Playwright's default behavior.
 	f := map[string]any{
 		"disable-background-networking":                      true,
