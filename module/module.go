@@ -17,9 +17,9 @@ import (
 )
 
 type (
-	// RootModule is the global module instance that will create module
+	// Root is the global module instance that will create module
 	// instances for each VU.
-	RootModule struct {
+	Root struct {
 		PidRegistry    *pidRegistry
 		remoteRegistry *remoteRegistry
 		initOnce       *sync.Once
@@ -39,13 +39,13 @@ type (
 )
 
 var (
-	_ k6modules.Module   = &RootModule{}
+	_ k6modules.Module   = &Root{}
 	_ k6modules.Instance = &ModuleInstance{}
 )
 
 // New returns a pointer to a new RootModule instance.
-func New() *RootModule {
-	return &RootModule{
+func New() *Root {
+	return &Root{
 		PidRegistry: &pidRegistry{},
 		initOnce:    &sync.Once{},
 	}
@@ -53,7 +53,7 @@ func New() *RootModule {
 
 // NewModuleInstance implements the k6modules.Module interface to return
 // a new instance for each VU.
-func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
+func (m *Root) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 	// initialization should be done once per module as it initializes
 	// globally used values across the whole test run and not just the
 	// current VU. Since initialization can fail with an error,
@@ -84,7 +84,7 @@ func (mi *ModuleInstance) Exports() k6modules.Exports {
 
 // initialize initializes the module instance with a new remote registry
 // and debug server, etc.
-func (m *RootModule) initialize(vu k6modules.VU) {
+func (m *Root) initialize(vu k6modules.VU) {
 	var (
 		err     error
 		initEnv = vu.InitEnv()

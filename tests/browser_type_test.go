@@ -43,7 +43,7 @@ func TestBrowserTypeLaunchToConnect(t *testing.T) {
 	// BrowserType.Launch method directly
 	root := module.New()
 	mod := root.NewModuleInstance(vu)
-	jsMod, ok := mod.Exports().Default.(*module.JSModule)
+	jsMod, ok := mod.Exports().Default.(*module.JS)
 	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
 
 	vu.ActivateVU()

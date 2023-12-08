@@ -222,7 +222,7 @@ func TestBrowserCrashErr(t *testing.T) {
 	vu := k6test.NewVU(t, env.ConstLookup(env.BrowserArguments, "remote-debugging-port=99999"))
 
 	mod := module.New().NewModuleInstance(vu)
-	jsMod, ok := mod.Exports().Default.(*module.JSModule)
+	jsMod, ok := mod.Exports().Default.(*module.JS)
 	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
 
 	vu.ActivateVU()
