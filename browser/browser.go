@@ -34,7 +34,7 @@ type Browser struct {
 
 	state int64
 
-	browserProc *BrowserProcess
+	browserProc *Process
 	browserOpts *Options
 
 	// Connection to the browser to talk CDP protocol.
@@ -77,7 +77,7 @@ type Browser struct {
 func NewBrowser(
 	ctx context.Context,
 	cancel context.CancelFunc,
-	browserProc *BrowserProcess,
+	browserProc *Process,
 	browserOpts *Options,
 	logger *log.Logger,
 ) (*Browser, error) {
@@ -92,7 +92,7 @@ func NewBrowser(
 func newBrowser(
 	ctx context.Context,
 	cancelFn context.CancelFunc,
-	browserProc *BrowserProcess,
+	browserProc *Process,
 	browserOpts *Options,
 	logger *log.Logger,
 ) *Browser {

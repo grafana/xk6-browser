@@ -139,9 +139,9 @@ func (b *BrowserType) connect(
 
 func (b *BrowserType) link(
 	ctx context.Context, wsURL string, logger *log.Logger,
-) (*browser.BrowserProcess, error) {
+) (*browser.Process, error) {
 	bProcCtx, bProcCtxCancel := context.WithCancel(ctx)
-	p, err := browser.NewRemoteBrowserProcess(bProcCtx, wsURL, bProcCtxCancel, logger)
+	p, err := browser.NewRemoteProcess(bProcCtx, wsURL, bProcCtxCancel, logger)
 	if err != nil {
 		bProcCtxCancel()
 		return nil, err //nolint:wrapcheck
@@ -227,7 +227,7 @@ func (b *BrowserType) allocate(
 	ctx context.Context, opts *browser.Options,
 	flags map[string]any, dataDir *storage.Dir,
 	logger *log.Logger,
-) (_ *browser.BrowserProcess, rerr error) {
+) (_ *browser.Process, rerr error) {
 	bProcCtx, bProcCtxCancel := context.WithCancel(ctx)
 	defer func() {
 		if rerr != nil {
@@ -245,7 +245,7 @@ func (b *BrowserType) allocate(
 		path = b.ExecutablePath()
 	}
 
-	return browser.NewLocalBrowserProcess(bProcCtx, path, args, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
+	return browser.NewLocalProcess(bProcCtx, path, args, dataDir, bProcCtxCancel, logger) //nolint: wrapcheck
 }
 
 // ExecutablePath returns the path where the extension expects to find the browser executable.
