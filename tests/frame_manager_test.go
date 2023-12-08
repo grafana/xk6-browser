@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 )
 
 func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
@@ -33,8 +33,8 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(nil)
 
-			opts := tb.toGojaValue(&common.FrameGotoOptions{
-				WaitUntil: common.LifecycleEventNetworkIdle,
+			opts := tb.toGojaValue(&browser.FrameGotoOptions{
+				WaitUntil: browser.LifecycleEventNetworkIdle,
 				Timeout:   time.Duration(timeout.Milliseconds()), // interpreted as ms
 			})
 			resp, err := p.Goto(tb.staticURL("/nav_in_doc.html"), opts)
@@ -42,7 +42,7 @@ func TestWaitForFrameNavigationWithinDocument(t *testing.T) {
 			require.NotNil(t, resp)
 
 			waitForNav := func() error {
-				opts := tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+				opts := tb.toGojaValue(&browser.FrameWaitForNavigationOptions{
 					Timeout: time.Duration(timeout.Milliseconds()), // interpreted as ms
 				})
 				_, err := p.WaitForNavigation(opts)
@@ -90,15 +90,15 @@ func TestWaitForFrameNavigation(t *testing.T) {
 		`)
 	})
 
-	opts := tb.toGojaValue(&common.FrameGotoOptions{
-		WaitUntil: common.LifecycleEventNetworkIdle,
-		Timeout:   common.DefaultTimeout,
+	opts := tb.toGojaValue(&browser.FrameGotoOptions{
+		WaitUntil: browser.LifecycleEventNetworkIdle,
+		Timeout:   browser.DefaultTimeout,
 	})
 	_, err := p.Goto(tb.url("/first"), opts)
 	require.NoError(t, err)
 
 	waitForNav := func() error {
-		opts := tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+		opts := tb.toGojaValue(&browser.FrameWaitForNavigationOptions{
 			Timeout: 5000, // interpreted as ms
 		})
 		_, err := p.WaitForNavigation(opts)

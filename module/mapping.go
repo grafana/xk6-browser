@@ -7,7 +7,7 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
 
@@ -39,7 +39,7 @@ func mapBrowserToGoja(vu moduleVU) *goja.Object {
 }
 
 // mapLocator API to the JS module.
-func mapLocator(vu moduleVU, lo *common.Locator) mapping {
+func mapLocator(vu moduleVU, lo *browser.Locator) mapping {
 	return mapping{
 		"click": func(opts goja.Value) *goja.Promise {
 			return k6ext.Promise(vu.Context(), func() (any, error) {
@@ -74,7 +74,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 }
 
 // mapRequest to the JS module.
-func mapRequest(vu moduleVU, r *common.Request) mapping {
+func mapRequest(vu moduleVU, r *browser.Request) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
 		"allHeaders": r.AllHeaders,
@@ -113,7 +113,7 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 }
 
 // mapResponse to the JS module.
-func mapResponse(vu moduleVU, r *common.Response) mapping {
+func mapResponse(vu moduleVU, r *browser.Response) mapping {
 	if r == nil {
 		return nil
 	}
@@ -148,7 +148,7 @@ func mapResponse(vu moduleVU, r *common.Response) mapping {
 }
 
 // mapJSHandle to the JS module.
-func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
+func mapJSHandle(vu moduleVU, jsh browser.JSHandleAPI) mapping {
 	rt := vu.Runtime()
 	return mapping{
 		"asElement": func() *goja.Object {
@@ -190,7 +190,7 @@ func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
 // mapElementHandle to the JS module.
 //
 //nolint:funlen
-func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping {
+func mapElementHandle(vu moduleVU, eh *browser.ElementHandle) mapping {
 	maps := mapping{
 		"boundingBox": eh.BoundingBox,
 		"check":       eh.Check,
@@ -249,7 +249,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping {
 		},
 	}
 	maps["$"] = func(selector string) (mapping, error) {
-		eh, err := eh.Query(selector, common.StrictModeOff)
+		eh, err := eh.Query(selector, browser.StrictModeOff)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
@@ -287,7 +287,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping {
 // mapFrame to the JS module.
 //
 //nolint:funlen,cyclop
-func mapFrame(vu moduleVU, f *common.Frame) mapping {
+func mapFrame(vu moduleVU, f *browser.Frame) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
 		"addScriptTag": f.AddScriptTag,
@@ -399,7 +399,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 		"waitForTimeout": f.WaitForTimeout,
 	}
 	maps["$"] = func(selector string) (mapping, error) {
-		eh, err := f.Query(selector, common.StrictModeOff)
+		eh, err := f.Query(selector, browser.StrictModeOff)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
@@ -432,7 +432,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 // mapPage to the JS module.
 //
 //nolint:funlen,cyclop
-func mapPage(vu moduleVU, p *common.Page) mapping {
+func mapPage(vu moduleVU, p *browser.Page) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
 		"addInitScript": p.AddInitScript,
@@ -523,12 +523,12 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 		"on": func(event string, handler goja.Callable) error {
 			tq := vu.taskQueueRegistry.get(p.TargetID())
 
-			mapMsgAndHandleEvent := func(m *common.ConsoleMessage) error {
+			mapMsgAndHandleEvent := func(m *browser.ConsoleMessage) error {
 				mapping := mapConsoleMessage(vu, m)
 				_, err := handler(goja.Undefined(), vu.Runtime().ToValue(mapping))
 				return err
 			}
-			runInTaskQueue := func(m *common.ConsoleMessage) {
+			runInTaskQueue := func(m *browser.ConsoleMessage) {
 				tq.Queue(func() error {
 					if err := mapMsgAndHandleEvent(m); err != nil {
 						return fmt.Errorf("executing page.on handler: %w", err)
@@ -635,7 +635,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 }
 
 // mapWorker to the JS module.
-func mapWorker(vu moduleVU, w *common.Worker) mapping {
+func mapWorker(vu moduleVU, w *browser.Worker) mapping {
 	return mapping{
 		"evaluate": w.Evaluate,
 		"evaluateHandle": func(pageFunc goja.Value, args ...goja.Value) (mapping, error) {
@@ -653,7 +653,7 @@ func mapWorker(vu moduleVU, w *common.Worker) mapping {
 // mapBrowserContext to the JS module.
 //
 //nolint:funlen
-func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
+func mapBrowserContext(vu moduleVU, bc *browser.BrowserContext) mapping {
 	rt := vu.Runtime()
 	return mapping{
 		"addCookies":       bc.AddCookies,
@@ -666,7 +666,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
 		"exposeBinding":    bc.ExposeBinding,
 		"exposeFunction":   bc.ExposeFunction,
 		"grantPermissions": func(permissions []string, opts goja.Value) error {
-			pOpts := common.NewGrantPermissionsOptions()
+			pOpts := browser.NewGrantPermissionsOptions()
 			pOpts.Parse(vu.Context(), opts)
 
 			return bc.GrantPermissions(permissions, pOpts) //nolint:wrapcheck
@@ -691,16 +691,16 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
 		"waitForEvent": func(event string, optsOrPredicate goja.Value) *goja.Promise {
 			ctx := vu.Context()
 			return k6ext.Promise(ctx, func() (result any, reason error) {
-				parsedOpts := common.NewWaitForEventOptions(
+				parsedOpts := browser.NewWaitForEventOptions(
 					bc.Timeout(),
 				)
 				if err := parsedOpts.Parse(ctx, optsOrPredicate); err != nil {
 					return nil, fmt.Errorf("parsing waitForEvent options: %w", err)
 				}
 
-				var runInTaskQueue func(p *common.Page) (bool, error)
+				var runInTaskQueue func(p *browser.Page) (bool, error)
 				if parsedOpts.PredicateFn != nil {
-					runInTaskQueue = func(p *common.Page) (bool, error) {
+					runInTaskQueue = func(p *browser.Page) (bool, error) {
 						tq := vu.taskQueueRegistry.get(p.TargetID())
 
 						var rtn bool
@@ -727,7 +727,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
-				p, ok := resp.(*common.Page)
+				p, ok := resp.(*browser.Page)
 				if !ok {
 					panicIfFatalError(ctx, fmt.Errorf("response object is not a page: %w", k6error.ErrFatal))
 				}
@@ -761,7 +761,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
 }
 
 // mapConsoleMessage to the JS module.
-func mapConsoleMessage(vu moduleVU, cm *common.ConsoleMessage) mapping {
+func mapConsoleMessage(vu moduleVU, cm *browser.ConsoleMessage) mapping {
 	rt := vu.Runtime()
 	return mapping{
 		"args": func() *goja.Object {
@@ -795,7 +795,7 @@ func mapConsoleMessage(vu moduleVU, cm *common.ConsoleMessage) mapping {
 func mapBrowser(vu moduleVU) mapping { //nolint:funlen
 	rt := vu.Runtime()
 	return mapping{
-		"context": func() (*common.BrowserContext, error) {
+		"context": func() (*browser.BrowserContext, error) {
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err

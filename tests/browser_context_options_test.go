@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 )
 
 func TestBrowserContextOptionsDefaultValues(t *testing.T) {
 	t.Parallel()
 
-	opts := common.NewBrowserContextOptions()
+	opts := browser.NewBrowserContextOptions()
 	assert.False(t, opts.AcceptDownloads)
 	assert.False(t, opts.BypassCSP)
-	assert.Equal(t, common.ColorSchemeLight, opts.ColorScheme)
+	assert.Equal(t, browser.ColorSchemeLight, opts.ColorScheme)
 	assert.Equal(t, 1.0, opts.DeviceScaleFactor)
 	assert.Empty(t, opts.ExtraHTTPHeaders)
 	assert.Nil(t, opts.Geolocation)
@@ -27,14 +27,14 @@ func TestBrowserContextOptionsDefaultValues(t *testing.T) {
 	assert.False(t, opts.IgnoreHTTPSErrors)
 	assert.False(t, opts.IsMobile)
 	assert.True(t, opts.JavaScriptEnabled)
-	assert.Equal(t, common.DefaultLocale, opts.Locale)
+	assert.Equal(t, browser.DefaultLocale, opts.Locale)
 	assert.False(t, opts.Offline)
 	assert.Empty(t, opts.Permissions)
-	assert.Equal(t, common.ReducedMotionNoPreference, opts.ReducedMotion)
-	assert.Equal(t, &common.Screen{Width: common.DefaultScreenWidth, Height: common.DefaultScreenHeight}, opts.Screen)
+	assert.Equal(t, browser.ReducedMotionNoPreference, opts.ReducedMotion)
+	assert.Equal(t, &browser.Screen{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight}, opts.Screen)
 	assert.Equal(t, "", opts.TimezoneID)
 	assert.Equal(t, "", opts.UserAgent)
-	assert.Equal(t, &common.Viewport{Width: common.DefaultScreenWidth, Height: common.DefaultScreenHeight}, opts.Viewport)
+	assert.Equal(t, &browser.Viewport{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight}, opts.Viewport)
 }
 
 func TestBrowserContextOptionsDefaultViewport(t *testing.T) {
@@ -43,8 +43,8 @@ func TestBrowserContextOptionsDefaultViewport(t *testing.T) {
 	p := newTestBrowser(t).NewPage(nil)
 
 	viewportSize := p.ViewportSize()
-	assert.Equal(t, float64(common.DefaultScreenWidth), viewportSize["width"])
-	assert.Equal(t, float64(common.DefaultScreenHeight), viewportSize["height"])
+	assert.Equal(t, float64(browser.DefaultScreenWidth), viewportSize["width"])
+	assert.Equal(t, float64(browser.DefaultScreenHeight), viewportSize["height"])
 }
 
 func TestBrowserContextOptionsSetViewport(t *testing.T) {
@@ -52,9 +52,9 @@ func TestBrowserContextOptionsSetViewport(t *testing.T) {
 
 	tb := newTestBrowser(t)
 	bctx, err := tb.NewContext(tb.toGojaValue(struct {
-		Viewport common.Viewport `js:"viewport"`
+		Viewport browser.Viewport `js:"viewport"`
 	}{
-		Viewport: common.Viewport{
+		Viewport: browser.Viewport{
 			Width:  800,
 			Height: 600,
 		},

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 
 	k6lib "go.k6.io/k6/lib"
 	k6types "go.k6.io/k6/lib/types"
@@ -81,15 +81,15 @@ func TestBasicAuth(t *testing.T) {
 		validPassword = "validpass"
 	)
 
-	auth := func(tb testing.TB, user, pass string) *common.Response {
+	auth := func(tb testing.TB, user, pass string) *browser.Response {
 		tb.Helper()
 
-		browser := newTestBrowser(t, withHTTPServer())
-		bc, err := browser.NewContext(
-			browser.toGojaValue(struct {
-				HttpCredentials *common.Credentials `js:"httpCredentials"` //nolint:revive
+		bro := newTestBrowser(t, withHTTPServer())
+		bc, err := bro.NewContext(
+			bro.toGojaValue(struct {
+				HttpCredentials *browser.Credentials `js:"httpCredentials"` //nolint:revive
 			}{
-				HttpCredentials: &common.Credentials{
+				HttpCredentials: &browser.Credentials{
 					Username: user,
 					Password: pass,
 				},
@@ -98,12 +98,12 @@ func TestBasicAuth(t *testing.T) {
 		p, err := bc.NewPage()
 		require.NoError(t, err)
 
-		opts := browser.toGojaValue(struct {
+		opts := bro.toGojaValue(struct {
 			WaitUntil string `js:"waitUntil"`
 		}{
 			WaitUntil: "load",
 		})
-		url := browser.url(fmt.Sprintf("/basic-auth/%s/%s", validUser, validPassword))
+		url := bro.url(fmt.Sprintf("/basic-auth/%s/%s", validUser, validPassword))
 		res, err := p.Goto(url, opts)
 		require.NoError(t, err)
 
@@ -171,9 +171,9 @@ func TestInterceptBeforePageLoad(t *testing.T) {
 	gotoPage := func() error {
 		p := tb.NewPage(nil)
 
-		opts := &common.FrameGotoOptions{
-			WaitUntil: common.LifecycleEventDOMContentLoad,
-			Timeout:   common.DefaultTimeout,
+		opts := &browser.FrameGotoOptions{
+			WaitUntil: browser.LifecycleEventDOMContentLoad,
+			Timeout:   browser.DefaultTimeout,
 		}
 		_, err := p.Goto(
 			tb.url("/neverFinishesLoading"),

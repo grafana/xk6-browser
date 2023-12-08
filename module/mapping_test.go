@@ -9,7 +9,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 
 	k6common "go.k6.io/k6/js/common"
 	k6modulestest "go.k6.io/k6/js/modulestest"
@@ -132,65 +132,65 @@ func TestMappings(t *testing.T) {
 		"browserContext": {
 			apiInterface: (*browserContextAPI)(nil),
 			mapp: func() mapping {
-				return mapBrowserContext(moduleVU{VU: vu}, &common.BrowserContext{})
+				return mapBrowserContext(moduleVU{VU: vu}, &browser.BrowserContext{})
 			},
 		},
 		"page": {
 			apiInterface: (*pageAPI)(nil),
 			mapp: func() mapping {
-				return mapPage(moduleVU{VU: vu}, &common.Page{
-					Keyboard:    &common.Keyboard{},
-					Mouse:       &common.Mouse{},
-					Touchscreen: &common.Touchscreen{},
+				return mapPage(moduleVU{VU: vu}, &browser.Page{
+					Keyboard:    &browser.Keyboard{},
+					Mouse:       &browser.Mouse{},
+					Touchscreen: &browser.Touchscreen{},
 				})
 			},
 		},
 		"elementHandle": {
 			apiInterface: (*elementHandleAPI)(nil),
 			mapp: func() mapping {
-				return mapElementHandle(moduleVU{VU: vu}, &common.ElementHandle{})
+				return mapElementHandle(moduleVU{VU: vu}, &browser.ElementHandle{})
 			},
 		},
 		"jsHandle": {
-			apiInterface: (*common.JSHandleAPI)(nil),
+			apiInterface: (*browser.JSHandleAPI)(nil),
 			mapp: func() mapping {
-				return mapJSHandle(moduleVU{VU: vu}, &common.BaseJSHandle{})
+				return mapJSHandle(moduleVU{VU: vu}, &browser.BaseJSHandle{})
 			},
 		},
 		"frame": {
 			apiInterface: (*frameAPI)(nil),
 			mapp: func() mapping {
-				return mapFrame(moduleVU{VU: vu}, &common.Frame{})
+				return mapFrame(moduleVU{VU: vu}, &browser.Frame{})
 			},
 		},
 		"mapRequest": {
 			apiInterface: (*requestAPI)(nil),
 			mapp: func() mapping {
-				return mapRequest(moduleVU{VU: vu}, &common.Request{})
+				return mapRequest(moduleVU{VU: vu}, &browser.Request{})
 			},
 		},
 		"mapResponse": {
 			apiInterface: (*responseAPI)(nil),
 			mapp: func() mapping {
-				return mapResponse(moduleVU{VU: vu}, &common.Response{})
+				return mapResponse(moduleVU{VU: vu}, &browser.Response{})
 			},
 		},
 		"mapWorker": {
 			apiInterface: (*workerAPI)(nil),
 			mapp: func() mapping {
-				return mapWorker(moduleVU{VU: vu}, &common.Worker{})
+				return mapWorker(moduleVU{VU: vu}, &browser.Worker{})
 			},
 		},
 		"mapLocator": {
 			apiInterface: (*locatorAPI)(nil),
 			mapp: func() mapping {
-				return mapLocator(moduleVU{VU: vu}, &common.Locator{})
+				return mapLocator(moduleVU{VU: vu}, &browser.Locator{})
 			},
 		},
 		"mapConsoleMessage": {
 			apiInterface: (*consoleMessageAPI)(nil),
 			mapp: func() mapping {
-				return mapConsoleMessage(moduleVU{VU: vu}, &common.ConsoleMessage{})
+				return mapConsoleMessage(moduleVU{VU: vu}, &browser.ConsoleMessage{})
 			},
 		},
 	} {
@@ -243,11 +243,11 @@ func isCustomMapping(customMappings map[string]string, typ, method string) (stri
 // browserAPI is the public interface of a CDP browser.
 type browserAPI interface {
 	Close()
-	Context() *common.BrowserContext
+	Context() *browser.BrowserContext
 	CloseContext()
 	IsConnected() bool
-	NewContext(opts goja.Value) (*common.BrowserContext, error)
-	NewPage(opts goja.Value) (*common.Page, error)
+	NewContext(opts goja.Value) (*browser.BrowserContext, error)
+	NewPage(opts goja.Value) (*browser.Page, error)
 	On(string) (bool, error)
 	UserAgent() string
 	Version() string
@@ -255,19 +255,19 @@ type browserAPI interface {
 
 // browserContextAPI is the public interface of a CDP browser context.
 type browserContextAPI interface {
-	AddCookies(cookies []*common.Cookie) error
+	AddCookies(cookies []*browser.Cookie) error
 	AddInitScript(script goja.Value, arg goja.Value) error
-	Browser() *common.Browser
+	Browser() *browser.Browser
 	ClearCookies() error
 	ClearPermissions()
 	Close()
-	Cookies(urls ...string) ([]*common.Cookie, error)
+	Cookies(urls ...string) ([]*browser.Cookie, error)
 	ExposeBinding(name string, callback goja.Callable, opts goja.Value)
 	ExposeFunction(name string, callback goja.Callable)
 	GrantPermissions(permissions []string, opts goja.Value)
 	NewCDPSession() any
-	NewPage() (*common.Page, error)
-	Pages() []*common.Page
+	NewPage() (*browser.Page, error)
+	Pages() []*browser.Page
 	Route(url goja.Value, handler goja.Callable)
 	SetDefaultNavigationTimeout(timeout int64)
 	SetDefaultTimeout(timeout int64)
@@ -290,27 +290,27 @@ type pageAPI interface {
 	Click(selector string, opts goja.Value) error
 	Close(opts goja.Value) error
 	Content() string
-	Context() *common.BrowserContext
+	Context() *browser.BrowserContext
 	Dblclick(selector string, opts goja.Value)
 	DispatchEvent(selector string, typ string, eventInit goja.Value, opts goja.Value)
 	DragAndDrop(source string, target string, opts goja.Value)
 	EmulateMedia(opts goja.Value)
 	EmulateVisionDeficiency(typ string)
 	Evaluate(pageFunc goja.Value, arg ...goja.Value) any
-	EvaluateHandle(pageFunc goja.Value, arg ...goja.Value) (common.JSHandleAPI, error)
+	EvaluateHandle(pageFunc goja.Value, arg ...goja.Value) (browser.JSHandleAPI, error)
 	ExposeBinding(name string, callback goja.Callable, opts goja.Value)
 	ExposeFunction(name string, callback goja.Callable)
 	Fill(selector string, value string, opts goja.Value)
 	Focus(selector string, opts goja.Value)
-	Frame(frameSelector goja.Value) *common.Frame
-	Frames() []*common.Frame
+	Frame(frameSelector goja.Value) *browser.Frame
+	Frames() []*browser.Frame
 	GetAttribute(selector string, name string, opts goja.Value) goja.Value
-	GetKeyboard() *common.Keyboard
-	GetMouse() *common.Mouse
-	GetTouchscreen() *common.Touchscreen
-	GoBack(opts goja.Value) *common.Response
-	GoForward(opts goja.Value) *common.Response
-	Goto(url string, opts goja.Value) (*common.Response, error)
+	GetKeyboard() *browser.Keyboard
+	GetMouse() *browser.Mouse
+	GetTouchscreen() *browser.Touchscreen
+	GoBack(opts goja.Value) *browser.Response
+	GoForward(opts goja.Value) *browser.Response
+	Goto(url string, opts goja.Value) (*browser.Response, error)
 	Hover(selector string, opts goja.Value)
 	InnerHTML(selector string, opts goja.Value) string
 	InnerText(selector string, opts goja.Value) string
@@ -322,16 +322,16 @@ type pageAPI interface {
 	IsEnabled(selector string, opts goja.Value) bool
 	IsHidden(selector string, opts goja.Value) bool
 	IsVisible(selector string, opts goja.Value) bool
-	Locator(selector string, opts goja.Value) *common.Locator
-	MainFrame() *common.Frame
-	On(event string, handler func(*common.ConsoleMessage) error) error
+	Locator(selector string, opts goja.Value) *browser.Locator
+	MainFrame() *browser.Frame
+	On(event string, handler func(*browser.ConsoleMessage) error) error
 	Opener() pageAPI
 	Pause()
 	Pdf(opts goja.Value) []byte
 	Press(selector string, key string, opts goja.Value)
-	Query(selector string) (*common.ElementHandle, error)
-	QueryAll(selector string) ([]*common.ElementHandle, error)
-	Reload(opts goja.Value) *common.Response
+	Query(selector string) (*browser.ElementHandle, error)
+	QueryAll(selector string) ([]*browser.ElementHandle, error)
+	Reload(opts goja.Value) *browser.Response
 	Route(url goja.Value, handler goja.Callable)
 	Screenshot(opts goja.Value) goja.ArrayBuffer
 	SelectOption(selector string, values goja.Value, opts goja.Value) []string
@@ -343,8 +343,8 @@ type pageAPI interface {
 	SetViewportSize(viewportSize goja.Value)
 	Tap(selector string, opts goja.Value)
 	TextContent(selector string, opts goja.Value) string
-	ThrottleCPU(common.CPUProfile) error
-	ThrottleNetwork(common.NetworkProfile) error
+	ThrottleCPU(browser.CPUProfile) error
+	ThrottleNetwork(browser.NetworkProfile) error
 	Title() string
 	Type(selector string, text string, opts goja.Value)
 	Uncheck(selector string, opts goja.Value)
@@ -355,18 +355,18 @@ type pageAPI interface {
 	WaitForEvent(event string, optsOrPredicate goja.Value) any
 	WaitForFunction(fn, opts goja.Value, args ...goja.Value) (any, error)
 	WaitForLoadState(state string, opts goja.Value)
-	WaitForNavigation(opts goja.Value) (*common.Response, error)
-	WaitForRequest(urlOrPredicate, opts goja.Value) *common.Request
-	WaitForResponse(urlOrPredicate, opts goja.Value) *common.Response
-	WaitForSelector(selector string, opts goja.Value) (*common.ElementHandle, error)
+	WaitForNavigation(opts goja.Value) (*browser.Response, error)
+	WaitForRequest(urlOrPredicate, opts goja.Value) *browser.Request
+	WaitForResponse(urlOrPredicate, opts goja.Value) *browser.Response
+	WaitForSelector(selector string, opts goja.Value) (*browser.ElementHandle, error)
 	WaitForTimeout(timeout int64)
-	Workers() []*common.Worker
+	Workers() []*browser.Worker
 }
 
 // consoleMessageAPI is the interface of a console message.
 type consoleMessageAPI interface {
-	Args() []common.JSHandleAPI
-	Page() *common.Page
+	Args() []browser.JSHandleAPI
+	Page() *browser.Page
 	Text() string
 	Type() string
 }
@@ -376,7 +376,7 @@ type frameAPI interface {
 	AddScriptTag(opts goja.Value)
 	AddStyleTag(opts goja.Value)
 	Check(selector string, opts goja.Value)
-	ChildFrames() []*common.Frame
+	ChildFrames() []*browser.Frame
 	Click(selector string, opts goja.Value) error
 	Content() string
 	Dblclick(selector string, opts goja.Value)
@@ -384,12 +384,12 @@ type frameAPI interface {
 	// EvaluateWithContext for internal use only
 	EvaluateWithContext(ctx context.Context, pageFunc goja.Value, args ...goja.Value) (any, error)
 	Evaluate(pageFunc goja.Value, args ...goja.Value) any
-	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) (common.JSHandleAPI, error)
+	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) (browser.JSHandleAPI, error)
 	Fill(selector string, value string, opts goja.Value)
 	Focus(selector string, opts goja.Value)
-	FrameElement() (*common.ElementHandle, error)
+	FrameElement() (*browser.ElementHandle, error)
 	GetAttribute(selector string, name string, opts goja.Value) goja.Value
-	Goto(url string, opts goja.Value) (*common.Response, error)
+	Goto(url string, opts goja.Value) (*browser.Response, error)
 	Hover(selector string, opts goja.Value)
 	InnerHTML(selector string, opts goja.Value) string
 	InnerText(selector string, opts goja.Value) string
@@ -403,12 +403,12 @@ type frameAPI interface {
 	IsVisible(selector string, opts goja.Value) bool
 	ID() string
 	LoaderID() string
-	Locator(selector string, opts goja.Value) *common.Locator
+	Locator(selector string, opts goja.Value) *browser.Locator
 	Name() string
-	Query(selector string) (*common.ElementHandle, error)
-	QueryAll(selector string) ([]*common.ElementHandle, error)
-	Page() *common.Page
-	ParentFrame() *common.Frame
+	Query(selector string) (*browser.ElementHandle, error)
+	QueryAll(selector string) ([]*browser.ElementHandle, error)
+	Page() *browser.Page
+	ParentFrame() *browser.Frame
 	Press(selector string, key string, opts goja.Value)
 	SelectOption(selector string, values goja.Value, opts goja.Value) []string
 	SetContent(html string, opts goja.Value)
@@ -421,19 +421,19 @@ type frameAPI interface {
 	URL() string
 	WaitForFunction(pageFunc, opts goja.Value, args ...goja.Value) (any, error)
 	WaitForLoadState(state string, opts goja.Value)
-	WaitForNavigation(opts goja.Value) (*common.Response, error)
-	WaitForSelector(selector string, opts goja.Value) (*common.ElementHandle, error)
+	WaitForNavigation(opts goja.Value) (*browser.Response, error)
+	WaitForSelector(selector string, opts goja.Value) (*browser.ElementHandle, error)
 	WaitForTimeout(timeout int64)
 }
 
 // elementHandleAPI is the interface of an in-page DOM element.
 type elementHandleAPI interface {
-	common.JSHandleAPI
+	browser.JSHandleAPI
 
-	BoundingBox() *common.Rect
+	BoundingBox() *browser.Rect
 	Check(opts goja.Value)
 	Click(opts goja.Value) error
-	ContentFrame() (*common.Frame, error)
+	ContentFrame() (*browser.Frame, error)
 	Dblclick(opts goja.Value)
 	DispatchEvent(typ string, props goja.Value)
 	Fill(value string, opts goja.Value)
@@ -449,10 +449,10 @@ type elementHandleAPI interface {
 	IsEnabled() bool
 	IsHidden() bool
 	IsVisible() bool
-	OwnerFrame() (*common.Frame, error)
+	OwnerFrame() (*browser.Frame, error)
 	Press(key string, opts goja.Value)
-	Query(selector string) (*common.ElementHandle, error)
-	QueryAll(selector string) ([]*common.ElementHandle, error)
+	Query(selector string) (*browser.ElementHandle, error)
+	QueryAll(selector string) ([]*browser.ElementHandle, error)
 	Screenshot(opts goja.Value) goja.ArrayBuffer
 	ScrollIntoViewIfNeeded(opts goja.Value)
 	SelectOption(values goja.Value, opts goja.Value) []string
@@ -463,17 +463,17 @@ type elementHandleAPI interface {
 	Type(text string, opts goja.Value)
 	Uncheck(opts goja.Value)
 	WaitForElementState(state string, opts goja.Value)
-	WaitForSelector(selector string, opts goja.Value) (*common.ElementHandle, error)
+	WaitForSelector(selector string, opts goja.Value) (*browser.ElementHandle, error)
 }
 
 // requestAPI is the interface of an HTTP request.
 type requestAPI interface {
 	AllHeaders() map[string]string
 	Failure() goja.Value
-	Frame() *common.Frame
+	Frame() *browser.Frame
 	HeaderValue(string) goja.Value
 	Headers() map[string]string
-	HeadersArray() []common.HTTPHeader
+	HeadersArray() []browser.HTTPHeader
 	IsNavigationRequest() bool
 	Method() string
 	PostData() string
@@ -482,8 +482,8 @@ type requestAPI interface {
 	RedirectedFrom() requestAPI
 	RedirectedTo() requestAPI
 	ResourceType() string
-	Response() *common.Response
-	Size() common.HTTPMessageSize
+	Response() *browser.Response
+	Size() browser.HTTPMessageSize
 	Timing() goja.Value
 	URL() string
 }
@@ -493,17 +493,17 @@ type responseAPI interface {
 	AllHeaders() map[string]string
 	Body() goja.ArrayBuffer
 	Finished() bool
-	Frame() *common.Frame
+	Frame() *browser.Frame
 	HeaderValue(string) goja.Value
 	HeaderValues(string) []string
 	Headers() map[string]string
-	HeadersArray() []common.HTTPHeader
+	HeadersArray() []browser.HTTPHeader
 	JSON() goja.Value
 	Ok() bool
-	Request() *common.Request
+	Request() *browser.Request
 	SecurityDetails() goja.Value
 	ServerAddr() goja.Value
-	Size() common.HTTPMessageSize
+	Size() browser.HTTPMessageSize
 	Status() int64
 	StatusText() string
 	URL() string
@@ -573,6 +573,6 @@ type mouseAPI interface { //nolint: unused
 // workerAPI is the interface of a web worker.
 type workerAPI interface {
 	Evaluate(pageFunc goja.Value, args ...goja.Value) any
-	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) (common.JSHandleAPI, error)
+	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) (browser.JSHandleAPI, error)
 	URL() string
 }

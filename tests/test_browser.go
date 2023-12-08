@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/chromium"
-	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
@@ -37,7 +37,7 @@ type testBrowser struct {
 	pid         int // the browser process ID
 	wsURL       string
 
-	*common.Browser
+	*browser.Browser
 
 	// isBrowserTypeInitialized is true if the browser type has been
 	// initialized with a VU. Some options can only be used in the
@@ -252,7 +252,7 @@ func withSkipClose() func(*testBrowser) {
 
 // NewPage is a wrapper around Browser.NewPage that fails the test if an
 // error occurs. Added this helper to avoid boilerplate code in tests.
-func (b *testBrowser) NewPage(opts goja.Value) *common.Page {
+func (b *testBrowser) NewPage(opts goja.Value) *browser.Page {
 	b.t.Helper()
 
 	p, err := b.Browser.NewPage(opts)

@@ -14,8 +14,8 @@ import (
 
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/chromium"
-	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
 
@@ -171,21 +171,21 @@ type browserRegistry struct {
 	vu k6modules.VU
 
 	mu sync.RWMutex
-	m  map[int64]*common.Browser
+	m  map[int64]*browser.Browser
 
 	buildFn browserBuildFunc
 
 	stopped atomic.Bool // testing purposes
 }
 
-type browserBuildFunc func(ctx context.Context) (*common.Browser, error)
+type browserBuildFunc func(ctx context.Context) (*browser.Browser, error)
 
 func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegistry) *browserRegistry {
 	bt := chromium.NewBrowserType(vu)
-	builder := func(ctx context.Context) (*common.Browser, error) {
+	builder := func(ctx context.Context) (*browser.Browser, error) {
 		var (
 			err                    error
-			b                      *common.Browser
+			b                      *browser.Browser
 			wsURL, isRemoteBrowser = remote.isRemoteBrowser()
 		)
 
@@ -208,7 +208,7 @@ func newBrowserRegistry(vu k6modules.VU, remote *remoteRegistry, pids *pidRegist
 
 	r := &browserRegistry{
 		vu:      vu,
-		m:       make(map[int64]*common.Browser),
+		m:       make(map[int64]*browser.Browser),
 		buildFn: builder,
 	}
 
@@ -300,14 +300,14 @@ func (r *browserRegistry) handleExitEvent(exitCh <-chan *k6event.Event, unsubscr
 	r.clear()
 }
 
-func (r *browserRegistry) setBrowser(id int64, b *common.Browser) {
+func (r *browserRegistry) setBrowser(id int64, b *browser.Browser) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.m[id] = b
 }
 
-func (r *browserRegistry) getBrowser(id int64) (*common.Browser, error) {
+func (r *browserRegistry) getBrowser(id int64) (*browser.Browser, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

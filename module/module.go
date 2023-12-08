@@ -9,7 +9,7 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
 
@@ -28,8 +28,8 @@ type (
 	// JS exposes the properties available to the JS script.
 	JS struct {
 		Browser         *goja.Object
-		Devices         map[string]common.Device
-		NetworkProfiles map[string]common.NetworkProfile `js:"networkProfiles"`
+		Devices         map[string]browser.Device
+		NetworkProfiles map[string]browser.NetworkProfile `js:"networkProfiles"`
 	}
 
 	// Instance represents an instance of the JS module.
@@ -70,8 +70,8 @@ func (m *Root) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 				browserRegistry:   newBrowserRegistry(vu, m.remoteRegistry, m.PidRegistry),
 				taskQueueRegistry: newTaskQueueRegistry(vu),
 			}),
-			Devices:         common.GetDevices(),
-			NetworkProfiles: common.GetNetworkProfiles(),
+			Devices:         browser.GetDevices(),
+			NetworkProfiles: browser.GetNetworkProfiles(),
 		},
 	}
 }

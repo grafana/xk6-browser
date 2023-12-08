@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 )
 
 type emulateMediaOpts struct {
@@ -742,7 +742,7 @@ func TestPageURL(t *testing.T) {
 	b := newTestBrowser(t, withHTTPServer())
 
 	p := b.NewPage(nil)
-	assert.Equal(t, common.BlankPage, p.URL())
+	assert.Equal(t, browser.BlankPage, p.URL())
 
 	resp, err := p.Goto(b.url("/get"), nil)
 	require.NoError(t, err)
@@ -787,12 +787,12 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 	testCases := []struct {
 		name      string
 		consoleFn string
-		assertFn  func(*common.ConsoleMessage) bool
+		assertFn  func(*browser.ConsoleMessage) bool
 	}{
 		{
 			name:      "on console.log",
 			consoleFn: "() => console.log('this is a log message')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "log" &&
 					cm.Text == "this is a log message" &&
 					cm.Args[0].JSONValue().String() == "this is a log message" &&
@@ -802,7 +802,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.debug",
 			consoleFn: "() => console.debug('this is a debug message')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "debug" &&
 					cm.Text == "this is a debug message" &&
 					cm.Args[0].JSONValue().String() == "this is a debug message" &&
@@ -812,7 +812,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.info",
 			consoleFn: "() => console.info('this is an info message')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "info" &&
 					cm.Text == "this is an info message" &&
 					cm.Args[0].JSONValue().String() == "this is an info message" &&
@@ -822,7 +822,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.error",
 			consoleFn: "() => console.error('this is an error message')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "error" &&
 					cm.Text == "this is an error message" &&
 					cm.Args[0].JSONValue().String() == "this is an error message" &&
@@ -832,7 +832,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.warn",
 			consoleFn: "() => console.warn('this is a warning message')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "warning" &&
 					cm.Text == "this is a warning message" &&
 					cm.Args[0].JSONValue().String() == "this is a warning message" &&
@@ -842,7 +842,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.dir",
 			consoleFn: "() => console.dir(document.location)",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "dir" &&
 					cm.Text == "Location" &&
 					cm.Page.URL() == blankPage
@@ -851,7 +851,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.dirxml",
 			consoleFn: "() => console.dirxml(document.location)",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "dirxml" &&
 					cm.Text == "Location" &&
 					cm.Page.URL() == blankPage
@@ -860,7 +860,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.table",
 			consoleFn: "() => console.table([['Grafana', 'k6'], ['Grafana', 'Mimir']])",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "table" &&
 					cm.Text == "Array(2)" &&
 					cm.Args[0].JSONValue().String() == "Grafana,k6,Grafana,Mimir" &&
@@ -870,7 +870,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.trace",
 			consoleFn: "() => console.trace('trace example')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "trace" &&
 					cm.Text == "trace example" &&
 					cm.Args[0].JSONValue().String() == "trace example" &&
@@ -880,7 +880,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.clear",
 			consoleFn: "() => console.clear()",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "clear" &&
 					cm.Page.URL() == blankPage
 			},
@@ -888,7 +888,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.group",
 			consoleFn: "() => console.group()",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "startGroup" &&
 					cm.Text == "console.group" &&
 					cm.Page.URL() == blankPage
@@ -897,7 +897,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.groupCollapsed",
 			consoleFn: "() => console.groupCollapsed()",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "startGroupCollapsed" &&
 					cm.Text == "console.groupCollapsed" &&
 					cm.Page.URL() == blankPage
@@ -906,7 +906,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.groupEnd",
 			consoleFn: "() => console.groupEnd()",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "endGroup" &&
 					cm.Text == "console.groupEnd" &&
 					cm.Page.URL() == blankPage
@@ -915,7 +915,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.assert",
 			consoleFn: "() => console.assert(2 == 3)", // Only writes to console if assertion is false
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "assert" &&
 					cm.Text == "console.assert" &&
 					cm.Page.URL() == blankPage
@@ -924,7 +924,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.count (default label)",
 			consoleFn: "() => console.count()", // default label
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "count" &&
 					cm.Text == "default: 1" &&
 					cm.Page.URL() == blankPage
@@ -933,7 +933,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.count",
 			consoleFn: "() => console.count('k6')",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "count" &&
 					cm.Text == "k6: 1" &&
 					cm.Page.URL() == blankPage
@@ -942,7 +942,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 		{
 			name:      "on console.time",
 			consoleFn: "() => { console.time('k6'); console.timeEnd('k6'); }",
-			assertFn: func(cm *common.ConsoleMessage) bool {
+			assertFn: func(cm *browser.ConsoleMessage) bool {
 				return cm.Type == "timeEnd" && strings.HasPrefix(cm.Text, "k6: 0.0") &&
 					cm.Page.URL() == blankPage
 			},
@@ -969,12 +969,12 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 			)
 
 			// Console Messages should be multiplexed for every registered handler
-			eventHandlerOne := func(cm *common.ConsoleMessage) {
+			eventHandlerOne := func(cm *browser.ConsoleMessage) {
 				defer close(done1)
 				assertOne = tc.assertFn(cm)
 			}
 
-			eventHandlerTwo := func(cm *common.ConsoleMessage) {
+			eventHandlerTwo := func(cm *browser.ConsoleMessage) {
 				defer close(done2)
 				assertTwo = tc.assertFn(cm)
 			}
@@ -1126,12 +1126,12 @@ func TestPageThrottleNetwork(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		networkProfile           common.NetworkProfile
+		networkProfile           browser.NetworkProfile
 		wantMinRoundTripDuration int64
 	}{
 		{
 			name: "none",
-			networkProfile: common.NetworkProfile{
+			networkProfile: browser.NetworkProfile{
 				Latency:  0,
 				Download: -1,
 				Upload:   -1,
@@ -1142,7 +1142,7 @@ func TestPageThrottleNetwork(t *testing.T) {
 			// to perform the roundtrip of calling ping and getting the response is
 			// measured and used to assert that Latency has been correctly used.
 			name: "latency",
-			networkProfile: common.NetworkProfile{
+			networkProfile: browser.NetworkProfile{
 				Latency:  100,
 				Download: -1,
 				Upload:   -1,
@@ -1155,7 +1155,7 @@ func TestPageThrottleNetwork(t *testing.T) {
 			// roundtrip of calling ping and getting the response body is measured and
 			// used to assert that Download has been correctly used.
 			name: "download",
-			networkProfile: common.NetworkProfile{
+			networkProfile: browser.NetworkProfile{
 				Latency:  0,
 				Download: 1000,
 				Upload:   -1,
@@ -1167,7 +1167,7 @@ func TestPageThrottleNetwork(t *testing.T) {
 			// The time it takes to perform the roundtrip of calling ping is measured
 			// and used to assert that Upload has been correctly used.
 			name: "upload",
-			networkProfile: common.NetworkProfile{
+			networkProfile: browser.NetworkProfile{
 				Latency:  0,
 				Download: -1,
 				Upload:   1000,
@@ -1242,7 +1242,7 @@ func TestPageThrottleCPU(t *testing.T) {
 
 	noCPUThrottle := performPingTest(t, tb, page, iterations)
 
-	err := page.ThrottleCPU(common.CPUProfile{
+	err := page.ThrottleCPU(browser.CPUProfile{
 		Rate: 50,
 	})
 	require.NoError(t, err)
@@ -1252,7 +1252,7 @@ func TestPageThrottleCPU(t *testing.T) {
 	assert.Greater(t, withCPUThrottle, noCPUThrottle)
 }
 
-func performPingTest(t *testing.T, tb *testBrowser, page *common.Page, iterations int) int64 {
+func performPingTest(t *testing.T, tb *testBrowser, page *browser.Page, iterations int) int64 {
 	t.Helper()
 
 	var ms int64
@@ -1281,7 +1281,7 @@ func TestPageIsVisible(t *testing.T) {
 	testCases := []struct {
 		name     string
 		selector string
-		options  common.FrameIsVisibleOptions
+		options  browser.FrameIsVisibleOptions
 		want     bool
 		wantErr  string
 	}{
@@ -1308,7 +1308,7 @@ func TestPageIsVisible(t *testing.T) {
 		{
 			name:     "first_div",
 			selector: "div",
-			options: common.FrameIsVisibleOptions{
+			options: browser.FrameIsVisibleOptions{
 				Strict: true,
 			},
 			wantErr: "error:strictmodeviolation",
@@ -1346,7 +1346,7 @@ func TestPageIsHidden(t *testing.T) {
 	testCases := []struct {
 		name     string
 		selector string
-		options  common.FrameIsVisibleOptions
+		options  browser.FrameIsVisibleOptions
 		want     bool
 		wantErr  string
 	}{
@@ -1373,7 +1373,7 @@ func TestPageIsHidden(t *testing.T) {
 		{
 			name:     "first_div",
 			selector: "div",
-			options: common.FrameIsVisibleOptions{
+			options: browser.FrameIsVisibleOptions{
 				Strict: true,
 			},
 			wantErr: "error:strictmodeviolation",

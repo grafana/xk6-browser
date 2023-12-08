@@ -7,7 +7,7 @@ import (
 	"image/png"
 	"testing"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,7 +83,7 @@ func TestElementHandleBoundingBoxSVG(t *testing.T) {
         const rect = e.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     }`
-	var r common.Rect
+	var r browser.Rect
 	webBbox := p.Evaluate(tb.toGojaValue(pageFn), tb.toGojaValue(element))
 	wb := tb.asGojaValue(webBbox)
 	err = tb.runtime().ExportTo(wb, &r)
@@ -181,9 +181,9 @@ func TestElementHandleClickConcealedLink(t *testing.T) {
 	tb := newTestBrowser(t, withFileServer())
 	bc, err := tb.NewContext(
 		tb.toGojaValue(struct {
-			Viewport common.Viewport `js:"viewport"`
+			Viewport browser.Viewport `js:"viewport"`
 		}{
-			Viewport: common.Viewport{
+			Viewport: browser.Viewport{
 				Width:  500,
 				Height: 240,
 			},

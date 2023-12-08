@@ -2,12 +2,12 @@
 package chromium
 
 import (
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 )
 
 // Browser is the public interface of a CDP browser.
 type Browser struct {
-	common.Browser
+	browser.Browser
 
 	// TODO:
 	// - add support for service workers

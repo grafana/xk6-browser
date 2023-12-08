@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 )
 
 // TODO
@@ -66,17 +66,17 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 		name                  string
 		pingSlowness          time.Duration
 		pingJSSlow            bool
-		waitUntil             common.LifecycleEvent
+		waitUntil             browser.LifecycleEvent
 		pingRequestTextAssert func(result string, pingCount int)
 		pingJSTextAssert      func(result string)
-		assertFunc            func(tb *testBrowser, p *common.Page) error
+		assertFunc            func(tb *testBrowser, p *browser.Page) error
 		wantError             string
 	}{
 		{
 			name:         "load",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventLoad,
+			waitUntil:    browser.LifecycleEventLoad,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.NotEqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -88,7 +88,7 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 			name:         "domcontentloaded",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   true,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.NotEqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -100,7 +100,7 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 			name:         "networkidle",
 			pingSlowness: 0,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventNetworkIdle,
+			waitUntil:    browser.LifecycleEventNetworkIdle,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.EqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -123,14 +123,14 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 			name:         "timeout",
 			pingSlowness: 0,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventNetworkIdle,
-			assertFunc: func(tb *testBrowser, p *common.Page) error {
+			waitUntil:    browser.LifecycleEventNetworkIdle,
+			assertFunc: func(tb *testBrowser, p *browser.Page) error {
 				result := p.TextContent("#pingRequestText", nil)
 				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
-				opts := tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+				opts := tb.toGojaValue(&browser.FrameWaitForNavigationOptions{
 					Timeout:   1000,
-					WaitUntil: common.LifecycleEventNetworkIdle,
+					WaitUntil: browser.LifecycleEventNetworkIdle,
 				})
 				_, err := p.WaitForNavigation(opts)
 
@@ -167,7 +167,7 @@ func TestLifecycleWaitForNavigation(t *testing.T) {
 				tt.pingJSTextAssert(result)
 
 				waitForNav := func() error {
-					opts := tb.toGojaValue(&common.FrameWaitForNavigationOptions{
+					opts := tb.toGojaValue(&browser.FrameWaitForNavigationOptions{
 						Timeout:   30000,
 						WaitUntil: tt.waitUntil,
 					})
@@ -210,16 +210,16 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 		name                  string
 		pingSlowness          time.Duration
 		pingJSSlow            bool
-		waitUntil             common.LifecycleEvent
+		waitUntil             browser.LifecycleEvent
 		pingRequestTextAssert func(result string)
 		pingJSTextAssert      func(result string)
-		assertFunc            func(p *common.Page)
+		assertFunc            func(p *browser.Page)
 	}{
 		{
 			name:         "load",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventLoad,
+			waitUntil:    browser.LifecycleEventLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -231,7 +231,7 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 			name:         "domcontentloaded",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   true,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -243,7 +243,7 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 			name:         "networkidle",
 			pingSlowness: 0,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventNetworkIdle,
+			waitUntil:    browser.LifecycleEventNetworkIdle,
 			pingRequestTextAssert: func(result string) {
 				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -265,9 +265,9 @@ func TestLifecycleWaitForLoadState(t *testing.T) {
 			name:         "domcontentloaded then networkidle",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
-			assertFunc: func(p *common.Page) {
-				p.WaitForLoadState(common.LifecycleEventNetworkIdle.String(), nil)
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
+			assertFunc: func(p *browser.Page) {
+				p.WaitForLoadState(browser.LifecycleEventNetworkIdle.String(), nil)
 
 				result := p.TextContent("#pingRequestText", nil)
 				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
@@ -331,7 +331,7 @@ func TestLifecycleReload(t *testing.T) {
 		name                  string
 		pingSlowness          time.Duration
 		pingJSSlow            bool
-		waitUntil             common.LifecycleEvent
+		waitUntil             browser.LifecycleEvent
 		pingRequestTextAssert func(result string, pingCount int)
 		pingJSTextAssert      func(result string)
 	}{
@@ -339,7 +339,7 @@ func TestLifecycleReload(t *testing.T) {
 			name:         "load",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventLoad,
+			waitUntil:    browser.LifecycleEventLoad,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.NotEqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -351,7 +351,7 @@ func TestLifecycleReload(t *testing.T) {
 			name:         "domcontentloaded",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   true,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.NotEqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -363,7 +363,7 @@ func TestLifecycleReload(t *testing.T) {
 			name:         "networkidle",
 			pingSlowness: 0,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventNetworkIdle,
+			waitUntil:    browser.LifecycleEventNetworkIdle,
 			pingRequestTextAssert: func(result string, pingCount int) {
 				assert.EqualValues(t, fmt.Sprintf("Waiting... pong %d - for loop complete", pingCount), result)
 			},
@@ -392,7 +392,7 @@ func TestLifecycleReload(t *testing.T) {
 				result = p.TextContent("#pingJSText", nil)
 				tt.pingJSTextAssert(result)
 
-				opts := tb.toGojaValue(common.PageReloadOptions{
+				opts := tb.toGojaValue(browser.PageReloadOptions{
 					WaitUntil: tt.waitUntil,
 					Timeout:   30 * time.Second,
 				})
@@ -427,7 +427,7 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 		name                  string
 		pingSlowness          time.Duration
 		pingJSSlow            bool
-		waitUntil             common.LifecycleEvent
+		waitUntil             browser.LifecycleEvent
 		pingRequestTextAssert func(result string)
 		pingJSTextAssert      func(result string)
 	}{
@@ -435,7 +435,7 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 			name:         "load",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventLoad,
+			waitUntil:    browser.LifecycleEventLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -447,7 +447,7 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 			name:         "domcontentloaded",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   true,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -459,7 +459,7 @@ func TestLifecycleGotoWithSubFrame(t *testing.T) {
 			name:         "networkidle",
 			pingSlowness: 0,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventNetworkIdle,
+			waitUntil:    browser.LifecycleEventNetworkIdle,
 			pingRequestTextAssert: func(result string) {
 				assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -511,7 +511,7 @@ func TestLifecycleGoto(t *testing.T) {
 		name                  string
 		pingSlowness          time.Duration
 		pingJSSlow            bool
-		waitUntil             common.LifecycleEvent
+		waitUntil             browser.LifecycleEvent
 		pingRequestTextAssert func(result string)
 		pingJSTextAssert      func(result string)
 	}{
@@ -519,7 +519,7 @@ func TestLifecycleGoto(t *testing.T) {
 			name:         "load",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   false,
-			waitUntil:    common.LifecycleEventLoad,
+			waitUntil:    browser.LifecycleEventLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -531,7 +531,7 @@ func TestLifecycleGoto(t *testing.T) {
 			name:         "domcontentloaded",
 			pingSlowness: 100 * time.Millisecond,
 			pingJSSlow:   true,
-			waitUntil:    common.LifecycleEventDOMContentLoad,
+			waitUntil:    browser.LifecycleEventDOMContentLoad,
 			pingRequestTextAssert: func(result string) {
 				assert.NotEqualValues(t, "Waiting... pong 10 - for loop complete", result)
 			},
@@ -588,7 +588,7 @@ func TestLifecycleGotoNetworkIdle(t *testing.T) {
 
 		withPingJSHandler(t, tb, false, nil, false)
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() error {
+		assertHome(t, tb, p, browser.LifecycleEventNetworkIdle, func() error {
 			result := p.TextContent("#pingJSText", nil)
 			assert.EqualValues(t, "ping.js loaded from server", result)
 
@@ -607,7 +607,7 @@ func TestLifecycleGotoNetworkIdle(t *testing.T) {
 		withPingHandler(t, tb, 50*time.Millisecond, ch)
 		withPingJSHandler(t, tb, false, ch, false)
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() error {
+		assertHome(t, tb, p, browser.LifecycleEventNetworkIdle, func() error {
 			result := p.TextContent("#pingRequestText", nil)
 			assert.EqualValues(t, "Waiting... pong 4 - for loop complete", result)
 
@@ -627,7 +627,7 @@ func TestLifecycleGotoNetworkIdle(t *testing.T) {
 		withHomeHandler(t, tb, "lifecycle_no_ping_js.html")
 		withPingHandler(t, tb, 50*time.Millisecond, nil)
 
-		assertHome(t, tb, p, common.LifecycleEventNetworkIdle, func() error {
+		assertHome(t, tb, p, browser.LifecycleEventNetworkIdle, func() error {
 			result := p.TextContent("#pingRequestText", nil)
 			assert.EqualValues(t, "Waiting... pong 10 - for loop complete", result)
 
@@ -703,15 +703,15 @@ func withPingJSHandler(t *testing.T, tb *testBrowser, slow bool, ch chan bool, w
 
 func assertHome(
 	t *testing.T,
-	tb *testBrowser, p *common.Page,
-	waitUntil common.LifecycleEvent,
+	tb *testBrowser, p *browser.Page,
+	waitUntil browser.LifecycleEvent,
 	check func() error, secondCheck func(), wantError string,
 ) {
 	t.Helper()
 
 	var resolved, rejected bool
 	err := func() error {
-		opts := tb.toGojaValue(common.FrameGotoOptions{
+		opts := tb.toGojaValue(browser.FrameGotoOptions{
 			WaitUntil: waitUntil,
 			Timeout:   30 * time.Second,
 		})

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 	"github.com/grafana/xk6-browser/module"
@@ -243,7 +243,7 @@ func TestBrowserLogIterationID(t *testing.T) {
 	tb := newTestBrowser(t, withLogCache())
 
 	var (
-		iterID     = common.GetIterationID(tb.ctx)
+		iterID     = browser.GetIterationID(tb.ctx)
 		tracedEvts int
 	)
 
