@@ -159,7 +159,7 @@ func (k *Keyboard) insertText(text string) error {
 	return nil
 }
 
-func (k *Keyboard) keyDefinitionFromKey(key keyboard.Input) keyboard.Definition {
+func (k *Keyboard) keyDefinitionFromKey(key keyboard.Input) keyboard.Definition { //nolint:cyclop
 	shift := k.modifiers & ModifierKeyShift
 
 	// Find directly from the keyboard layout

@@ -6,49 +6,76 @@ import (
 )
 
 const (
-	// Browser
-
+	// EventBrowserDisconnected is emitted when the browser is disconnected.
 	EventBrowserDisconnected string = "disconnected"
 
-	// Context
-
+	// EventContextPage is emitted when a new page in context is created.
 	EventContextPage string = "page"
 
-	// Connection
-
+	// EventConnectionClose is emitted when the connection to the browser is closed.
 	EventConnectionClose string = "close"
 
-	// Frame
+	// EventFrameNavigation is emitted when a frame is navigated.
+	EventFrameNavigation string = "navigation"
 
-	EventFrameNavigation   string = "navigation"
+	// EventFrameAddLifecycle is emitted when a new lifecycle event is added.
 	EventFrameAddLifecycle string = "addlifecycle"
 
-	// Page
+	// EventPageClose is emitted when a page is closed.
+	EventPageClose string = "close"
 
-	EventPageClose           string = "close"
-	EventPageConsole         string = "console"
-	EventPageCrash           string = "crash"
-	EventPageDialog          string = "dialog"
-	EventPageDownload        string = "download"
-	EventPageFilechooser     string = "filechooser"
-	EventPageFrameAttached   string = "frameattached"
-	EventPageFrameDetached   string = "framedetached"
-	EventPageFrameNavigated  string = "framenavigated"
-	EventPageError           string = "pageerror"
-	EventPagePopup           string = "popup"
-	EventPageRequest         string = "request"
-	EventPageRequestFailed   string = "requestfailed"
+	// EventPageConsole is emitted when a console message is added.
+	EventPageConsole string = "console"
+
+	// EventPageCrash is emitted when a page crashes.
+	EventPageCrash string = "crash"
+
+	// EventPageDialog is emitted when a dialog is opened.
+	EventPageDialog string = "dialog"
+
+	// EventPageDownload is emitted when a download is started.
+	EventPageDownload string = "download"
+
+	// EventPageFilechooser is emitted when a file chooser is opened.
+	EventPageFilechooser string = "filechooser"
+
+	// EventPageFrameAttached is emitted when a frame is attached.
+	EventPageFrameAttached string = "frameattached"
+
+	// EventPageFrameDetached is emitted when a frame is detached.
+	EventPageFrameDetached string = "framedetached"
+
+	// EventPageFrameNavigated is emitted when a frame is navigated.
+	EventPageFrameNavigated string = "framenavigated"
+
+	// EventPageError is emitted when a page error occurs.
+	EventPageError string = "pageerror"
+
+	// EventPagePopup is emitted when a popup is opened.
+	EventPagePopup string = "popup"
+
+	// EventPageRequest is emitted when a request is made.
+	EventPageRequest string = "request"
+
+	// EventPageRequestFailed is emitted when a request fails.
+	EventPageRequestFailed string = "requestfailed"
+
+	// EventPageRequestFinished is emitted when a request is finished.
 	EventPageRequestFinished string = "requestfinished"
-	EventPageResponse        string = "response"
-	EventPageWebSocket       string = "websocket"
-	EventPageWorker          string = "worker"
 
-	// Session
+	// EventPageResponse is emitted when a response is received.
+	EventPageResponse string = "response"
 
+	// EventPageWebSocket is emitted when a websocket is created.
+	EventPageWebSocket string = "websocket"
+
+	// EventPageWorker is emitted when a worker is created.
+	EventPageWorker string = "worker"
+
+	// EventSessionClosed is emitted when a session is closed.
 	EventSessionClosed string = "close"
 
-	// Worker
-
+	// EventWorkerClose is emitted when a worker is closed.
 	EventWorkerClose string = "close"
 )
 

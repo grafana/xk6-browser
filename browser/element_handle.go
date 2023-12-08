@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/xk6-browser/browser/js"
-	"github.com/grafana/xk6-browser/k6ext"
-
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
+
+	"github.com/grafana/xk6-browser/browser/js"
+	"github.com/grafana/xk6-browser/k6ext"
 )
 
 const resultDone = "done"

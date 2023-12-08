@@ -5,10 +5,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/grafana/xk6-browser/keyboard"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/xk6-browser/keyboard"
 )
 
 func TestKeyboardPress(t *testing.T) {

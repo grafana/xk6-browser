@@ -34,7 +34,10 @@ func TestContextOptionsDefaultValues(t *testing.T) {
 	assert.Equal(t, &browser.Screen{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight}, opts.Screen)
 	assert.Equal(t, "", opts.TimezoneID)
 	assert.Equal(t, "", opts.UserAgent)
-	assert.Equal(t, &browser.Viewport{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight}, opts.Viewport)
+	assert.Equal(t,
+		&browser.Viewport{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight},
+		opts.Viewport,
+	)
 }
 
 func TestContextOptionsDefaultViewport(t *testing.T) {

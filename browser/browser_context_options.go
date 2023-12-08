@@ -100,9 +100,10 @@ func NewContextOptions() *ContextOptions {
 	}
 }
 
-func (b *ContextOptions) Parse(ctx context.Context, opts goja.Value) error {
+// Parse parses the browser context options.
+func (b *ContextOptions) Parse(ctx context.Context, opts goja.Value) error { //nolint:gocognit,funlen,cyclop
 	rt := k6ext.Runtime(ctx)
-	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
+	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) { //nolint:nestif
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
@@ -111,7 +112,7 @@ func (b *ContextOptions) Parse(ctx context.Context, opts goja.Value) error {
 			case "bypassCSP":
 				b.BypassCSP = opts.Get(k).ToBoolean()
 			case "colorScheme":
-				switch ColorScheme(opts.Get(k).String()) {
+				switch ColorScheme(opts.Get(k).String()) { //nolint:exhaustive
 				case "light":
 					b.ColorScheme = ColorSchemeLight
 				case "dark":

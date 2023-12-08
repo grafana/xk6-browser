@@ -8,19 +8,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/xk6-browser/browser/js"
-	"github.com/grafana/xk6-browser/k6error"
-	"github.com/grafana/xk6-browser/k6ext"
-	"github.com/grafana/xk6-browser/log"
-
-	k6modules "go.k6.io/k6/js/modules"
-
 	cdpbrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
+
+	"github.com/grafana/xk6-browser/browser/js"
+	"github.com/grafana/xk6-browser/k6error"
+	"github.com/grafana/xk6-browser/k6ext"
+	"github.com/grafana/xk6-browser/log"
+
+	k6modules "go.k6.io/k6/js/modules"
 )
 
 // waitForEventType represents the event types that can be used when working
@@ -128,7 +128,7 @@ func NewContext(
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
-func (b *Context) AddInitScript(script goja.Value, arg goja.Value) error {
+func (b *Context) AddInitScript(script goja.Value, _ goja.Value) error {
 	b.logger.Debugf("Context:AddInitScript", "bctxid:%v", b.id)
 
 	rt := b.vu.Runtime()
@@ -141,9 +141,9 @@ func (b *Context) AddInitScript(script goja.Value, arg goja.Value) error {
 		case reflect.TypeOf(goja.Object{}):
 			opts := script.ToObject(rt)
 			for _, k := range opts.Keys() {
-				switch k {
-				case "content":
+				if k == "content" {
 					source = opts.Get(k).String()
+					break
 				}
 			}
 		default:
@@ -207,12 +207,12 @@ func (b *Context) Close() {
 }
 
 // ExposeBinding is not implemented.
-func (b *Context) ExposeBinding(name string, callback goja.Callable, opts goja.Value) {
+func (b *Context) ExposeBinding(_ string, _ goja.Callable, _ goja.Value) {
 	k6ext.Panic(b.ctx, "Context.exposeBinding(name, callback, opts) has not been implemented yet")
 }
 
 // ExposeFunction is not implemented.
-func (b *Context) ExposeFunction(name string, callback goja.Callable) {
+func (b *Context) ExposeFunction(_ string, _ goja.Callable) {
 	k6ext.Panic(b.ctx, "Context.exposeFunction(name, callback) has not been implemented yet")
 }
 
@@ -287,15 +287,11 @@ func (b *Context) NewPage() (*Page, error) {
 
 // Pages returns a list of pages inside this browser context.
 func (b *Context) Pages() []*Page {
-	pages := make([]*Page, 1)
-	for _, p := range b.browser.getPages() {
-		pages = append(pages, p)
-	}
-	return pages
+	return b.browser.getPages()
 }
 
 // Route is not implemented.
-func (b *Context) Route(url goja.Value, handler goja.Callable) {
+func (b *Context) Route(_ goja.Value, _ goja.Callable) {
 	k6ext.Panic(b.ctx, "Context.route(url, handler) has not been implemented yet")
 }
 
@@ -314,7 +310,7 @@ func (b *Context) SetDefaultTimeout(timeout int64) {
 }
 
 // SetExtraHTTPHeaders is not implemented.
-func (b *Context) SetExtraHTTPHeaders(headers map[string]string) error {
+func (b *Context) SetExtraHTTPHeaders(_ map[string]string) error {
 	return fmt.Errorf("Context.setExtraHTTPHeaders(headers) has not been implemented yet: %w", k6error.ErrFatal)
 }
 
@@ -368,12 +364,12 @@ func (b *Context) SetOffline(offline bool) {
 }
 
 // StorageState is not implemented.
-func (b *Context) StorageState(opts goja.Value) {
+func (b *Context) StorageState(_ goja.Value) {
 	k6ext.Panic(b.ctx, "Context.storageState(opts) has not been implemented yet")
 }
 
 // Unroute is not implemented.
-func (b *Context) Unroute(url goja.Value, handler goja.Callable) {
+func (b *Context) Unroute(_ goja.Value, _ goja.Callable) {
 	k6ext.Panic(b.ctx, "Context.unroute(url, handler) has not been implemented yet")
 }
 
