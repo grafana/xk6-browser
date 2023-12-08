@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/xk6-browser/k6ext/k6test"
-	"github.com/grafana/xk6-browser/keyboardlayout"
+	"github.com/grafana/xk6-browser/keyboard"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -95,7 +95,7 @@ func TestKeyDefinitionCode(t *testing.T) {
 	)
 
 	tests := []struct {
-		key           keyboardlayout.KeyInput
+		key           keyboard.KeyInput
 		expectedCodes []string
 	}{
 		{key: "Escape", expectedCodes: []string{"Escape"}},

@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/grafana/xk6-browser/keyboardlayout"
+	"github.com/grafana/xk6-browser/keyboard"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestKeyboardPress(t *testing.T) {
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
-		layout := keyboardlayout.GetKeyboardLayout("us")
+		layout := keyboard.GetKeyboardLayout("us")
 
 		assert.NotPanics(t, func() {
 			for k := range layout.Keys {

@@ -1,4 +1,4 @@
-package keyboardlayout
+package keyboard
 
 func initUS() {
 	validKeys := map[KeyInput]bool{
