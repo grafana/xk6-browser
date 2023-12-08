@@ -30,7 +30,7 @@ type Keyboard struct {
 	modifiers   int64          // like shift, alt, ctrl, ...
 	pressedKeys map[int64]bool // tracks keys through down() and up()
 	layoutName  string         // us by default
-	layout      keyboard.KeyboardLayout
+	layout      keyboard.Layout
 }
 
 // NewKeyboard returns a new keyboard with a "us" layout.
@@ -40,7 +40,7 @@ func NewKeyboard(ctx context.Context, s session) *Keyboard {
 		session:     s,
 		pressedKeys: make(map[int64]bool),
 		layoutName:  "us",
-		layout:      keyboard.GetKeyboardLayout("us"),
+		layout:      keyboard.GetLayout("us"),
 	}
 }
 
@@ -95,7 +95,7 @@ func (k *Keyboard) Type(text string, opts goja.Value) {
 }
 
 func (k *Keyboard) down(key string) error {
-	keyInput := keyboard.KeyInput(key)
+	keyInput := keyboard.Input(key)
 	if _, ok := k.layout.ValidKeys[keyInput]; !ok {
 		return fmt.Errorf("%q is not a valid key for layout %q", key, k.layoutName)
 	}
@@ -129,7 +129,7 @@ func (k *Keyboard) down(key string) error {
 }
 
 func (k *Keyboard) up(key string) error {
-	keyInput := keyboard.KeyInput(key)
+	keyInput := keyboard.Input(key)
 	if _, ok := k.layout.ValidKeys[keyInput]; !ok {
 		return fmt.Errorf("'%s' is not a valid key for layout '%s'", key, k.layoutName)
 	}
@@ -159,7 +159,7 @@ func (k *Keyboard) insertText(text string) error {
 	return nil
 }
 
-func (k *Keyboard) keyDefinitionFromKey(key keyboard.KeyInput) keyboard.KeyDefinition {
+func (k *Keyboard) keyDefinitionFromKey(key keyboard.Input) keyboard.Definition {
 	shift := k.modifiers & ModifierKeyShift
 
 	// Find directly from the keyboard layout
@@ -178,7 +178,7 @@ func (k *Keyboard) keyDefinitionFromKey(key keyboard.KeyInput) keyboard.KeyDefin
 		foundInShift = true
 	}
 
-	var keyDef keyboard.KeyDefinition
+	var keyDef keyboard.Definition
 	keyDef.Code = srcKeyDef.Code
 	if srcKeyDef.Key != "" {
 		keyDef.Key = srcKeyDef.Key
@@ -293,14 +293,14 @@ func (k *Keyboard) press(key string, opts *KeyboardOptions) error {
 }
 
 func (k *Keyboard) typ(text string, opts *KeyboardOptions) error {
-	layout := keyboard.GetKeyboardLayout(k.layoutName)
+	layout := keyboard.GetLayout(k.layoutName)
 	for _, c := range text {
 		if opts.Delay > 0 {
 			if err := wait(k.ctx, opts.Delay); err != nil {
 				return err
 			}
 		}
-		keyInput := keyboard.KeyInput(c)
+		keyInput := keyboard.Input(c)
 		if _, ok := layout.ValidKeys[keyInput]; ok {
 			if err := k.press(string(c), opts); err != nil {
 				return fmt.Errorf("pressing key: %w", err)

@@ -1,7 +1,7 @@
 package keyboard
 
-func initUS() {
-	validKeys := map[KeyInput]bool{
+func initUS() { //nolint:funlen
+	validKeys := map[Input]bool{
 		"0":                  true,
 		"1":                  true,
 		"2":                  true,
@@ -258,7 +258,7 @@ func initUS() {
 		"VolumeDown":         true,
 		"VolumeUp":           true,
 	}
-	Keys := map[KeyInput]KeyDefinition{
+	Keys := map[Input]Definition{
 		// Functions row
 		"Escape": {Code: "Escape", KeyCode: 27, Key: "Escape"},
 		"F1":     {Code: "F1", KeyCode: 112, Key: "F1"},

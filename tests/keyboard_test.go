@@ -20,7 +20,7 @@ func TestKeyboardPress(t *testing.T) {
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
-		layout := keyboard.GetKeyboardLayout("us")
+		layout := keyboard.GetLayout("us")
 
 		assert.NotPanics(t, func() {
 			for k := range layout.Keys {

@@ -6,9 +6,11 @@ import (
 	"sync"
 )
 
-type KeyInput string
+// Input represents a keyboard input.
+type Input string
 
-type KeyDefinition struct {
+// Definition represents a keyboard key definition.
+type Definition struct {
 	Code                   string
 	Key                    string
 	KeyCode                int64
@@ -19,41 +21,42 @@ type KeyDefinition struct {
 	Location               int64
 }
 
-type KeyboardLayout struct {
-	ValidKeys map[KeyInput]bool
-	Keys      map[KeyInput]KeyDefinition
+// Layout represents a keyboard layout.
+type Layout struct {
+	ValidKeys map[Input]bool
+	Keys      map[Input]Definition
 }
 
 // KeyDefinition returns true with the key definition of a given key input.
 // It returns false and an empty key definition if it cannot find the key.
-func (kl KeyboardLayout) KeyDefinition(key KeyInput) (KeyDefinition, bool) {
+func (kl Layout) KeyDefinition(key Input) (Definition, bool) {
 	for _, d := range kl.Keys {
 		if d.Key == string(key) {
 			return d, true
 		}
 	}
-	return KeyDefinition{}, false
+	return Definition{}, false
 }
 
 // ShiftKeyDefinition returns shift key definition of a given key input.
 // It returns an empty key definition if it cannot find the key.
-func (kl KeyboardLayout) ShiftKeyDefinition(key KeyInput) KeyDefinition {
+func (kl Layout) ShiftKeyDefinition(key Input) Definition {
 	for _, d := range kl.Keys {
 		if d.ShiftKey == string(key) {
 			return d
 		}
 	}
-	return KeyDefinition{}
+	return Definition{}
 }
 
 //nolint:gochecknoglobals
 var (
-	kbdLayouts = make(map[string]KeyboardLayout)
+	kbdLayouts = make(map[string]Layout)
 	mx         sync.RWMutex
 )
 
-// GetKeyboardLayout returns the keyboard layout registered with name.
-func GetKeyboardLayout(name string) KeyboardLayout {
+// GetLayout returns the keyboard layout registered with name.
+func GetLayout(name string) Layout {
 	mx.RLock()
 	defer mx.RUnlock()
 	return kbdLayouts[name]
@@ -65,12 +68,12 @@ func init() {
 
 // Register the given keyboard layout.
 // This function panics if a keyboard layout with the same name is already registered.
-func register(lang string, validKeys map[KeyInput]bool, keys map[KeyInput]KeyDefinition) {
+func register(lang string, validKeys map[Input]bool, keys map[Input]Definition) {
 	mx.Lock()
 	defer mx.Unlock()
 
 	if _, ok := kbdLayouts[lang]; ok {
 		panic(fmt.Sprintf("keyboard layout already registered: %s", lang))
 	}
-	kbdLayouts[lang] = KeyboardLayout{ValidKeys: validKeys, Keys: keys}
+	kbdLayouts[lang] = Layout{ValidKeys: validKeys, Keys: keys}
 }

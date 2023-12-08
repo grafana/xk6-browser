@@ -95,7 +95,7 @@ func TestKeyDefinitionCode(t *testing.T) {
 	)
 
 	tests := []struct {
-		key           keyboard.KeyInput
+		key           keyboard.Input
 		expectedCodes []string
 	}{
 		{key: "Escape", expectedCodes: []string{"Escape"}},
