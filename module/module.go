@@ -25,8 +25,8 @@ type (
 		initOnce       *sync.Once
 	}
 
-	// JSModule exposes the properties available to the JS script.
-	JSModule struct {
+	// JS exposes the properties available to the JS script.
+	JS struct {
 		Browser         *goja.Object
 		Devices         map[string]common.Device
 		NetworkProfiles map[string]common.NetworkProfile `js:"networkProfiles"`
@@ -34,7 +34,7 @@ type (
 
 	// ModuleInstance represents an instance of the JS module.
 	ModuleInstance struct {
-		mod *JSModule
+		mod *JS
 	}
 )
 
@@ -63,7 +63,7 @@ func (m *Root) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 		m.initialize(vu)
 	})
 	return &ModuleInstance{
-		mod: &JSModule{
+		mod: &JS{
 			Browser: mapBrowserToGoja(moduleVU{
 				VU:                vu,
 				pidRegistry:       m.PidRegistry,
