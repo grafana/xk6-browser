@@ -260,6 +260,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping {
 			return nil, nil //nolint:nilnil
 		}
 		ehm := mapElementHandle(vu, eh)
+
 		return ehm, nil
 	}
 	maps["$$"] = func(selector string) ([]mapping, error) {
@@ -285,7 +286,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping {
 
 // mapFrame to the JS module.
 //
-//nolint:funlen
+//nolint:funlen,cyclop
 func mapFrame(vu moduleVU, f *common.Frame) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
@@ -409,6 +410,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 			return nil, nil //nolint:nilnil
 		}
 		ehm := mapElementHandle(vu, eh)
+
 		return ehm, nil
 	}
 	maps["$$"] = func(selector string) ([]mapping, error) {
@@ -429,7 +431,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 
 // mapPage to the JS module.
 //
-//nolint:funlen
+//nolint:funlen,cyclop
 func mapPage(vu moduleVU, p *common.Page) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
@@ -613,6 +615,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 			return nil, nil //nolint:nilnil
 		}
 		ehm := mapElementHandle(vu, eh)
+
 		return ehm, nil
 	}
 	maps["$$"] = func(selector string) ([]mapping, error) {
@@ -648,7 +651,9 @@ func mapWorker(vu moduleVU, w *common.Worker) mapping {
 }
 
 // mapBrowserContext to the JS module.
-func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolint:funlen
+//
+//nolint:funlen
+func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping {
 	rt := vu.Runtime()
 	return mapping{
 		"addCookies":       bc.AddCookies,
