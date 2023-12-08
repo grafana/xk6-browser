@@ -79,7 +79,7 @@ type Context struct {
 	ctx             context.Context
 	browser         *Browser
 	id              cdp.BrowserContextID
-	opts            *BrowserContextOptions
+	opts            *ContextOptions
 	timeoutSettings *TimeoutSettings
 	logger          *log.Logger
 	vu              k6modules.VU
@@ -89,7 +89,7 @@ type Context struct {
 
 // NewContext creates a new browser context.
 func NewContext(
-	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *BrowserContextOptions, logger *log.Logger,
+	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *ContextOptions, logger *log.Logger,
 ) (*Context, error) {
 	b := Context{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
@@ -351,7 +351,7 @@ func (b *Context) SetHTTPCredentials(httpCredentials goja.Value) {
 		k6ext.Panic(b.ctx, "setting HTTP credentials: %w", err)
 	}
 
-	b.opts.HttpCredentials = c
+	b.opts.HTTPCredentials = c
 	for _, p := range b.browser.getPages() {
 		p.updateHttpCredentials()
 	}

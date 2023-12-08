@@ -61,8 +61,8 @@ func (g *Geolocation) Parse(ctx context.Context, opts goja.Value) error { //noli
 	return nil
 }
 
-// BrowserContextOptions stores browser context options.
-type BrowserContextOptions struct {
+// ContextOptions stores browser context options.
+type ContextOptions struct {
 	AcceptDownloads   bool              `js:"acceptDownloads"`
 	BypassCSP         bool              `js:"bypassCSP"`
 	ColorScheme       ColorScheme       `js:"colorScheme"`
@@ -70,7 +70,7 @@ type BrowserContextOptions struct {
 	ExtraHTTPHeaders  map[string]string `js:"extraHTTPHeaders"`
 	Geolocation       *Geolocation      `js:"geolocation"`
 	HasTouch          bool              `js:"hasTouch"`
-	HttpCredentials   *Credentials      `js:"httpCredentials"`
+	HTTPCredentials   *Credentials      `js:"httpCredentials"`
 	IgnoreHTTPSErrors bool              `js:"ignoreHTTPSErrors"`
 	IsMobile          bool              `js:"isMobile"`
 	JavaScriptEnabled bool              `js:"javaScriptEnabled"`
@@ -85,9 +85,9 @@ type BrowserContextOptions struct {
 	Viewport          *Viewport         `js:"viewport"`
 }
 
-// NewBrowserContextOptions creates a default set of browser context options.
-func NewBrowserContextOptions() *BrowserContextOptions {
-	return &BrowserContextOptions{
+// NewContextOptions creates a default set of browser context options.
+func NewContextOptions() *ContextOptions {
+	return &ContextOptions{
 		ColorScheme:       ColorSchemeLight,
 		DeviceScaleFactor: 1.0,
 		ExtraHTTPHeaders:  make(map[string]string),
@@ -100,7 +100,7 @@ func NewBrowserContextOptions() *BrowserContextOptions {
 	}
 }
 
-func (b *BrowserContextOptions) Parse(ctx context.Context, opts goja.Value) error {
+func (b *ContextOptions) Parse(ctx context.Context, opts goja.Value) error {
 	rt := k6ext.Runtime(ctx)
 	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
 		opts := opts.ToObject(rt)
@@ -139,7 +139,7 @@ func (b *BrowserContextOptions) Parse(ctx context.Context, opts goja.Value) erro
 				if err := credentials.Parse(ctx, opts.Get(k).ToObject(rt)); err != nil {
 					return err
 				}
-				b.HttpCredentials = credentials
+				b.HTTPCredentials = credentials
 			case "ignoreHTTPSErrors":
 				b.IgnoreHTTPSErrors = opts.Get(k).ToBoolean()
 			case "isMobile":

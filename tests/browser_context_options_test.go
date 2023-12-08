@@ -12,10 +12,10 @@ import (
 	"github.com/grafana/xk6-browser/browser"
 )
 
-func TestBrowserContextOptionsDefaultValues(t *testing.T) {
+func TestContextOptionsDefaultValues(t *testing.T) {
 	t.Parallel()
 
-	opts := browser.NewBrowserContextOptions()
+	opts := browser.NewContextOptions()
 	assert.False(t, opts.AcceptDownloads)
 	assert.False(t, opts.BypassCSP)
 	assert.Equal(t, browser.ColorSchemeLight, opts.ColorScheme)
@@ -23,7 +23,7 @@ func TestBrowserContextOptionsDefaultValues(t *testing.T) {
 	assert.Empty(t, opts.ExtraHTTPHeaders)
 	assert.Nil(t, opts.Geolocation)
 	assert.False(t, opts.HasTouch)
-	assert.Nil(t, opts.HttpCredentials)
+	assert.Nil(t, opts.HTTPCredentials)
 	assert.False(t, opts.IgnoreHTTPSErrors)
 	assert.False(t, opts.IsMobile)
 	assert.True(t, opts.JavaScriptEnabled)
@@ -37,7 +37,7 @@ func TestBrowserContextOptionsDefaultValues(t *testing.T) {
 	assert.Equal(t, &browser.Viewport{Width: browser.DefaultScreenWidth, Height: browser.DefaultScreenHeight}, opts.Viewport)
 }
 
-func TestBrowserContextOptionsDefaultViewport(t *testing.T) {
+func TestContextOptionsDefaultViewport(t *testing.T) {
 	t.Parallel()
 
 	p := newTestBrowser(t).NewPage(nil)
@@ -47,7 +47,7 @@ func TestBrowserContextOptionsDefaultViewport(t *testing.T) {
 	assert.Equal(t, float64(browser.DefaultScreenHeight), viewportSize["height"])
 }
 
-func TestBrowserContextOptionsSetViewport(t *testing.T) {
+func TestContextOptionsSetViewport(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t)
@@ -69,7 +69,7 @@ func TestBrowserContextOptionsSetViewport(t *testing.T) {
 	assert.Equal(t, float64(600), viewportSize["height"])
 }
 
-func TestBrowserContextOptionsExtraHTTPHeaders(t *testing.T) {
+func TestContextOptionsExtraHTTPHeaders(t *testing.T) {
 	t.Parallel()
 
 	tb := newTestBrowser(t, withHTTPServer())

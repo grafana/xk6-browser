@@ -119,7 +119,7 @@ func (b *Browser) connect() error {
 	b.conn = conn
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
-	b.defaultContext, err = NewContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
+	b.defaultContext, err = NewContext(b.ctx, b, "", NewContextOptions(), b.logger)
 	if err != nil {
 		return fmt.Errorf("browser connect: %w", err)
 	}
@@ -520,7 +520,7 @@ func (b *Browser) NewContext(opts goja.Value) (*Context, error) {
 		k6ext.Panic(b.ctx, "creating browser context ID %s: %w", browserContextID, err)
 	}
 
-	browserCtxOpts := NewBrowserContextOptions()
+	browserCtxOpts := NewContextOptions()
 	if err := browserCtxOpts.Parse(b.ctx, opts); err != nil {
 		k6ext.Panic(b.ctx, "parsing newContext options: %w", err)
 	}

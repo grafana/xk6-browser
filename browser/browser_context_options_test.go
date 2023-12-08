@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBrowserContextOptionsPermissions(t *testing.T) {
+func TestContextOptionsPermissions(t *testing.T) {
 	vu := k6test.NewVU(t)
 
-	var opts BrowserContextOptions
+	var opts ContextOptions
 	err := opts.Parse(vu.Context(), vu.ToGojaValue((struct {
 		Permissions []any `js:"permissions"`
 	}{
