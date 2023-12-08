@@ -21,7 +21,7 @@ func TestBrowserNewPageInContext(t *testing.T) {
 
 	type testCase struct {
 		b  *Browser
-		bc *BrowserContext
+		bc *Context
 	}
 	newTestCase := func(id cdp.BrowserContextID) *testCase {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -31,7 +31,7 @@ func TestBrowserNewPageInContext(t *testing.T) {
 		var err error
 		vu := k6test.NewVU(t)
 		ctx = k6ext.WithVU(ctx, vu)
-		b.context, err = NewBrowserContext(ctx, b, id, nil, nil)
+		b.context, err = NewContext(ctx, b, id, nil, nil)
 		require.NoError(t, err)
 		return &testCase{
 			b:  b,
@@ -72,10 +72,10 @@ func TestBrowserNewPageInContext(t *testing.T) {
 				v.TargetID = targetID
 
 				// for the event handler to work, there needs to be an event called
-				// EventBrowserContextPage to be fired. this normally happens when the browser's
+				// EventContextPage to be fired. this normally happens when the browser's
 				// onAttachedToTarget event is fired. here, we imitate as if the browser created a target for
 				// the page.
-				tc.bc.emit(EventBrowserContextPage, &Page{targetID: targetID})
+				tc.bc.emit(EventContextPage, &Page{targetID: targetID})
 
 				return nil
 			},
@@ -91,14 +91,14 @@ func TestBrowserNewPageInContext(t *testing.T) {
 	t.Run("missing_browser_context", func(t *testing.T) {
 		t.Parallel()
 
-		const missingBrowserContextID = "911"
+		const missingContextID = "911"
 
 		// set an existing browser context,
 		_, err := newTestCase(browserContextID).
 			// but look for a different one.
-			b.newPageInContext(missingBrowserContextID)
+			b.newPageInContext(missingContextID)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), missingBrowserContextID,
+		require.Contains(t, err.Error(), missingContextID,
 			"should have returned the missing browser context ID in the error message")
 	})
 

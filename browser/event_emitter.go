@@ -10,9 +10,9 @@ const (
 
 	EventBrowserDisconnected string = "disconnected"
 
-	// BrowserContext
+	// Context
 
-	EventBrowserContextPage string = "page"
+	EventContextPage string = "page"
 
 	// Connection
 

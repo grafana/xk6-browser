@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/xk6-browser/log"
 )
 
-func TestNewBrowserContext(t *testing.T) {
+func TestNewContext(t *testing.T) {
 	t.Parallel()
 
 	t.Run("add_web_vital_js_scripts_to_context", func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestNewBrowserContext(t *testing.T) {
 		vu := k6test.NewVU(t)
 		ctx = k6ext.WithVU(ctx, vu)
 
-		bc, err := NewBrowserContext(ctx, b, "some-id", nil, nil)
+		bc, err := NewContext(ctx, b, "some-id", nil, nil)
 		require.NoError(t, err)
 
 		webVitalIIFEScriptFound := false

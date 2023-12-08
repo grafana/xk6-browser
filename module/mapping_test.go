@@ -132,7 +132,7 @@ func TestMappings(t *testing.T) {
 		"browserContext": {
 			apiInterface: (*browserContextAPI)(nil),
 			mapp: func() mapping {
-				return mapBrowserContext(moduleVU{VU: vu}, &browser.BrowserContext{})
+				return mapBrowserContext(moduleVU{VU: vu}, &browser.Context{})
 			},
 		},
 		"page": {
@@ -243,10 +243,10 @@ func isCustomMapping(customMappings map[string]string, typ, method string) (stri
 // browserAPI is the public interface of a CDP browser.
 type browserAPI interface {
 	Close()
-	Context() *browser.BrowserContext
+	Context() *browser.Context
 	CloseContext()
 	IsConnected() bool
-	NewContext(opts goja.Value) (*browser.BrowserContext, error)
+	NewContext(opts goja.Value) (*browser.Context, error)
 	NewPage(opts goja.Value) (*browser.Page, error)
 	On(string) (bool, error)
 	UserAgent() string
@@ -290,7 +290,7 @@ type pageAPI interface {
 	Click(selector string, opts goja.Value) error
 	Close(opts goja.Value) error
 	Content() string
-	Context() *browser.BrowserContext
+	Context() *browser.Context
 	Dblclick(selector string, opts goja.Value)
 	DispatchEvent(selector string, typ string, eventInit goja.Value, opts goja.Value)
 	DragAndDrop(source string, target string, opts goja.Value)

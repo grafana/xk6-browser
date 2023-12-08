@@ -47,12 +47,12 @@ type Browser struct {
 	// instance of k6 will also receive an onAttachedToTarget event. When
 	// this occurs there's a small chance that at the same time a new
 	// context is being created by the second k6 instance. So the read
-	// occurs in getDefaultBrowserContextOrMatchedID which is called by
+	// occurs in getDefaultContextOrMatchedID which is called by
 	// onAttachedToTarget, and the write in NewContext. This mutex protects
 	// the read/write race condition for this one case.
 	contextMu      sync.RWMutex
-	context        *BrowserContext
-	defaultContext *BrowserContext
+	context        *Context
+	defaultContext *Context
 
 	// Cancel function to stop event listening
 	evCancelFn context.CancelFunc
@@ -119,7 +119,7 @@ func (b *Browser) connect() error {
 	b.conn = conn
 
 	// We don't need to lock this because `connect()` is called only in NewBrowser
-	b.defaultContext, err = NewBrowserContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
+	b.defaultContext, err = NewContext(b.ctx, b, "", NewBrowserContextOptions(), b.logger)
 	if err != nil {
 		return fmt.Errorf("browser connect: %w", err)
 	}
@@ -140,9 +140,9 @@ func (b *Browser) disposeContext(id cdp.BrowserContextID) error {
 	return nil
 }
 
-// getDefaultBrowserContextOrMatchedID returns the BrowserContext for the given browser context ID.
-// If the browser context is not found, the default BrowserContext is returned.
-func (b *Browser) getDefaultBrowserContextOrMatchedID(id cdp.BrowserContextID) *BrowserContext {
+// getDefaultContextOrMatchedID returns the Context for the given browser context ID.
+// If the browser context is not found, the default Context is returned.
+func (b *Browser) getDefaultContextOrMatchedID(id cdp.BrowserContextID) *Context {
 	b.contextMu.RLock()
 	defer b.contextMu.RUnlock()
 
@@ -224,7 +224,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 
 	var (
 		targetPage = ev.TargetInfo
-		browserCtx = b.getDefaultBrowserContextOrMatchedID(targetPage.BrowserContextID)
+		browserCtx = b.getDefaultContextOrMatchedID(targetPage.BrowserContextID)
 	)
 
 	if !b.isAttachedPageValid(ev, browserCtx) {
@@ -261,7 +261,7 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	// Emit the page event only for pages, not for background pages.
 	// Background pages are created by extensions.
 	if isPage {
-		browserCtx.emit(EventBrowserContextPage, p)
+		browserCtx.emit(EventContextPage, p)
 	}
 }
 
@@ -288,7 +288,7 @@ func (b *Browser) attachNewPage(p *Page, ev *target.EventAttachedToTarget) {
 // isAttachedPageValid returns true if the attached page is valid and should be
 // added to the browser's pages. It returns false if the attached page is not
 // valid and should be ignored.
-func (b *Browser) isAttachedPageValid(ev *target.EventAttachedToTarget, browserCtx *BrowserContext) bool {
+func (b *Browser) isAttachedPageValid(ev *target.EventAttachedToTarget, browserCtx *Context) bool {
 	targetPage := ev.TargetInfo
 
 	// We're not interested in the top-level browser target, other targets or DevTools targets right now.
@@ -388,7 +388,7 @@ func (b *Browser) newPageInContext(id cdp.BrowserContextID) (*Page, error) {
 	waitForPage, removeEventHandler := createWaitForEventHandler(
 		ctx,
 		b.context, // browser context will emit the following event:
-		[]string{EventBrowserContextPage},
+		[]string{EventContextPage},
 		func(e any) bool {
 			tid := <-targetID
 
@@ -497,7 +497,7 @@ func (b *Browser) CloseContext() error {
 }
 
 // Context returns the current browser context or nil.
-func (b *Browser) Context() *BrowserContext {
+func (b *Browser) Context() *Context {
 	return b.context
 }
 
@@ -508,7 +508,7 @@ func (b *Browser) IsConnected() bool {
 }
 
 // NewContext creates a new incognito-like browser context.
-func (b *Browser) NewContext(opts goja.Value) (*BrowserContext, error) {
+func (b *Browser) NewContext(opts goja.Value) (*Context, error) {
 	if b.context != nil {
 		return nil, errors.New("existing browser context must be closed before creating a new one")
 	}
@@ -525,7 +525,7 @@ func (b *Browser) NewContext(opts goja.Value) (*BrowserContext, error) {
 		k6ext.Panic(b.ctx, "parsing newContext options: %w", err)
 	}
 
-	browserCtx, err := NewBrowserContext(b.ctx, b, browserContextID, browserCtxOpts, b.logger)
+	browserCtx, err := NewContext(b.ctx, b, browserContextID, browserCtxOpts, b.logger)
 	if err != nil {
 		return nil, fmt.Errorf("new context: %w", err)
 	}

@@ -213,7 +213,7 @@ type Page struct {
 	// SessionID and TargetID
 	session session
 
-	browserCtx      *BrowserContext
+	browserCtx      *Context
 	targetID        target.ID
 	opener          *Page
 	frameManager    *FrameManager
@@ -254,7 +254,7 @@ type Page struct {
 func NewPage(
 	ctx context.Context,
 	s session,
-	bctx *BrowserContext,
+	bctx *Context,
 	tid target.ID,
 	opener *Page,
 	bp bool,
@@ -701,7 +701,7 @@ func (p *Page) Content() string {
 }
 
 // Context closes the page.
-func (p *Page) Context() *BrowserContext {
+func (p *Page) Context() *Context {
 	return p.browserCtx
 }
 

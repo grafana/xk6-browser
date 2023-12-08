@@ -69,11 +69,11 @@ const (
 	waitForEventTypePage = "page"
 )
 
-// BrowserContext stores context information for a single independent browser session.
+// Context stores context information for a single independent browser session.
 // A newly launched browser instance contains a default browser context.
 // Any browser context created aside from the default will be considered an "incognito"
 // browser context and will not store any data on disk.
-type BrowserContext struct {
+type Context struct {
 	BaseEventEmitter
 
 	ctx             context.Context
@@ -87,11 +87,11 @@ type BrowserContext struct {
 	evaluateOnNewDocumentSources []string
 }
 
-// NewBrowserContext creates a new browser context.
-func NewBrowserContext(
+// NewContext creates a new browser context.
+func NewContext(
 	ctx context.Context, browser *Browser, id cdp.BrowserContextID, opts *BrowserContextOptions, logger *log.Logger,
-) (*BrowserContext, error) {
-	b := BrowserContext{
+) (*Context, error) {
+	b := Context{
 		BaseEventEmitter: NewBaseEventEmitter(ctx),
 		ctx:              ctx,
 		browser:          browser,
@@ -128,8 +128,8 @@ func NewBrowserContext(
 }
 
 // AddInitScript adds a script that will be initialized on all new pages.
-func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error {
-	b.logger.Debugf("BrowserContext:AddInitScript", "bctxid:%v", b.id)
+func (b *Context) AddInitScript(script goja.Value, arg goja.Value) error {
+	b.logger.Debugf("Context:AddInitScript", "bctxid:%v", b.id)
 
 	rt := b.vu.Runtime()
 
@@ -167,7 +167,7 @@ func (b *BrowserContext) AddInitScript(script goja.Value, arg goja.Value) error 
 	return nil
 }
 
-func (b *BrowserContext) applyAllInitScripts(p *Page) error {
+func (b *Context) applyAllInitScripts(p *Page) error {
 	for _, source := range b.evaluateOnNewDocumentSources {
 		if err := p.evaluateOnNewDocument(source); err != nil {
 			return fmt.Errorf("adding init script to browser context: %w", err)
@@ -178,13 +178,13 @@ func (b *BrowserContext) applyAllInitScripts(p *Page) error {
 }
 
 // Browser returns the browser instance that this browser context belongs to.
-func (b *BrowserContext) Browser() *Browser {
+func (b *Context) Browser() *Browser {
 	return b.browser
 }
 
 // ClearPermissions clears any permission overrides.
-func (b *BrowserContext) ClearPermissions() error {
-	b.logger.Debugf("BrowserContext:ClearPermissions", "bctxid:%v", b.id)
+func (b *Context) ClearPermissions() error {
+	b.logger.Debugf("Context:ClearPermissions", "bctxid:%v", b.id)
 
 	action := cdpbrowser.ResetPermissions().WithBrowserContextID(b.id)
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.browser.conn)); err != nil {
@@ -195,8 +195,8 @@ func (b *BrowserContext) ClearPermissions() error {
 }
 
 // Close shuts down the browser context.
-func (b *BrowserContext) Close() {
-	b.logger.Debugf("BrowserContext:Close", "bctxid:%v", b.id)
+func (b *Context) Close() {
+	b.logger.Debugf("Context:Close", "bctxid:%v", b.id)
 
 	if b.id == "" {
 		k6ext.Panic(b.ctx, "default browser context can't be closed")
@@ -207,18 +207,18 @@ func (b *BrowserContext) Close() {
 }
 
 // ExposeBinding is not implemented.
-func (b *BrowserContext) ExposeBinding(name string, callback goja.Callable, opts goja.Value) {
-	k6ext.Panic(b.ctx, "BrowserContext.exposeBinding(name, callback, opts) has not been implemented yet")
+func (b *Context) ExposeBinding(name string, callback goja.Callable, opts goja.Value) {
+	k6ext.Panic(b.ctx, "Context.exposeBinding(name, callback, opts) has not been implemented yet")
 }
 
 // ExposeFunction is not implemented.
-func (b *BrowserContext) ExposeFunction(name string, callback goja.Callable) {
-	k6ext.Panic(b.ctx, "BrowserContext.exposeFunction(name, callback) has not been implemented yet")
+func (b *Context) ExposeFunction(name string, callback goja.Callable) {
+	k6ext.Panic(b.ctx, "Context.exposeFunction(name, callback) has not been implemented yet")
 }
 
 // GrantPermissions enables the specified permissions, all others will be disabled.
-func (b *BrowserContext) GrantPermissions(permissions []string, opts *GrantPermissionsOptions) error {
-	b.logger.Debugf("BrowserContext:GrantPermissions", "bctxid:%v", b.id)
+func (b *Context) GrantPermissions(permissions []string, opts *GrantPermissionsOptions) error {
+	b.logger.Debugf("Context:GrantPermissions", "bctxid:%v", b.id)
 
 	permsToProtocol := map[string]cdpbrowser.PermissionType{
 		"geolocation":          cdpbrowser.PermissionTypeGeolocation,
@@ -256,14 +256,14 @@ func (b *BrowserContext) GrantPermissions(permissions []string, opts *GrantPermi
 }
 
 // NewCDPSession returns a new CDP session attached to this target.
-func (b *BrowserContext) NewCDPSession() any { // TODO: implement
-	k6ext.Panic(b.ctx, "BrowserContext.newCDPSession() has not been implemented yet")
+func (b *Context) NewCDPSession() any { // TODO: implement
+	k6ext.Panic(b.ctx, "Context.newCDPSession() has not been implemented yet")
 	return nil
 }
 
 // NewPage creates a new page inside this browser context.
-func (b *BrowserContext) NewPage() (*Page, error) {
-	b.logger.Debugf("BrowserContext:NewPage", "bctxid:%v", b.id)
+func (b *Context) NewPage() (*Page, error) {
+	b.logger.Debugf("Context:NewPage", "bctxid:%v", b.id)
 
 	p, err := b.browser.newPageInContext(b.id)
 	if err != nil {
@@ -280,13 +280,13 @@ func (b *BrowserContext) NewPage() (*Page, error) {
 	if p != nil {
 		ptid = p.targetID
 	}
-	b.logger.Debugf("BrowserContext:NewPage:return", "bctxid:%v ptid:%s", bctxid, ptid)
+	b.logger.Debugf("Context:NewPage:return", "bctxid:%v ptid:%s", bctxid, ptid)
 
 	return p, nil
 }
 
 // Pages returns a list of pages inside this browser context.
-func (b *BrowserContext) Pages() []*Page {
+func (b *Context) Pages() []*Page {
 	pages := make([]*Page, 1)
 	for _, p := range b.browser.getPages() {
 		pages = append(pages, p)
@@ -295,32 +295,32 @@ func (b *BrowserContext) Pages() []*Page {
 }
 
 // Route is not implemented.
-func (b *BrowserContext) Route(url goja.Value, handler goja.Callable) {
-	k6ext.Panic(b.ctx, "BrowserContext.route(url, handler) has not been implemented yet")
+func (b *Context) Route(url goja.Value, handler goja.Callable) {
+	k6ext.Panic(b.ctx, "Context.route(url, handler) has not been implemented yet")
 }
 
 // SetDefaultNavigationTimeout sets the default navigation timeout in milliseconds.
-func (b *BrowserContext) SetDefaultNavigationTimeout(timeout int64) {
-	b.logger.Debugf("BrowserContext:SetDefaultNavigationTimeout", "bctxid:%v timeout:%d", b.id, timeout)
+func (b *Context) SetDefaultNavigationTimeout(timeout int64) {
+	b.logger.Debugf("Context:SetDefaultNavigationTimeout", "bctxid:%v timeout:%d", b.id, timeout)
 
 	b.timeoutSettings.setDefaultNavigationTimeout(time.Duration(timeout) * time.Millisecond)
 }
 
 // SetDefaultTimeout sets the default maximum timeout in milliseconds.
-func (b *BrowserContext) SetDefaultTimeout(timeout int64) {
-	b.logger.Debugf("BrowserContext:SetDefaultTimeout", "bctxid:%v timeout:%d", b.id, timeout)
+func (b *Context) SetDefaultTimeout(timeout int64) {
+	b.logger.Debugf("Context:SetDefaultTimeout", "bctxid:%v timeout:%d", b.id, timeout)
 
 	b.timeoutSettings.setDefaultTimeout(time.Duration(timeout) * time.Millisecond)
 }
 
 // SetExtraHTTPHeaders is not implemented.
-func (b *BrowserContext) SetExtraHTTPHeaders(headers map[string]string) error {
-	return fmt.Errorf("BrowserContext.setExtraHTTPHeaders(headers) has not been implemented yet: %w", k6error.ErrFatal)
+func (b *Context) SetExtraHTTPHeaders(headers map[string]string) error {
+	return fmt.Errorf("Context.setExtraHTTPHeaders(headers) has not been implemented yet: %w", k6error.ErrFatal)
 }
 
 // SetGeolocation overrides the geo location of the user.
-func (b *BrowserContext) SetGeolocation(geolocation goja.Value) {
-	b.logger.Debugf("BrowserContext:SetGeolocation", "bctxid:%v", b.id)
+func (b *Context) SetGeolocation(geolocation goja.Value) {
+	b.logger.Debugf("Context:SetGeolocation", "bctxid:%v", b.id)
 
 	g := NewGeolocation()
 	if err := g.Parse(b.ctx, geolocation); err != nil {
@@ -337,14 +337,14 @@ func (b *BrowserContext) SetGeolocation(geolocation goja.Value) {
 
 // SetHTTPCredentials sets username/password credentials to use for HTTP authentication.
 //
-// Deprecated: Create a new BrowserContext with httpCredentials instead.
+// Deprecated: Create a new Context with httpCredentials instead.
 // See for details:
 // - https://github.com/microsoft/playwright/issues/2196#issuecomment-627134837
 // - https://github.com/microsoft/playwright/pull/2763
-func (b *BrowserContext) SetHTTPCredentials(httpCredentials goja.Value) {
+func (b *Context) SetHTTPCredentials(httpCredentials goja.Value) {
 	b.logger.Warnf("setHTTPCredentials", "setHTTPCredentials is deprecated."+
-		" Create a new BrowserContext with httpCredentials instead.")
-	b.logger.Debugf("BrowserContext:SetHTTPCredentials", "bctxid:%v", b.id)
+		" Create a new Context with httpCredentials instead.")
+	b.logger.Debugf("Context:SetHTTPCredentials", "bctxid:%v", b.id)
 
 	c := NewCredentials()
 	if err := c.Parse(b.ctx, httpCredentials); err != nil {
@@ -358,8 +358,8 @@ func (b *BrowserContext) SetHTTPCredentials(httpCredentials goja.Value) {
 }
 
 // SetOffline toggles the browser's connectivity on/off.
-func (b *BrowserContext) SetOffline(offline bool) {
-	b.logger.Debugf("BrowserContext:SetOffline", "bctxid:%v offline:%t", b.id, offline)
+func (b *Context) SetOffline(offline bool) {
+	b.logger.Debugf("Context:SetOffline", "bctxid:%v offline:%t", b.id, offline)
 
 	b.opts.Offline = offline
 	for _, p := range b.browser.getPages() {
@@ -368,28 +368,28 @@ func (b *BrowserContext) SetOffline(offline bool) {
 }
 
 // StorageState is not implemented.
-func (b *BrowserContext) StorageState(opts goja.Value) {
-	k6ext.Panic(b.ctx, "BrowserContext.storageState(opts) has not been implemented yet")
+func (b *Context) StorageState(opts goja.Value) {
+	k6ext.Panic(b.ctx, "Context.storageState(opts) has not been implemented yet")
 }
 
 // Unroute is not implemented.
-func (b *BrowserContext) Unroute(url goja.Value, handler goja.Callable) {
-	k6ext.Panic(b.ctx, "BrowserContext.unroute(url, handler) has not been implemented yet")
+func (b *Context) Unroute(url goja.Value, handler goja.Callable) {
+	k6ext.Panic(b.ctx, "Context.unroute(url, handler) has not been implemented yet")
 }
 
 // Timeout will return the default timeout or the one set by the user.
-func (b *BrowserContext) Timeout() time.Duration {
+func (b *Context) Timeout() time.Duration {
 	return b.timeoutSettings.timeout()
 }
 
 // WaitForEvent waits for event.
-func (b *BrowserContext) WaitForEvent(event string, f func(p *Page) (bool, error), timeout time.Duration) (any, error) {
-	b.logger.Debugf("BrowserContext:WaitForEvent", "bctxid:%v event:%q", b.id, event)
+func (b *Context) WaitForEvent(event string, f func(p *Page) (bool, error), timeout time.Duration) (any, error) {
+	b.logger.Debugf("Context:WaitForEvent", "bctxid:%v event:%q", b.id, event)
 
 	return b.waitForEvent(waitForEventType(event), f, timeout)
 }
 
-func (b *BrowserContext) waitForEvent(
+func (b *Context) waitForEvent(
 	event waitForEventType,
 	predicateFn func(p *Page) (bool, error),
 	timeout time.Duration,
@@ -407,32 +407,32 @@ func (b *BrowserContext) waitForEvent(
 
 	go b.runWaitForEventHandler(evCancelCtx, chEvHandler, predicateFn, ch, errCh)
 
-	b.on(evCancelCtx, []string{EventBrowserContextPage}, chEvHandler)
+	b.on(evCancelCtx, []string{EventContextPage}, chEvHandler)
 
 	select {
 	case <-b.ctx.Done():
 		return nil, b.ctx.Err() //nolint:wrapcheck
 	case <-time.After(timeout):
-		b.logger.Debugf("BrowserContext:WaitForEvent:timeout", "bctxid:%v event:%q", b.id, event)
+		b.logger.Debugf("Context:WaitForEvent:timeout", "bctxid:%v event:%q", b.id, event)
 		return nil, fmt.Errorf("waitForEvent timed out after %v", timeout)
 	case evData := <-ch:
-		b.logger.Debugf("BrowserContext:WaitForEvent:evData", "bctxid:%v event:%q", b.id, event)
+		b.logger.Debugf("Context:WaitForEvent:evData", "bctxid:%v event:%q", b.id, event)
 		return evData, nil
 	case err := <-errCh:
-		b.logger.Debugf("BrowserContext:WaitForEvent:err", "bctxid:%v event:%q, err:%v", b.id, event, err)
+		b.logger.Debugf("Context:WaitForEvent:err", "bctxid:%v event:%q, err:%v", b.id, event, err)
 		return nil, err
 	}
 }
 
 // runWaitForEventHandler can work with a nil predicateFn. If predicateFn is
 // nil it will return the response straight away.
-func (b *BrowserContext) runWaitForEventHandler(
+func (b *Context) runWaitForEventHandler(
 	ctx context.Context,
 	chEvHandler chan Event, predicateFn func(p *Page) (bool, error),
 	out chan<- any, errOut chan<- error,
 ) {
-	b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():starts", "bctxid:%v", b.id)
-	defer b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():returns", "bctxid:%v", b.id)
+	b.logger.Debugf("Context:runWaitForEventHandler:go():starts", "bctxid:%v", b.id)
+	defer b.logger.Debugf("Context:runWaitForEventHandler:go():returns", "bctxid:%v", b.id)
 
 	defer func() {
 		close(out)
@@ -442,14 +442,14 @@ func (b *BrowserContext) runWaitForEventHandler(
 	for {
 		select {
 		case <-ctx.Done():
-			b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():ctx:done", "bctxid:%v", b.id)
+			b.logger.Debugf("Context:runWaitForEventHandler:go():ctx:done", "bctxid:%v", b.id)
 			return
 		case ev := <-chEvHandler:
-			if ev.typ != EventBrowserContextPage {
+			if ev.typ != EventContextPage {
 				continue
 			}
 
-			b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage", "bctxid:%v", b.id)
+			b.logger.Debugf("Context:runWaitForEventHandler:go():EventContextPage", "bctxid:%v", b.id)
 			p, ok := ev.data.(*Page)
 			if !ok {
 				errOut <- fmt.Errorf("on create page event failed to return a page: %w", k6error.ErrFatal)
@@ -457,7 +457,7 @@ func (b *BrowserContext) runWaitForEventHandler(
 			}
 
 			if predicateFn == nil {
-				b.logger.Debugf("BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:return", "bctxid:%v", b.id)
+				b.logger.Debugf("Context:runWaitForEventHandler:go():EventContextPage:return", "bctxid:%v", b.id)
 				out <- p
 				return
 			}
@@ -470,7 +470,7 @@ func (b *BrowserContext) runWaitForEventHandler(
 
 			if retVal {
 				b.logger.Debugf(
-					"BrowserContext:runWaitForEventHandler:go():EventBrowserContextPage:predicateFn:return",
+					"Context:runWaitForEventHandler:go():EventContextPage:predicateFn:return",
 					"bctxid:%v", b.id,
 				)
 				out <- p
@@ -480,14 +480,14 @@ func (b *BrowserContext) runWaitForEventHandler(
 	}
 }
 
-func (b *BrowserContext) getSession(id target.SessionID) *Session {
+func (b *Context) getSession(id target.SessionID) *Session {
 	return b.browser.conn.getSession(id)
 }
 
 // AddCookies adds cookies into this browser context.
 // All pages within this context will have these cookies installed.
-func (b *BrowserContext) AddCookies(cookies []*Cookie) error {
-	b.logger.Debugf("BrowserContext:AddCookies", "bctxid:%v", b.id)
+func (b *Context) AddCookies(cookies []*Cookie) error {
+	b.logger.Debugf("Context:AddCookies", "bctxid:%v", b.id)
 
 	// skip work if no cookies provided.
 	if len(cookies) == 0 {
@@ -537,8 +537,8 @@ func (b *BrowserContext) AddCookies(cookies []*Cookie) error {
 }
 
 // ClearCookies clears cookies.
-func (b *BrowserContext) ClearCookies() error {
-	b.logger.Debugf("BrowserContext:ClearCookies", "bctxid:%v", b.id)
+func (b *Context) ClearCookies() error {
+	b.logger.Debugf("Context:ClearCookies", "bctxid:%v", b.id)
 
 	clearCookies := storage.
 		ClearCookies().
@@ -554,8 +554,8 @@ func (b *BrowserContext) ClearCookies() error {
 // automatically taken from the browser context when it is created. And some of
 // them are set by the page, i.e., using the Set-Cookie HTTP header or via
 // JavaScript like document.cookie.
-func (b *BrowserContext) Cookies(urls ...string) ([]*Cookie, error) {
-	b.logger.Debugf("BrowserContext:Cookies", "bctxid:%v", b.id)
+func (b *Context) Cookies(urls ...string) ([]*Cookie, error) {
+	b.logger.Debugf("Context:Cookies", "bctxid:%v", b.id)
 
 	// get cookies from this browser context.
 	getCookies := storage.
