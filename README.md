@@ -56,7 +56,7 @@ See our [project roadmap](ROADMAP.md) for more details.
 
 - If you're having issues installing or running xk6-browser, refer to [TROUBLESHOOTING](/TROUBLESHOOTING.md).
 - To get help about usage, report bugs, suggest features, and discuss xk6-browser with other users see [SUPPORT.md](SUPPORT.md).
-- Community discussion happens at the [xk6-browser forum](https://community.k6.io/c/xk6-browser/14).
+- Community discussion happens at the [xk6-browser forum](https://community.grafana.com/c/grafana-k6/k6-browser/79).
 
 ## Additional resources
 
