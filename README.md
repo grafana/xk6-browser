@@ -13,7 +13,7 @@
 </p>
 <p align="center">
     <a href="https://github.com/grafana/xk6-browser/releases">Download</a> ·
-    <a href="https://k6.io/docs/javascript-api/k6-x-browser/">Documentation</a> ·
+    <a href="https://grafana.com/docs/k6/latest/javascript-api/k6-experimental/browser/">Documentation</a> ·
     <a href="https://community.grafana.com/c/grafana-k6/k6-browser/79">Community Forum</a>
 </p>
 
@@ -42,15 +42,15 @@ See our [project roadmap](ROADMAP.md) for more details.
 
 ## Get started
 
-- [Getting Started](https://k6.io/docs/javascript-api/xk6-browser/)
-- [Running xk6-browser](https://k6.io/docs/javascript-api/xk6-browser/get-started/running-xk6-browser/)
-- [Browser Metrics](https://k6.io/docs/javascript-api/xk6-browser/get-started/browser-metrics/)
-- [Selecting Elements](https://k6.io/docs/javascript-api/xk6-browser/get-started/selecting-elements/)
+- [Getting Started](https://grafana.com/docs/k6/latest/using-k6-browser/)
+- [Running xk6-browser](https://grafana.com/docs/k6/latest/using-k6-browser/running-browser-tests/)
+- [Browser Metrics](https://grafana.com/docs/k6/latest/using-k6-browser/metrics/)
+- [Selecting Elements](https://grafana.com/docs/k6/latest/using-k6-browser/recommended-practices/selecting-elements/)
 
 ## Documentation
 
 - [Releases](https://github.com/grafana/xk6-browser/releases)
-- [API Documentation](https://k6.io/docs/javascript-api/xk6-browser/api/) - This documents how to use our API and its current state with xk6-browser.
+- [API Documentation](https://grafana.com/docs/k6/latest/javascript-api/k6-experimental/browser/) - This documents how to use our API and its current state with xk6-browser.
 
 ## Get help
 
