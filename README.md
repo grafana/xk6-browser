@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/grafana/xk6-browser/releases"><img src="https://img.shields.io/github/release/grafana/xk6-browser.svg" alt="Github release"></a>
-  <a href="https://github.com/grafana/xk6-browser/actions/workflows/all.yaml"><img src="https://github.com/grafana/xk6-browser/actions/workflows/all.yaml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/grafana/xk6-browser/actions/workflows/test.yml"><img src="https://github.com/grafana/xk6-browser/actions/workflows/test.yml/badge.svg" alt="Build status"></a>
   <a href="https://goreportcard.com/report/github.com/grafana/xk6-browser"><img src="https://goreportcard.com/badge/github.com/grafana/xk6-browser" alt="Go Report Card"></a>
   <br>
   <a href="https://twitter.com/k6_io"><img src="https://img.shields.io/badge/twitter-@k6_io-55acee.svg" alt="@k6_io on Twitter"></a>
@@ -60,7 +60,7 @@ See our [project roadmap](ROADMAP.md) for more details.
 
 ## Additional resources
 
-To find out more about xk6-browser or browser testing in general, check out the following links. 
+To find out more about xk6-browser or browser testing in general, check out the following links.
 
 **Note:** since our API is still transitioning, some of the code snippets from the links below might be inaccurate, though the concepts should still be correct. For the latest, refer to our up-to-date [API documentation](https://k6.io/docs/javascript-api/xk6-browser/api/).
 
