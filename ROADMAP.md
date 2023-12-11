@@ -30,8 +30,6 @@ Status updates
 Short-term goals
 ----------------
 
-These are goals tentatively achievable by Q2 2023.
-
 - **Transition our API to be async/`Promise` based.**<br>
   At the moment, most of our API is synchronous. This is due to the historical fact that k6 didn't support async behavior because of a missing per-VU event loop.
 [This event loop is now available](https://github.com/grafana/k6/pull/2228).
@@ -46,8 +44,6 @@ These are goals tentatively achievable by Q2 2023.
 
 Mid-term goals
 --------------
-
-These are goals tentatively achievable by Q1 2024.
 
 - **Global availability of browser-based tests in k6 Cloud for all users.**<br>
 
@@ -82,3 +78,21 @@ These are goals achievable after a year, and don't have a clear date of delivery
   *Definition of Done*<br>
   When we implement the selected scope of functionality found in Playwright that makes sense for xk6-browser. This is intentionally vague at the moment, and we'll refine it as we make progress.
 
+- **Support the usage of k6 browser for end-to-end tests.**<br>
+
+  *How will we achieve this?*<br>
+  Stabilize API, provide the ability to catch and expose JS errors and exceptions that our users can track.
+
+  *Definition of Done*<br>
+  - There are no planned changes to the existing API method signatures.
+  - xk6-browser provides an API to catch JS exceptions and expose them as metrics.
+
+- **Full integration with other Grafana products.*
+
+  *How will we achieve this?*<br>
+  _TBD_
+  
+  *Definition of Done*<br>
+  - Users are able to seamlessly navigate between frontend-facing Grafana products.
+  - The data collected from running browser tests can be accessed in products like Faro, Synthetic Monitoring, etc.
+  - The data collected by other frontend-facing Grafana products can be used to author and run browser-based tests in Grafana k6.
