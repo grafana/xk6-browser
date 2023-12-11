@@ -1,4 +1,4 @@
-import { check } from 'k6';
+import { check,sleep } from 'k6';
 import { browser } from 'k6/x/browser';
 
 export const options = {
@@ -21,6 +21,7 @@ export default async function() {
   const context = browser.newContext();
   const page = context.newPage();
 
+  sleep(30);
   try {
     // Goto front page, find login link and click it
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });

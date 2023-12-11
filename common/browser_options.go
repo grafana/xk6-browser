@@ -87,7 +87,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 			continue
 		}
 		if bo.shouldIgnoreIfBrowserIsRemote(e) {
-			logger.Warnf("BrowserOptions", "setting %s option is disallowed when browser is remote", e)
+			// logger.Warnf("BrowserOptions", "setting %s option is disallowed when browser is remote", e)
 			continue
 		}
 		var err error

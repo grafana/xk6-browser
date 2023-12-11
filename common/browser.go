@@ -111,7 +111,7 @@ func newBrowser(
 
 func (b *Browser) connect() error {
 	b.logger.Debugf("Browser:connect", "wsURL:%q", b.browserProc.WsURL())
-	conn, err := NewConnection(b.ctx, b.browserProc.WsURL(), b.logger)
+	conn, err := NewConnection(b.ctx, b, b.browserProc.WsURL(), b.logger)
 	if err != nil {
 		return fmt.Errorf("connecting to browser DevTools URL: %w", err)
 	}
@@ -183,17 +183,21 @@ func (b *Browser) initEvents() error {
 			}
 		}()
 		for {
+			iid := GetIterationID(b.ctx)
 			select {
 			case <-cancelCtx.Done():
 				return
 			case event := <-chHandler:
 				if ev, ok := event.data.(*target.EventAttachedToTarget); ok {
+					fmt.Printf("PAGE ATTACH EVENT (%s): sid:%s targetInfo:%+v\n", iid, ev.SessionID, ev.TargetInfo)
 					b.logger.Debugf("Browser:initEvents:onAttachedToTarget", "sid:%v tid:%v", ev.SessionID, ev.TargetInfo.TargetID)
 					b.onAttachedToTarget(ev)
 				} else if ev, ok := event.data.(*target.EventDetachedFromTarget); ok {
+					fmt.Printf("PAGE DETACH EVENT (%s): %+v\n", iid, ev)
 					b.logger.Debugf("Browser:initEvents:onDetachedFromTarget", "sid:%v", ev.SessionID)
 					b.onDetachedFromTarget(ev)
 				} else if event.typ == EventConnectionClose {
+					fmt.Printf("CONNECTION CLOSE EVENT (%s): %+v\n", iid, event)
 					b.logger.Debugf("Browser:initEvents:EventConnectionClose", "")
 					return
 				}
@@ -228,10 +232,12 @@ func (b *Browser) onAttachedToTarget(ev *target.EventAttachedToTarget) {
 	)
 
 	if !b.isAttachedPageValid(ev, browserCtx) {
+		fmt.Println("❌❌❌❌❌ ----> skip attach to target")
 		return // Ignore this page.
 	}
 	session := b.conn.getSession(ev.SessionID)
 	if session == nil {
+		fmt.Println("❌❌❌❌❌ ----> no session!")
 		b.logger.Debugf("Browser:onAttachedToTarget",
 			"session closed before attachToTarget is handled. sid:%v tid:%v",
 			ev.SessionID, targetPage.TargetID)
@@ -304,6 +310,10 @@ func (b *Browser) isAttachedPageValid(ev *target.EventAttachedToTarget, browserC
 			ev.SessionID, targetPage.TargetID, targetPage.BrowserContextID, browserCtx == nil, targetPage.Type)
 		return false
 	}
+	if browserCtx.id != targetPage.BrowserContextID {
+		return false
+	}
+	// fmt.Printf("✅✅✅✅✅ ----> attach to target: have:%v got:%v\n", browserCtx.id, targetPage.BrowserContextID)
 
 	return true
 }

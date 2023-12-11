@@ -322,24 +322,37 @@ func TestMultiConnectToSingleBrowser(t *testing.T) {
 
 	ctx := context.Background()
 
-	b1, err := tb.browserType.Connect(ctx, tb.wsURL)
-	require.NoError(t, err)
+	t.Log("b1: connect to browser")
+	// b1, err := tb.browserType.Connect(ctx, tb.wsURL)
+	// require.NoError(t, err)
+	b1 := tb.Browser
+	t.Log("\tb1: new context")
 	bctx1, err := b1.NewContext(nil)
 	require.NoError(t, err)
-	p1, err := bctx1.NewPage()
-	require.NoError(t, err, "failed to create page #1")
+	_ = bctx1
+	// t.Log("\tb1: new page")
+	// p1, err := bctx1.NewPage()
+	// require.NoError(t, err, "failed to create page #1")
+	// _ = p1
 
+	t.Log("b2: connect to browser----------------------- ☎️")
 	b2, err := tb.browserType.Connect(ctx, tb.wsURL)
 	require.NoError(t, err)
+	t.Log("\tb2: new context")
 	bctx2, err := b2.NewContext(nil)
 	require.NoError(t, err)
+	_ = bctx2
 
-	err = p1.Close(nil)
-	require.NoError(t, err, "failed to close page #1")
-	bctx1.Close()
+	// t.Log("\tb1: close page---------------------- ❌")
+	// err = p1.Close(nil)
+	// require.NoError(t, err, "failed to close page #1")
+	// t.Log("b1: close context")
+	// bctx1.Close()
 
+	t.Log("\tb2: new page")
 	p2, err := bctx2.NewPage()
 	require.NoError(t, err, "failed to create page #2")
+	t.Log("b2: close page")
 	err = p2.Close(nil)
 	require.NoError(t, err, "failed to close page #2")
 }

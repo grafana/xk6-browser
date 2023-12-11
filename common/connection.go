@@ -131,10 +131,12 @@ type Connection struct {
 	// Reuse the easyjson structs to avoid allocs per Read/Write.
 	decoder jlexer.Lexer
 	encoder jwriter.Writer
+
+	browser *Browser
 }
 
 // NewConnection creates a new browser.
-func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Connection, error) {
+func NewConnection(ctx context.Context, b *Browser, wsURL string, logger *log.Logger) (*Connection, error) {
 	var header http.Header
 	var tlsConfig *tls.Config
 	wsd := websocket.Dialer{
@@ -163,6 +165,7 @@ func NewConnection(ctx context.Context, wsURL string, logger *log.Logger) (*Conn
 		closing:          make(chan struct{}),
 		msgIDGen:         &msgID{},
 		sessions:         make(map[target.SessionID]*Session),
+		browser:          b,
 	}
 
 	go c.recvLoop()
@@ -203,14 +206,20 @@ func (c *Connection) close(code int) error {
 	return err
 }
 
-func (c *Connection) closeSession(sid target.SessionID, tid target.ID) {
+func (c *Connection) closeSession(sid target.SessionID, tid target.ID) bool {
 	c.logger.Debugf("Connection:closeSession", "sid:%v tid:%v wsURL:%v", sid, tid, c.wsURL)
 	c.sessionsMu.Lock()
-	if session, ok := c.sessions[sid]; ok {
+	defer c.sessionsMu.Unlock()
+
+	session, ok := c.sessions[sid]
+	if !ok {
+		return false
+	}
+	if ok {
 		session.close()
 	}
 	delete(c.sessions, sid)
-	c.sessionsMu.Unlock()
+	return true
 }
 
 func (c *Connection) closeAllSessions() {
@@ -325,6 +334,19 @@ func (c *Connection) recvLoop() {
 			}
 			eva := ev.(*target.EventAttachedToTarget)
 			sid, tid := eva.SessionID, eva.TargetInfo.TargetID
+			// fmt.Printf("ATTACH sid:%v tid:%v targetInfo:%+v\n", sid, tid, eva.TargetInfo)
+			c.browser.contextMu.RLock()
+			if c.browser.context == nil {
+				fmt.Println("❌❌❌❌❌ ----> skip attach to target [CONNECTION]: c.browser.context == nil")
+				c.browser.contextMu.RUnlock()
+				continue
+			}
+			if c.browser.context.id != eva.TargetInfo.BrowserContextID {
+				fmt.Println("❌❌❌❌❌ ----> skip attach to target [CONNECTION]")
+				c.browser.contextMu.RUnlock()
+				continue
+			}
+			c.browser.contextMu.RUnlock()
 
 			c.sessionsMu.Lock()
 			session := NewSession(c.ctx, c, sid, tid, c.logger, c.msgIDGen)
@@ -340,7 +362,10 @@ func (c *Connection) recvLoop() {
 			evt := ev.(*target.EventDetachedFromTarget)
 			sid := evt.SessionID
 			tid := c.findTargetIDForLog(sid)
-			c.closeSession(sid, tid)
+			if !c.closeSession(sid, tid) {
+				fmt.Println("❌❌❌❌❌ ----> skip detach from target [CONNECTION]")
+				continue
+			}
 		}
 
 		switch {
