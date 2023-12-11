@@ -32,32 +32,16 @@ Short-term goals
 
 These are goals tentatively achievable by Q2 2023.
 
-- **Make xk6-browser a part of standard distribution of k6.**<br>
-
-  *How will we achieve this?*<br>
-  xk6-browser will become an [experimental module](https://k6.io/docs/javascript-api/k6-experimental/) of k6, and thus available to use in load tests that utilize standard k6 release builds.
-
-  *Definition of Done*<br>
-  A load test script that imports `k6/experimental/browser` can be executed using the latest release build of k6. The browser-level APIs provided by xk6-browser are available for use within this script.
-
-- **Public beta in k6 Cloud.**
-
-  *How will we achieve this?*<br>
-  Cloud builds will start using k6 releases that include xk6-browser as an experimental module.
-
-  *Definition of Done*<br>
-  Load tests executed in Cloud can use xk6-browser API by importing `k6/experimental/browser`.
-
 - **Transition our API to be async/`Promise` based.**<br>
   At the moment, most of our API is synchronous. This is due to the historical fact that k6 didn't support async behavior because of a missing per-VU event loop.
 [This event loop is now available](https://github.com/grafana/k6/pull/2228).
   Async APIs are important for a browser-testing tool, since most browser behavior and [CDP](https://chromedevtools.github.io/devtools-protocol/) (the protocol we use to communicate with the browser) is event-based. We need to expose an async API to implement this missing functionality and reach feature parity with tools like Playwright or Puppeteer.
 
   *How will we achieve this?*<br>
-  By gradually transitioning the current API to an async implementation, and implementing new features as async.
+  By gradually transitioning the relevant methods of current API to an async implementation, and implementing new features as async when needed.
 
   *Definition of Done*<br>
-  When most of the API can be used asynchronously.
+  When all of currently existing relevant API methods can be executed async.
 
 
 Mid-term goals
@@ -65,55 +49,36 @@ Mid-term goals
 
 These are goals tentatively achievable by Q1 2024.
 
-- **Global availability of the extension in k6 Cloud for all users.**<br>
+- **Global availability of browser-based tests in k6 Cloud for all users.**<br>
 
   *How will we achieve this?*<br>
   The deployment should be optimized and the extension thoroughly tested before making it available to all users. Frontend changes should be done at this point, and usage costs (CPU, RAM, storage) and pricing details should be determined, followed by public announcements of the availability.
 
   *Definition of Done*<br>
-  The import path for xk6-browser is updated to `k6/browser` and the API is considered to be stable.
-
-
-- **Increase test code coverage; refactor problematic areas of the codebase; fix "flaky" tests, linter issues, etc.**<br>
-  We'll constantly focus on these mid and long-term goals. See issues [#228](https://github.com/grafana/xk6-browser/issues/228), [#241](https://github.com/grafana/xk6-browser/issues/241) and [#58](https://github.com/grafana/xk6-browser/issues/58).
-
-  *How will we achieve this?*<br>
-  By gradually adding more unit and functional tests and fixing issues when the opportunity arises. We won't have long stints where we focus exclusively on this goal, but it's something we'll dedicate as much time as possible to.
-
-  *Definition of Done*<br>
-  The goal is not to reach 100% code coverage, but, realistically speaking, 80 or 90% should be achievable. Our CI test runs should be stable and flake-free, and we should have no linter issues.
-
+  - The import path for xk6-browser is updated to `k6/browser` and the API is considered to be stable.
+  - Tests can be executed using multiple browser VUs.
 
 Long-term goals
 ---------------
 
 These are goals achievable after a year, and don't have a clear date of delivery yet.
 
-- **Add support for Firefox and other WebKit-based browsers.**<br>
-  Currently (April 2022), our main focus is supporting Chromium-based browsers. We should expand support to include other browsers as well. The main challenges here will be around CDP and the behavior differences between browsers.
+- **Add support for other browsers.**<br>
+  Currently, our main focus is supporting Chromium-based browsers. We should expand support to include other browsers as well. The main challenges here will be around CDP and the behavior differences between browsers.
 
   *How will we achieve this?*<br>
   By testing other browsers and fixing issues as they arise.
 
   *Definition of Done*<br>
-  When the latest Firefox and certain WebKit-based browsers are as well-supported as Chromium is.
+  When a user can choose and execute a test in a non-Chrome browser.
 
 
-- **Feature parity with Playwright and Puppeteer.**<br>
-  Currently, our functionality is limited compared to more mature projects like Playwright and Puppeteer. We plan to expand this gradually and reach or exceed the features offered by other browser automation tools, such as screen capture, video recording, downloading, and file uploading.
+- **Reach rough compatibility with Playwright.**<br>
+  Currently, our functionality is limited compared to more mature projects like Playwright. We plan to expand this gradually and reach or exceed the features offered by other browser automation tools, such as screen capture, video recording, downloading, and file uploading.
 
   *How will we achieve this?*<br>
   By prioritizing new features to add based on API importance and user feedback. Once our standalone and Cloud users are able to execute feasible complex scenarios, our main focus will be to add more missing features and close the current feature gap.
 
   *Definition of Done*<br>
-  When we implement all of the functionality found in other tools that makes sense for xk6-browser. This is intentionally vague at the moment, and we'll refine it as we make progress.
+  When we implement the selected scope of functionality found in Playwright that makes sense for xk6-browser. This is intentionally vague at the moment, and we'll refine it as we make progress.
 
-
-- **Optimize the k6 Cloud deployment and remove the Beta status.**<br>
-  At this point, browser testing should be a well-tested feature in k6 Cloud, and work should be done to optimize the deployment.
-
-  *How will we achieve this?*<br>
-  By making changes to optimize test-startup times and reduce operating costs. An example could be to use browser pools that are reused between test runs.
-
-  *Definition of Done*<br>
-  Difficult to gauge, but whenever we feel comfortable about removing the Beta label. Both browser testing and support for it in k6 Cloud should be considered feature complete, and regular maintenance and improvements should follow.
