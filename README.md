@@ -12,7 +12,7 @@
   <a href="https://k6.io/slack"><img src="https://img.shields.io/badge/Slack-k6-ff69b4.svg" alt="Slack channel"></a>
 </p>
 <p align="center">
-    <a href="https://github.com/grafana/xk6-browser/releases">Download</a> ·
+    <a href="https://github.com/grafana/k6/releases/latest">Download</a> ·
     <a href="https://grafana.com/docs/k6/latest/javascript-api/k6-experimental/browser/">Documentation</a> ·
     <a href="https://community.grafana.com/c/grafana-k6/k6-browser/79">Community Forum</a>
 </p>
