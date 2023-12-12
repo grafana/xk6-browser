@@ -14,6 +14,7 @@ import (
 
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
+	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
 	"github.com/gorilla/websocket"
@@ -309,7 +310,11 @@ func (c *Connection) recvLoop() {
 			return
 		}
 
-		c.logger.Tracef("cdp:recv", "<- %s", buf)
+		m := buf
+		if len(m) > 1024 {
+			m = m[:1024]
+		}
+		c.logger.Tracef("cdp:recv", "<- %s", m)
 
 		var msg cdproto.Message
 		c.decoder = jlexer.Lexer{Data: buf}
@@ -336,14 +341,52 @@ func (c *Connection) recvLoop() {
 			sid, tid := eva.SessionID, eva.TargetInfo.TargetID
 			// fmt.Printf("ATTACH sid:%v tid:%v targetInfo:%+v\n", sid, tid, eva.TargetInfo)
 			c.browser.contextMu.RLock()
-			if c.browser.context == nil {
-				fmt.Println("❌❌❌❌❌ ----> skip attach to target [CONNECTION]: c.browser.context == nil")
+			fmt.Println("c.browser.context==nil", c.browser.context == nil)
+			if c.browser.context != nil && c.browser.context.id != eva.TargetInfo.BrowserContextID {
 				c.browser.contextMu.RUnlock()
-				continue
-			}
-			if c.browser.context.id != eva.TargetInfo.BrowserContextID {
-				fmt.Println("❌❌❌❌❌ ----> skip attach to target [CONNECTION]")
-				c.browser.contextMu.RUnlock()
+				fmt.Printf("❌❌❌❌❌ (iter:%v) ----> skip attach to target [CONNECTION] bcid:%v tbcid:%v sid:%v tid:%v\n", GetIterationID(c.ctx), c.browser.context.id, eva.TargetInfo.BrowserContextID, sid, tid)
+
+				send := func(sessionID target.SessionID, method string, params easyjson.Marshaler) error {
+					var buf []byte
+					if params != nil {
+						var err error
+						buf, err = easyjson.Marshal(params)
+						if err != nil {
+							return err
+						}
+					}
+					msg := &cdproto.Message{
+						ID: c.msgIDGen.newID(),
+						// We use different sessions to send messages to "targets"
+						// (browser, page, frame etc.) in CDP.
+						//
+						// If we don't specify a session (a session ID in the JSON message),
+						// it will be a message for the browser target.
+						//
+						// With a session specified (set using cdp.WithExecutor(ctx, session)),
+						// it will properly route the CDP message to the correct target
+						// (page, frame etc.).
+						//
+						// The difference between using Connection and Session to send
+						// and receive CDP messages basically, they both implement
+						// the cdp.Executor interface but one adds a sessionID to
+						// the CPD messages:
+						SessionID: sessionID,
+						Method:    cdproto.MethodType(method),
+						Params:    buf,
+					}
+					return c.send(c.ctx, msg, nil, nil)
+				}
+
+				err := send(sid, cdpruntime.CommandRunIfWaitingForDebugger, nil)
+				if err != nil {
+					fmt.Printf("CommandRunIfWaitingForDebugger err:%v\n", err)
+				}
+				// err = send(sid, target.CommandDetachFromTarget, &target.DetachFromTargetParams{SessionID: sid})
+				// if err != nil {
+				// 	fmt.Printf("DetachFromTargetParams err:%v\n", err)
+				// }
+
 				continue
 			}
 			c.browser.contextMu.RUnlock()
@@ -366,6 +409,7 @@ func (c *Connection) recvLoop() {
 				fmt.Println("❌❌❌❌❌ ----> skip detach from target [CONNECTION]")
 				continue
 			}
+			// _, _ = sid, tid
 		}
 
 		switch {
@@ -490,7 +534,11 @@ func (c *Connection) sendLoop() {
 			}
 
 			buf, _ := c.encoder.BuildBytes()
-			c.logger.Tracef("cdp:send", "-> %s", buf)
+			m := buf
+			if len(m) > 1024 {
+				m = m[:1024]
+			}
+			c.logger.Tracef("cdp:send", "-> %s", m)
 			writer, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				c.handleIOError(err)
