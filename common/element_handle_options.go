@@ -215,13 +215,13 @@ func (f *Files) addFile(ctx context.Context, file goja.Value) error {
 	case reflect.Map: // file descriptor object
 		var parsedFile File
 		if err := rt.ExportTo(file, &parsedFile); err != nil {
-			return fmt.Errorf("Unable to parse SetInputFiles parameter; reason: %w", err)
+			return fmt.Errorf("parsing file descriptor: %w", err)
 		}
 		f.Payload = append(f.Payload, &parsedFile)
 	case reflect.String: // file path
 		f.Payload = append(f.Payload, &File{Path: file.Export().(string)})
 	default:
-		return fmt.Errorf("Unable to parse setInputFiles parameter")
+		return fmt.Errorf("invalid parameter type %T", fileType.Kind())
 	}
 
 	return nil

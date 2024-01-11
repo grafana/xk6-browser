@@ -1242,7 +1242,7 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
-// SetInputFiles sets the Files given in the opts into the <input type="file"> element.
+// SetInputFiles sets the given files into the input file element.
 func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
 	actionOpts := NewElementHandleSetInputFilesOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
@@ -1266,10 +1266,10 @@ func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
 
 func (h *ElementHandle) resolveFiles(payload []*File) error {
 	for _, file := range payload {
-		if file.Path != "" {
+		if strings.TrimSpace(file.Path) != "" {
 			buffer, err := os.ReadFile(file.Path)
 			if err != nil {
-				return fmt.Errorf("Error while resolving file: %w", err)
+				return fmt.Errorf("reading file: %w", err)
 			}
 			file.Buffer = base64.StdEncoding.EncodeToString(buffer)
 			file.Name = filepath.Base(file.Path)
