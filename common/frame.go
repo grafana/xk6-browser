@@ -1544,6 +1544,7 @@ func (f *Frame) SetInputFiles(selector string, files goja.Value, opts goja.Value
 	}
 
 	applySlowMo(f.ctx)
+
 	return nil
 }
 

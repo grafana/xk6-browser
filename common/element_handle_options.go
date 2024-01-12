@@ -219,7 +219,9 @@ func (f *Files) addFile(ctx context.Context, file goja.Value) error {
 		}
 		f.Payload = append(f.Payload, &parsedFile)
 	case reflect.String: // file path
-		f.Payload = append(f.Payload, &File{Path: file.Export().(string)})
+		if v, ok := file.Export().(string); ok {
+			f.Payload = append(f.Payload, &File{Path: v})
+		}
 	default:
 		return fmt.Errorf("invalid parameter type : %s", fileType.Kind().String())
 	}

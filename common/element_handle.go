@@ -1263,6 +1263,7 @@ func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) error {
 	if err != nil {
 		return fmt.Errorf("setting input files: %w", err)
 	}
+
 	return nil
 }
 
@@ -1309,6 +1310,7 @@ func (h *ElementHandle) setInputFiles(apiCtx context.Context, payload []*File) e
 	} else if v.String() != "done" {
 		return errorFromDOMError(v.String())
 	}
+
 	return nil
 }
 
