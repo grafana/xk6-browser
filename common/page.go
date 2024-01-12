@@ -1170,10 +1170,10 @@ func (p *Page) SetExtraHTTPHeaders(headers map[string]string) {
 }
 
 // SetInputFiles sets input files for the selected element.
-func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value) {
+func (p *Page) SetInputFiles(selector string, files goja.Value, opts goja.Value) error {
 	p.logger.Debugf("Page:SetInputFiles", "sid:%v selector:%s", p.sessionID(), selector)
 
-	p.MainFrame().SetInputFiles(selector, files, opts) //nolint:wrapcheck
+	return p.MainFrame().SetInputFiles(selector, files, opts) //nolint:wrapcheck
 }
 
 // SetViewportSize will update the viewport width and height.

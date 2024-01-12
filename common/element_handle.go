@@ -1243,15 +1243,16 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 }
 
 // SetInputFiles sets the given files into the input file element.
-func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
+func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) error {
 	actionOpts := NewElementHandleSetInputFilesOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
-		k6ext.Panic(h.ctx, "parsing setInputFiles options: %w", err)
+		return fmt.Errorf("parsing setInputFiles options: %w", err)
 	}
 
 	actionParam := &Files{}
+
 	if err := actionParam.Parse(h.ctx, files); err != nil {
-		k6ext.Panic(h.ctx, "parsing setInputFiles parameter: %w", err)
+		return fmt.Errorf("parsing setInputFiles parameter: %w", err)
 	}
 
 	fn := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
@@ -1260,8 +1261,9 @@ func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) {
 	actFn := h.newAction([]string{}, fn, actionOpts.Force, actionOpts.NoWaitAfter, actionOpts.Timeout)
 	_, err := call(h.ctx, actFn, actionOpts.Timeout)
 	if err != nil {
-		k6ext.Panic(h.ctx, "setting input files: %w", err)
+		return fmt.Errorf("setting input files: %w", err)
 	}
+	return nil
 }
 
 func (h *ElementHandle) resolveFiles(payload []*File) error {
@@ -1298,11 +1300,15 @@ func (h *ElementHandle) setInputFiles(apiCtx context.Context, payload []*File) e
 	if err != nil {
 		return err
 	}
-	if res, ok := result.(string); ok && res != "done" {
-		// Either we're done or an error happened (returned as "error:..." from JS)
-		return errorFromDOMError(res)
+	v, ok := result.(goja.Value)
+	if !ok {
+		return fmt.Errorf("unexpected type %T", result)
 	}
-
+	if v.ExportType().Kind() != reflect.String {
+		return fmt.Errorf("unexpected result type %s", v.ExportType().Kind().String())
+	} else if v.String() != "done" {
+		return errorFromDOMError(v.String())
+	}
 	return nil
 }
 
