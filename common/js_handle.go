@@ -25,7 +25,7 @@ type JSHandleAPI interface {
 	EvaluateHandle(pageFunc goja.Value, args ...goja.Value) (JSHandleAPI, error)
 	GetProperties() (map[string]JSHandleAPI, error)
 	GetProperty(propertyName string) JSHandleAPI
-	JSONValue() goja.Value
+	JSONValue() string
 	ObjectID() cdpruntime.RemoteObjectID
 }
 
@@ -168,7 +168,7 @@ func (h *BaseJSHandle) GetProperty(_ string) JSHandleAPI {
 }
 
 // JSONValue returns a JSON version of this JS handle.
-func (h *BaseJSHandle) JSONValue() goja.Value {
+func (h *BaseJSHandle) JSONValue() string {
 	if h.remoteObject.ObjectID != "" {
 		var result *runtime.RemoteObject
 		var err error
@@ -179,13 +179,13 @@ func (h *BaseJSHandle) JSONValue() goja.Value {
 		if result, _, err = action.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
 			k6ext.Panic(h.ctx, "getting properties for JS handle: %w", err)
 		}
-		res, err := valueFromRemoteObject(h.ctx, result)
+		res, err := parseConsoleRemoteObject(h.logger, result)
 		if err != nil {
 			k6ext.Panic(h.ctx, "extracting value from remote object: %w", err)
 		}
 		return res
 	}
-	res, err := valueFromRemoteObject(h.ctx, h.remoteObject)
+	res, err := parseConsoleRemoteObject(h.logger, h.remoteObject)
 	if err != nil {
 		k6ext.Panic(h.ctx, "extracting value from remote object: %w", err)
 	}

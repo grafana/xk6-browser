@@ -795,7 +795,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "log", cm.Type)
 				assert.Equal(t, "this is a log message", cm.Text)
-				assert.Equal(t, "this is a log message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a log message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -806,7 +806,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "debug", cm.Type)
 				assert.Equal(t, "this is a debug message", cm.Text)
-				assert.Equal(t, "this is a debug message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a debug message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -817,7 +817,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "info", cm.Type)
 				assert.Equal(t, "this is an info message", cm.Text)
-				assert.Equal(t, "this is an info message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is an info message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -828,7 +828,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "error", cm.Type)
 				assert.Equal(t, "this is an error message", cm.Text)
-				assert.Equal(t, "this is an error message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is an error message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -839,7 +839,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "warning", cm.Type)
 				assert.Equal(t, "this is a warning message", cm.Text)
-				assert.Equal(t, "this is a warning message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a warning message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -870,7 +870,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "table", cm.Type)
 				assert.Equal(t, "Array(2)", cm.Text)
-				assert.Equal(t, "Grafana,k6,Grafana,Mimir", cm.Args[0].JSONValue().String())
+				assert.Equal(t, `[["Grafana","k6"],["Grafana","Mimir"]]`, cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -881,7 +881,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "trace", cm.Type)
 				assert.Equal(t, "trace example", cm.Text)
-				assert.Equal(t, "trace example", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "trace example", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
