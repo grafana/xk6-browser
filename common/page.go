@@ -1295,7 +1295,12 @@ func (p *Page) WaitForFunction(fn, opts goja.Value, args ...goja.Value) (any, er
 		js = fmt.Sprintf("() => (%s)", js)
 	}
 
-	return p.frameManager.MainFrame().WaitForFunction(js, popts, args...)
+	jsArgs := make([]any, 0, len(args))
+	for _, a := range args {
+		jsArgs = append(jsArgs, a.Export())
+	}
+
+	return p.frameManager.MainFrame().WaitForFunction(js, popts, jsArgs...)
 }
 
 // WaitForLoadState waits for the specified page life cycle event.
