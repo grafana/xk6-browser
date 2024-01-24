@@ -73,8 +73,9 @@ func TestNestedFrames(t *testing.T) {
 	err = button1Handle.Click(common.NewElementHandleClickOptions(button1Handle.Timeout()))
 	assert.Nil(t, err)
 
-	v := frame2.Evaluate(tb.toGojaValue(`() => window.buttonClicked`))
-	assert.True(t, tb.asGojaBool(v), "button hasn't been clicked")
+	v := frame2.Evaluate(`() => window.buttonClicked`)
+	assert.IsType(t, true, v)
+	assert.True(t, v.(bool), "button hasn't been clicked") //nolint:forcetypeassert
 }
 
 func TestPageEmulateMedia(t *testing.T) {
@@ -89,17 +90,14 @@ func TestPageEmulateMedia(t *testing.T) {
 		ReducedMotion: "reduce",
 	}))
 
-	result := p.Evaluate(tb.toGojaValue("() => matchMedia('print').matches"))
-	res := tb.asGojaValue(result)
-	assert.True(t, res.ToBoolean(), "expected media 'print'")
+	result := p.Evaluate(`() => matchMedia('print').matches`)
+	assert.IsTypef(t, true, result, "expected media 'print'")
 
-	result = p.Evaluate(tb.toGojaValue("() => matchMedia('(prefers-color-scheme: dark)').matches"))
-	res = tb.asGojaValue(result)
-	assert.True(t, res.ToBoolean(), "expected color scheme 'dark'")
+	result = p.Evaluate(`() => matchMedia('(prefers-color-scheme: dark)').matches`)
+	assert.IsTypef(t, true, result, "expected color scheme 'dark'")
 
-	result = p.Evaluate(tb.toGojaValue("() => matchMedia('(prefers-reduced-motion: reduce)').matches"))
-	res = tb.asGojaValue(result)
-	assert.True(t, res.ToBoolean(), "expected reduced motion setting to be 'reduce'")
+	result = p.Evaluate(`() => matchMedia('(prefers-reduced-motion: reduce)').matches`)
+	assert.IsTypef(t, true, result, "expected reduced motion setting to be 'reduce'")
 }
 
 func TestPageContent(t *testing.T) {
@@ -124,13 +122,12 @@ func TestPageEvaluate(t *testing.T) {
 		p := tb.NewPage(nil)
 
 		got := p.Evaluate(
-			tb.toGojaValue("(v) => { window.v = v; return window.v }"),
-			tb.toGojaValue("test"),
+			`(v) => { window.v = v; return window.v }`,
+			"test",
 		)
 
-		require.IsType(t, tb.toGojaValue(""), got)
-		gotVal := tb.asGojaValue(got)
-		assert.Equal(t, "test", gotVal.Export())
+		require.IsType(t, "", got)
+		assert.Equal(t, "test", got)
 	})
 
 	t.Run("ok/void_func", func(t *testing.T) {
@@ -138,7 +135,7 @@ func TestPageEvaluate(t *testing.T) {
 
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
-		h, err := p.EvaluateHandle(tb.toGojaValue(`() => console.log("hello")`))
+		h, err := p.EvaluateHandle(`() => console.log("hello")`)
 		assert.Nil(t, h, "expected nil handle")
 		assert.Error(t, err)
 	})
@@ -169,7 +166,7 @@ func TestPageEvaluate(t *testing.T) {
 				tb := newTestBrowser(t)
 				assertExceptionContains(t, tb.runtime(), func() {
 					p := tb.NewPage(nil)
-					p.Evaluate(tb.toGojaValue(tc.js))
+					p.Evaluate(tc.js)
 				}, tc.errMsg)
 			})
 		}
@@ -225,14 +222,9 @@ func TestPageGotoWaitUntilLoad(t *testing.T) {
 	}
 	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
-	var (
-		results = p.Evaluate(b.toGojaValue("() => window.results"))
-		actual  []string
-	)
-	_ = b.runtime().ExportTo(b.asGojaValue(results), &actual)
-
+	results := p.Evaluate(`() => window.results`)
 	assert.EqualValues(t,
-		[]string{"DOMContentLoaded", "load"}, actual,
+		[]any{"DOMContentLoaded", "load"}, results,
 		`expected "load" event to have fired`,
 	)
 }
@@ -249,14 +241,14 @@ func TestPageGotoWaitUntilDOMContentLoaded(t *testing.T) {
 	}
 	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
-	var (
-		results = p.Evaluate(b.toGojaValue("() => window.results"))
-		actual  []string
-	)
-	_ = b.runtime().ExportTo(b.asGojaValue(results), &actual)
-
+	v := p.Evaluate(`() => window.results`)
+	results, ok := v.([]any)
+	if !ok {
+		t.Fatalf("expected results to be a slice, got %T", v)
+	}
+	require.True(t, len(results) >= 1, "expected at least one result")
 	assert.EqualValues(t,
-		"DOMContentLoaded", actual[0],
+		"DOMContentLoaded", results[0],
 		`expected "DOMContentLoaded" event to have fired`,
 	)
 }
@@ -461,8 +453,10 @@ func TestPageScreenshotFullpage(t *testing.T) {
 	p.SetViewportSize(tb.toGojaValue(struct {
 		Width  float64 `js:"width"`
 		Height float64 `js:"height"`
-	}{Width: 1280, Height: 800}))
-	p.Evaluate(tb.toGojaValue(`
+	}{
+		Width: 1280, Height: 800,
+	}))
+	p.Evaluate(`
 	() => {
 		document.body.style.margin = '0';
 		document.body.style.padding = '0';
@@ -476,11 +470,13 @@ func TestPageScreenshotFullpage(t *testing.T) {
 
 		document.body.appendChild(div);
 	}
-    	`))
+    `)
 
 	buf := p.Screenshot(tb.toGojaValue(struct {
 		FullPage bool `js:"fullPage"`
-	}{FullPage: true}))
+	}{
+		FullPage: true,
+	}))
 
 	reader := bytes.NewReader(buf.Bytes())
 	img, err := png.Decode(reader)
@@ -589,11 +585,8 @@ func TestPageWaitForFunction(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, log, "ok: null")
 
-		argEvalJS := p.Evaluate(tb.toGojaValue("() => window._arg"))
-		argEval := tb.asGojaValue(argEvalJS)
-		var gotArg string
-		_ = tb.runtime().ExportTo(argEval, &gotArg)
-		assert.Equal(t, arg, gotArg)
+		argEvalJS := p.Evaluate(`() => window._arg`)
+		assert.Equal(t, arg, argEvalJS)
 	})
 
 	t.Run("ok_func_raf_default_args", func(t *testing.T) {
@@ -619,11 +612,9 @@ func TestPageWaitForFunction(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, log, "ok: null")
 
-		argEvalJS := p.Evaluate(tb.toGojaValue("() => window._args"))
-		argEval := tb.asGojaValue(argEvalJS)
+		argEvalJS := p.Evaluate(`() => window._args`)
 		var gotArgs []int
-		_ = tb.runtime().ExportTo(argEval, &gotArgs)
-		assert.Equal(t, args, gotArgs)
+		assert.Equal(t, args, *convert(t, argEvalJS, &gotArgs))
 	})
 
 	t.Run("err_expr_raf_timeout", func(t *testing.T) {
@@ -664,13 +655,13 @@ func TestPageWaitForFunction(t *testing.T) {
 		var log []string
 		require.NoError(t, tb.runtime().Set("log", func(s string) { log = append(log, s) }))
 
-		p.Evaluate(tb.toGojaValue(`() => {
+		p.Evaluate(`() => {
 			setTimeout(() => {
 				const el = document.createElement('h1');
 				el.innerHTML = 'Hello';
 				document.body.appendChild(el);
 			}, 1000);
-		}`))
+		}`)
 
 		script := `
 			let resp = page.waitForFunction(%s, %s, %s);
@@ -698,7 +689,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		_, err := tb.runJavaScript(`fn = () => document.querySelector('h1') !== null`)
 		require.NoError(t, err)
 
-		p.Evaluate(tb.toGojaValue(`() => {
+		p.Evaluate(`() => {
 			console.log('calling setTimeout...');
 			setTimeout(() => {
 				console.log('creating element...');
@@ -706,7 +697,7 @@ func TestPageWaitForFunction(t *testing.T) {
 				el.innerHTML = 'Hello';
 				document.body.appendChild(el);
 			}, 1000);
-		}`))
+		}`)
 
 		s := fmt.Sprintf(script, "fn", "{ polling: 'mutation', timeout: 2000, }", "null")
 		_, err = tb.runJavaScript(s)
@@ -823,7 +814,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "log", cm.Type)
 				assert.Equal(t, "this is a log message", cm.Text)
-				assert.Equal(t, "this is a log message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a log message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -834,7 +825,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "debug", cm.Type)
 				assert.Equal(t, "this is a debug message", cm.Text)
-				assert.Equal(t, "this is a debug message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a debug message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -845,7 +836,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "info", cm.Type)
 				assert.Equal(t, "this is an info message", cm.Text)
-				assert.Equal(t, "this is an info message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is an info message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -856,7 +847,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "error", cm.Type)
 				assert.Equal(t, "this is an error message", cm.Text)
-				assert.Equal(t, "this is an error message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is an error message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -867,7 +858,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "warning", cm.Type)
 				assert.Equal(t, "this is a warning message", cm.Text)
-				assert.Equal(t, "this is a warning message", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "this is a warning message", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -898,7 +889,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "table", cm.Type)
 				assert.Equal(t, "Array(2)", cm.Text)
-				assert.Equal(t, "Grafana,k6,Grafana,Mimir", cm.Args[0].JSONValue().String())
+				assert.Equal(t, `[["Grafana","k6"],["Grafana","Mimir"]]`, cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -909,7 +900,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 				t.Helper()
 				assert.Equal(t, "trace", cm.Type)
 				assert.Equal(t, "trace example", cm.Text)
-				assert.Equal(t, "trace example", cm.Args[0].JSONValue().String())
+				assert.Equal(t, "trace example", cm.Args[0].JSONValue())
 				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
 			},
 		},
@@ -1031,7 +1022,7 @@ func TestPageOn(t *testing.T) { //nolint:gocognit
 			err = p.On("console", eventHandlerTwo)
 			require.NoError(t, err)
 
-			p.Evaluate(tb.toGojaValue(tc.consoleFn))
+			p.Evaluate(tc.consoleFn)
 
 			select {
 			case <-done1:
