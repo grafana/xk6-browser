@@ -37,25 +37,7 @@ func (l *LocalFilePersister) Persist(_ context.Context, path string, data io.Rea
 		}
 	}()
 
-	return write(f, data)
-}
+	_, err = io.Copy(f, data)
 
-func write(w io.Writer, r io.Reader) error {
-	buf := make([]byte, 4096)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
-				return fmt.Errorf("writing to the local writer: %w", writeErr)
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("reading from the reader: %w", err)
-		}
-	}
-
-	return nil
+	return err
 }
