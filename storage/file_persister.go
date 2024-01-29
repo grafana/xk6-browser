@@ -19,11 +19,11 @@ type LocalFilePersister struct{}
 
 // Persist will write the contents of data to the local disk on the specified path.
 // TODO: we should not write to disk here but put it on some queue for async disk writes.
-func (l *LocalFilePersister) Persist(_ context.Context, path string, data io.Reader) error {
+func (l *LocalFilePersister) Persist(_ context.Context, path string, data io.Reader) (err error) {
 	cp := filepath.Clean(path)
 
 	dir := filepath.Dir(cp)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err = os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("creating a local directory %q: %w", dir, err)
 	}
 
@@ -32,12 +32,14 @@ func (l *LocalFilePersister) Persist(_ context.Context, path string, data io.Rea
 		return fmt.Errorf("creating a local file %q: %w", cp, err)
 	}
 	defer func() {
-		if err := f.Close(); err != nil {
-			logger.Errorf("LocalFilePersister:Persist", "closing the local file %q: %v", cp, err)
+		tempErr := f.Close()
+		// Only return the close error if there isn't already an existing error.
+		if tempErr != nil && err == nil {
+			err = fmt.Errorf("closing the local file %q: %w", cp, tempErr)
 		}
 	}()
 
 	_, err = io.Copy(f, data)
 
-	return err
+	return
 }
