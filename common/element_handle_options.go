@@ -211,7 +211,7 @@ func (f *Files) addFile(ctx context.Context, file goja.Value) error {
 	}
 	rt := k6ext.Runtime(ctx)
 	fileType := file.ExportType()
-	switch fileType.Kind() {
+	switch fileType.Kind() { //nolint:exhaustive
 	case reflect.Map: // file descriptor object
 		var parsedFile File
 		if err := rt.ExportTo(file, &parsedFile); err != nil {
@@ -237,7 +237,7 @@ func (f *Files) Parse(ctx context.Context, files goja.Value) error {
 	}
 
 	optsType := files.ExportType()
-	switch optsType.Kind() {
+	switch optsType.Kind() { //nolint:exhaustive
 	case reflect.Slice: // array of filePaths or array of file descriptor objects
 		gopts := files.ToObject(rt)
 		for _, k := range gopts.Keys() {
