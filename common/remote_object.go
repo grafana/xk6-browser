@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -36,6 +37,7 @@ func (pe *objectPropertyParseError) Error() string {
 
 // Unwrap returns the wrapped parsing error.
 func (pe *objectPropertyParseError) Unwrap() error {
+	_ = errors.Join(nil)
 	return pe.error
 }
 
