@@ -2,13 +2,14 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"fmt"
 	"image/png"
+	"io"
 	"testing"
 
 	"github.com/grafana/xk6-browser/common"
-	"github.com/grafana/xk6-browser/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -344,6 +345,12 @@ func TestElementHandleQueryAll(t *testing.T) {
 	})
 }
 
+type mockPersister struct{}
+
+func (m *mockPersister) Persist(_ context.Context, _ string, _ io.Reader) (err error) {
+	return nil
+}
+
 func TestElementHandleScreenshot(t *testing.T) {
 	t.Parallel()
 
@@ -377,7 +384,7 @@ func TestElementHandleScreenshot(t *testing.T) {
 
 	buf, err := elem.Screenshot(
 		common.NewElementHandleScreenshotOptions(elem.Timeout()),
-		&storage.LocalFilePersister{},
+		&mockPersister{},
 	)
 	require.NoError(t, err)
 

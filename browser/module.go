@@ -8,6 +8,7 @@ package browser
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec
@@ -18,12 +19,17 @@ import (
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
-	"github.com/grafana/xk6-browser/storage"
 
 	k6modules "go.k6.io/k6/js/modules"
 )
 
 type (
+	// filePersister is the type that all file persisters must implement. It's job is
+	// to persist a file somewhere, hiding the details of where and how from the caller.
+	filePersister interface {
+		Persist(ctx context.Context, path string, data io.Reader) (err error)
+	}
+
 	// RootModule is the global module instance that will create module
 	// instances for each VU.
 	RootModule struct {
@@ -31,6 +37,7 @@ type (
 		remoteRegistry *remoteRegistry
 		initOnce       *sync.Once
 		tracesMetadata map[string]string
+		filePersister  filePersister
 	}
 
 	// JSModule exposes the properties available to the JS script.
@@ -82,8 +89,8 @@ func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 					m.PidRegistry,
 					m.tracesMetadata,
 				),
-				taskQueueRegistry:  newTaskQueueRegistry(vu),
-				LocalFilePersister: &storage.LocalFilePersister{},
+				taskQueueRegistry: newTaskQueueRegistry(vu),
+				filePersister:     m.filePersister,
 			}),
 			Devices:         common.GetDevices(),
 			NetworkProfiles: common.GetNetworkProfiles(),
@@ -114,6 +121,10 @@ func (m *RootModule) initialize(vu k6modules.VU) {
 	}
 	if _, ok := initEnv.LookupEnv(env.EnableProfiling); ok {
 		go startDebugServer()
+	}
+	m.filePersister, err = newScreenshotPersister(initEnv.LookupEnv)
+	if err != nil {
+		k6ext.Abort(vu.Context(), "failed to create file persister: %v", err)
 	}
 }
 
