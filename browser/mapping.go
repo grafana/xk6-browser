@@ -550,7 +550,17 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 		"addScriptTag":  p.AddScriptTag,
 		"addStyleTag":   p.AddStyleTag,
 		"bringToFront":  p.BringToFront,
-		"check":         p.Check,
+		"captureVideo": func(opts goja.Value) error {
+			ctx := vu.Context()
+
+			popts := common.NewVidepCaptureOptions()
+			if err := popts.Parse(ctx, opts); err != nil {
+				return fmt.Errorf("parsing page screencast options: %w", err)
+			}
+
+			return p.CaptureVideo(popts, vu.filePersister)
+		},
+		"check": p.Check,
 		"click": func(selector string, opts goja.Value) (*goja.Promise, error) {
 			popts, err := parseFrameClickOptions(vu.Context(), opts, p.Timeout())
 			if err != nil {
@@ -703,6 +713,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 		"setExtraHTTPHeaders":         p.SetExtraHTTPHeaders,
 		"setInputFiles":               p.SetInputFiles,
 		"setViewportSize":             p.SetViewportSize,
+		"stopVideoCapture":            p.StopVideCapture,
 		"tap":                         p.Tap,
 		"textContent":                 p.TextContent,
 		"throttleCPU":                 p.ThrottleCPU,
