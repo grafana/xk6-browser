@@ -87,6 +87,17 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 		"type":         lo.Type,
 		"hover":        lo.Hover,
 		"tap":          lo.Tap,
+		"test": func(l2 goja.Value) (string, error) {
+			m := mapping{}
+			err := rt.ExportTo(l2, &m)
+			if err != nil {
+				return "", err
+			}
+
+			realL2 := m["self"].(func() *common.Locator)()
+
+			return lo.Test(realL2)
+		},
 		"dispatchEvent": func(typ string, eventInit, opts goja.Value) error {
 			popts := common.NewFrameDispatchEventOptions(lo.DefaultTimeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
