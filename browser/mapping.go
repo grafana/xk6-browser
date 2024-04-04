@@ -41,7 +41,11 @@ func mapBrowserToGoja(vu moduleVU) *goja.Object {
 
 // mapLocator API to the JS module.
 func mapLocator(vu moduleVU, lo *common.Locator) mapping {
+	rt := vu.Runtime()
 	return mapping{
+		"self": func() *common.Locator {
+			return lo
+		},
 		"clear": func(opts goja.Value) error {
 			ctx := vu.Context()
 
