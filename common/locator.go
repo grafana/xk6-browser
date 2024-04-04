@@ -583,6 +583,10 @@ func (l *Locator) tap(opts *FrameTapOptions) error {
 	return l.frame.tap(l.selector, opts)
 }
 
+func (l *Locator) Test(l2 *Locator) (string, error) {
+	return fmt.Sprintf("l.selector = %q, l2.selector = %q", l.selector, l2.selector), nil
+}
+
 // DispatchEvent dispatches an event for the element matching the
 // locator's selector with strict mode on.
 func (l *Locator) DispatchEvent(typ string, eventInit any, opts *FrameDispatchEventOptions) error {

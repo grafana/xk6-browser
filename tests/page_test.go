@@ -1699,3 +1699,20 @@ func TestShadowDOMAndDocumentFragment(t *testing.T) {
 		})
 	}
 }
+
+func TestBlahTest(t *testing.T) {
+	t.Parallel()
+
+	_, rt, _, cleanUp := startIteration(t)
+	defer cleanUp()
+
+	want := `l.selector = "h1", l2.selector = "h2"`
+	got, err := rt.RunString(`
+				const p = browser.newPage()
+				const l1 = p.locator("h1")
+				const l2 = p.locator("h2")
+
+				l1.test(l2)`)
+	assert.NoError(t, err)
+	assert.Equal(t, want, got.String())
+}
