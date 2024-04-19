@@ -14,7 +14,7 @@ require (
 	go.k6.io/k6 v0.50.0
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/trace v1.21.0
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	golang.org/x/sync v0.5.0
 	gopkg.in/guregu/null.v3 v3.3.0
 )
