@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
@@ -283,7 +284,7 @@ func (r *browserRegistry) handleIterEvents( //nolint:funlen
 			// Because VU.State is nil when browser registry is initialized,
 			// we have to initialize traces registry on the first VU iteration
 			// so we can get access to the k6 TracerProvider.
-			r.initTracesRegistry()
+			r.initTracesRegistry(r.vu.State().Logger)
 
 			// Wrap the tracer into the browser context to make it accessible for the other
 			// components that inherit the context so these can use it to trace their actions.
@@ -368,12 +369,12 @@ func (r *browserRegistry) clear() {
 // initTracesRegistry must only be called within an iteration execution,
 // as it requires access to the k6 TracerProvider which is only accessible
 // through the VU.State during the iteration execution time span.
-func (r *browserRegistry) initTracesRegistry() {
+func (r *browserRegistry) initTracesRegistry(logger logrus.FieldLogger) {
 	// Use a sync.Once so the traces registry is only initialized once
 	// per VU, as that is the scope for both browser and traces registry.
 	r.trInit.Do(func() {
 		r.tr = newTracesRegistry(
-			browsertrace.NewTracer(r.vu.State().TracerProvider, r.tracesMetadata),
+			browsertrace.NewTracer(logger, r.vu.State().TracerProvider, r.tracesMetadata),
 		)
 	})
 }
