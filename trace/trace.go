@@ -57,7 +57,14 @@ func (t *Tracer) Start(
 	ctx context.Context, spanName string, opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
 	opts = append(opts, trace.WithAttributes(t.metadata...))
-	return t.Tracer.Start(ctx, spanName, opts...)
+
+	sCtx, span := t.Tracer.Start(ctx, spanName, opts...)
+
+	spanCtx := trace.SpanContextFromContext(sCtx)
+	traceID := GetTraceID(spanCtx)
+	t.logger.Infof("Start: spanName: %q traceID: %q", spanName, traceID)
+
+	return sCtx, &SpanLogger{Span: span, logger: t.logger, spanName: spanName, traceID: traceID}
 }
 
 func GetTraceID(spanCtx trace.SpanContext) string {
@@ -83,18 +90,10 @@ func (t *Tracer) TraceAPICall(
 
 	ls := t.liveSpans[targetID]
 	if ls == nil {
-		t.logger.Infof("TraceAPICall: no live span spanName: %q targetID: %q", spanName, targetID)
-		sCtx, span := t.Start(ctx, spanName, opts...)
-
-		return sCtx, &SpanLogger{Span: span, logger: t.logger, spanName: spanName, traceID: ""}
+		return t.Start(ctx, spanName, opts...)
 	}
 
-	spanCtx := trace.SpanContextFromContext(ls.ctx)
-	traceID := GetTraceID(spanCtx)
-	t.logger.Infof("TraceAPICall: with live span spanName: %q traceID: %q targetID: %q", spanName, traceID, targetID)
-	sCtx, span := t.Start(ls.ctx, spanName, opts...)
-
-	return sCtx, &SpanLogger{Span: span, logger: t.logger, spanName: spanName, traceID: traceID}
+	return t.Start(ls.ctx, spanName, opts...)
 }
 
 // TraceNavigation is only to be used when a frame has navigated.
@@ -125,15 +124,8 @@ func (t *Tracer) TraceNavigation(
 	opts = append(opts, trace.WithAttributes(t.metadata...))
 
 	spanName := "navigation"
-	var span trace.Span
-	ls.ctx, span = t.Start(ctx, spanName, opts...)
+	ls.ctx, ls.span = t.Start(ctx, spanName, opts...)
 	t.liveSpans[targetID] = ls
-
-	spanCtx := trace.SpanContextFromContext(ls.ctx)
-	traceID := GetTraceID(spanCtx)
-	t.logger.Infof("TraceNavigation: spanName: %q traceID: %q targetID: %q", spanName, traceID, targetID)
-
-	ls.span = &SpanLogger{Span: span, logger: t.logger, spanName: spanName, traceID: traceID}
 
 	return ls.ctx, ls.span
 }
@@ -176,12 +168,7 @@ func (t *Tracer) TraceEvent(
 
 	opts = append(opts, trace.WithAttributes(t.metadata...))
 
-	spanCtx := trace.SpanContextFromContext(ls.ctx)
-	traceID := GetTraceID(spanCtx)
-	t.logger.Infof("TraceEvent: spanName: %q traceID: %q targetID: %q", eventName, traceID, targetID)
-	sCtx, span := t.Start(ls.ctx, eventName, opts...)
-
-	return sCtx, &SpanLogger{Span: span, logger: t.logger, spanName: eventName, traceID: traceID}
+	return t.Start(ls.ctx, eventName, opts...)
 }
 
 func buildMetadataAttributes(metadata map[string]string) []attribute.KeyValue {
@@ -252,7 +239,7 @@ func (i *SpanLogger) End(options ...trace.SpanEndOption) {
 
 // RecordError will log some info before calling the underlying RecordError.
 func (i *SpanLogger) RecordError(err error, options ...trace.EventOption) {
-	i.logger.Infof("SetStatus: spanName: %q traceID: %q err: %q", i.spanName, i.traceID, err)
+	i.logger.Infof("RecordError: spanName: %q traceID: %q err: %q", i.spanName, i.traceID, err)
 
 	i.Span.RecordError(err, options...)
 }
