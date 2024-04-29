@@ -581,7 +581,9 @@ func (f *Frame) Click(selector string, opts *FrameClickOptions) error {
 }
 
 func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts goja.Value) error {
-	popts := FrameDragAndDropOptions{}
+	popts := FrameDragAndDropOptions{
+		ElementHandleBaseOptions: *NewElementHandleBaseOptions(f.defaultTimeout()),
+	}
 
 	getPosition := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return p, nil
@@ -594,7 +596,7 @@ func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts g
 	}
 
 	act := f.newPointerAction(
-		sourceSelector, DOMElementStateAttached, popts.Strict, getPosition, sourceOpts,
+		sourceSelector, DOMElementStateVisible, popts.Strict, getPosition, sourceOpts,
 	)
 
 	sourcePosAny, err := call(f.ctx, act, popts.Timeout)
@@ -610,7 +612,7 @@ func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts g
 	}
 
 	act = f.newPointerAction(
-		targetSelector, DOMElementStateAttached, popts.Strict, getPosition, targetOps,
+		targetSelector, DOMElementStateVisible, popts.Strict, getPosition, targetOps,
 	)
 
 	targetPosAny, err := call(f.ctx, act, popts.Timeout)

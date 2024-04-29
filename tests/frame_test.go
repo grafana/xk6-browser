@@ -157,3 +157,48 @@ func TestFrameTitle(t *testing.T) {
 	p.SetContent(`<html><head><title>Some title</title></head></html>`, nil)
 	assert.Equal(t, "Some title", p.MainFrame().Title())
 }
+
+func TestFrameDragAndDrop(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+
+	p.SetContent(`
+		<html>
+			<head>
+				<style></style>
+			</head>
+			<body>
+				<div id="drag-source" draggable="true">Drag me!</div>
+				<div id="drop-target">Drop here!</div>
+
+				<script>
+					const dragSource = document.getElementById('drag-source');
+					const dropTarget = document.getElementById('drop-target');
+
+					dragSource.addEventListener('dragstart', (event) => {
+						event.dataTransfer.setData('text/plain', 'Something dropped!');
+					});
+
+					dropTarget.addEventListener('dragover', (event) => {
+						event.preventDefault();
+					});
+
+					dropTarget.addEventListener('drop', (event) => {
+						event.preventDefault();
+						const data = event.dataTransfer.getData('text/plain');
+						event.target.innerText = data;
+					});
+				</script>
+			</body>
+		</html>
+	`, nil)
+
+	p.MainFrame().DragAndDrop("#drag-source", "#drop-target", nil)
+
+	h, err := p.WaitForSelector("#drop-target", nil)
+
+	require.NoError(t, err)
+
+	assert.Equal(t, "Something dropped!", h.InnerText())
+}

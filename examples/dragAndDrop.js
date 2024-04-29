@@ -53,7 +53,7 @@ export default async function () {
 
   await page.dragAndDrop("#drag-source", "#drop-target");
 
-  const dropEl = page.waitForSelector("#drop-target");
+  const dropEl = await page.waitForSelector("#drop-target");
 
   check(dropEl, {
     "source was dropped on target": (e) =>
