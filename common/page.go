@@ -723,11 +723,6 @@ func (p *Page) DispatchEvent(selector string, typ string, eventInit any, opts *F
 	return p.MainFrame().DispatchEvent(selector, typ, eventInit, opts)
 }
 
-// DragAndDrop is not implemented.
-func (p *Page) DragAndDrop(source string, target string, opts goja.Value) {
-	k6ext.Panic(p.ctx, "Page.DragAndDrop(source, target, opts) has not been implemented yet")
-}
-
 func (p *Page) EmulateMedia(opts goja.Value) {
 	p.logger.Debugf("Page:EmulateMedia", "sid:%v", p.sessionID())
 
@@ -1255,6 +1250,12 @@ func (p *Page) Type(selector string, text string, opts goja.Value) {
 	p.logger.Debugf("Page:Type", "sid:%v selector:%s text:%s", p.sessionID(), selector, text)
 
 	p.MainFrame().Type(selector, text, opts)
+}
+
+func (p *Page) DragAndDrop(sourceSelector string, targetSelector string, opts goja.Value) error {
+	p.logger.Debugf("Page:DragAndDrop", "sid:%v source selector:%s, target selector: %s", p.sessionID(), sourceSelector, targetSelector)
+
+	return p.MainFrame().DragAndDrop(sourceSelector, targetSelector, opts)
 }
 
 // Unroute is not implemented.

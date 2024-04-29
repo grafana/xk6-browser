@@ -580,10 +580,75 @@ func (f *Frame) Click(selector string, opts *FrameClickOptions) error {
 	return nil
 }
 
+func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts goja.Value) error {
+	popts := FrameDragAndDropOptions{}
+
+	getPosition := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
+		return p, nil
+	}
+
+	sourceOpts := &ElementHandleBasePointerOptions{
+		ElementHandleBaseOptions: popts.ElementHandleBaseOptions,
+		Position:                 popts.SourcePosition,
+		Trial:                    popts.Trial,
+	}
+
+	act := f.newPointerAction(
+		sourceSelector, DOMElementStateAttached, popts.Strict, getPosition, sourceOpts,
+	)
+
+	sourcePosAny, err := call(f.ctx, act, popts.Timeout)
+
+	if err != nil {
+		return errorFromDOMError(err)
+	}
+
+	targetOps := &ElementHandleBasePointerOptions{
+		ElementHandleBaseOptions: popts.ElementHandleBaseOptions,
+		Position:                 popts.SourcePosition,
+		Trial:                    popts.Trial,
+	}
+
+	act = f.newPointerAction(
+		targetSelector, DOMElementStateAttached, popts.Strict, getPosition, targetOps,
+	)
+
+	targetPosAny, err := call(f.ctx, act, popts.Timeout)
+
+	if err != nil {
+		return errorFromDOMError(err)
+	}
+
+	sourcePos := &Position{}
+	convert(sourcePosAny, sourcePos)
+
+	targetPos := &Position{}
+	convert(targetPosAny, targetPos)
+
+	if err := f.page.Mouse.move(sourcePos.X, sourcePos.Y, &MouseMoveOptions{}); err != nil {
+		return errorFromDOMError(err)
+	}
+
+	if err := f.page.Mouse.down(sourcePos.X, sourcePos.Y, &MouseDownUpOptions{}); err != nil {
+		return errorFromDOMError(err)
+	}
+
+	if err := f.page.Mouse.move(targetPos.X, targetPos.Y, &MouseMoveOptions{}); err != nil {
+		return errorFromDOMError(err)
+	}
+
+	if err := f.page.Mouse.up(targetPos.X, targetPos.Y, &MouseDownUpOptions{}); err != nil {
+		return errorFromDOMError(err)
+	}
+
+	return nil
+}
+
 func (f *Frame) click(selector string, opts *FrameClickOptions) error {
 	click := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return nil, handle.click(p, opts.ToMouseClickOptions())
 	}
+
 	act := f.newPointerAction(
 		selector, DOMElementStateAttached, opts.Strict, click, &opts.ElementHandleBasePointerOptions,
 	)

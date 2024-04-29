@@ -42,6 +42,7 @@ func mapBrowserToGoja(vu moduleVU) *goja.Object {
 // mapLocator API to the JS module.
 func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 	return mapping{
+		"@@locator": lo,
 		"clear": func(opts goja.Value) error {
 			ctx := vu.Context()
 
@@ -63,6 +64,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 			}), nil
 		},
 		"dblclick":     lo.Dblclick,
+		"dragTo":       lo.DragTo,
 		"check":        lo.Check,
 		"uncheck":      lo.Uncheck,
 		"isChecked":    lo.IsChecked,
@@ -385,6 +387,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 			}
 			return f.DispatchEvent(selector, typ, exportArg(eventInit), popts) //nolint:wrapcheck
 		},
+		"dragAndDrop": f.DragAndDrop,
 		"evaluate": func(pageFunction goja.Value, gargs ...goja.Value) any {
 			return f.Evaluate(pageFunction.String(), exportArgs(gargs)...)
 		},

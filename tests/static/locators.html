@@ -1,46 +1,101 @@
 <!DOCTYPE html>
 <html>
-
-<head>
+  <head>
     <title>Clickable link test</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <a id="link" href="#" onclick="event.preventDefault()">Click</a>
     <a id="linkdbl" href="#" ondblclick="event.preventDefault()">Dblclick</a>
     <a href="#" onclick="event.preventDefault()">Click</a>
     <input id="inputCheckbox" type="checkbox" />
     <input type="checkbox" />
     <input id="inputText" type="text" value="something" />
-    <input id="inputHiddenText" type="text" hidden="true">
+    <input id="inputHiddenText" type="text" hidden="true" />
     <div id="divHello"><span>hello</span></div>
     <div><span>bye</span></div>
     <textarea>text area</textarea>
     <p id="firstParagraph" contenteditable="true">original text</p>
     <p id="secondParagraph">original text</p>
-    <select id="selectElement"><option value="option text"></option><option value="option text 2"></option></select>
+    <select id="selectElement">
+      <option value="option text"></option>
+      <option value="option text 2"></option>
+    </select>
     <select></select>
+    <div id="dragSource" draggable="true">Drag me</div>
+    <div id="dropTarget">Drop here</div>
     <script>
-        window.result = false;
-        window.dblclick = false;
-        window.check = false;
+      window.result = false;
+      window.dblclick = false;
+      window.check = false;
 
-        document.querySelector('#link').addEventListener(
-            'click', e => { window.result = true; }, false
-        );
-        document.querySelector('#linkdbl').addEventListener(
-            'dblclick', e => { window.dblclick = true; }, false
-        );
-        document.querySelector('#inputCheckbox').addEventListener(
-            'change', e => { window.check = e.currentTarget.checked; }, false
-        );
-        document.querySelector('#inputText').addEventListener(
-            'mousemove', e => { window.result = true; }, false
-        );
-        document.querySelector('#inputText').addEventListener(
-            'touchstart', e => { window.result = true; }, false
-        );
+      window.drag = false;
+      window.dragend = false;
+      window.dragenter = false;
+      window.dragleave = false;
+      window.dragover = false;
+      window.drop = false;
+
+      document.querySelector("#link").addEventListener("click", (e) => {
+        window.result = true;
+      });
+
+      document.querySelector("#linkdbl").addEventListener("dblclick", (e) => {
+        window.dblclick = true;
+      });
+
+      document
+        .querySelector("#inputCheckbox")
+        .addEventListener("change", (e) => {
+          window.check = e.currentTarget.checked;
+        });
+
+      document
+        .querySelector("#inputText")
+        .addEventListener("mousemove", (e) => {
+          window.result = true;
+        });
+
+      document
+        .querySelector("#inputText")
+        .addEventListener("touchstart", (e) => {
+          window.result = true;
+        });
+
+      document.getElementById("dragSource").addEventListener("drag", (e) => {
+        window.drag = true;
+
+        e.dataTransfer.setData("text", "some data");
+      });
+
+      document.getElementById("dragSource").addEventListener("dragend", (e) => {
+        window.dragend = true;
+      });
+
+      document
+        .getElementById("dragTarget")
+        .addEventListener("dragenter", (e) => {
+          window.dragenter = true;
+        });
+
+      document
+        .getElementById("dragTarget")
+        .addEventListener("dragleave", (e) => {
+          window.dragleave = true;
+        });
+
+      document
+        .getElementById("dragTarget")
+        .addEventListener("dragover", (e) => {
+          // We need to prevent default for drop event to fire.
+          e.preventDefault();
+
+          window.dragover = true;
+        });
+
+      document.getElementById("dragTarget").addEventListener("drop", (e) => {
+        window.drop = true;
+      });
     </script>
-</body>
-
+  </body>
 </html>

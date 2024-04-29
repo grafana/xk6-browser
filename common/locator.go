@@ -104,6 +104,20 @@ func (l *Locator) dblclick(opts *FrameDblclickOptions) error {
 	return l.frame.dblclick(l.selector, opts)
 }
 
+func (l *Locator) DragTo(target *Locator) error {
+	l.log.Debugf("Locator:DragTo", "fid:%s furl:%q sel:%q target:%q", l.frame.ID(), l.frame.URL(), l.selector, target.selector)
+
+	if err := l.dragTo(target); err != nil {
+		return fmt.Errorf("dragging %q to %q: %w", l.selector, target.selector, err)
+	}
+
+	return nil
+}
+
+func (l *Locator) dragTo(target *Locator) error {
+	panic("not implemented")
+}
+
 // Check on an element using locator's selector with strict mode on.
 func (l *Locator) Check(opts goja.Value) {
 	l.log.Debugf("Locator:Check", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)

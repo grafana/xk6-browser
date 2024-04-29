@@ -33,6 +33,14 @@ type FrameDblclickOptions struct {
 	Strict bool `json:"strict"`
 }
 
+type FrameDragAndDropOptions struct {
+	ElementHandleBaseOptions
+	SourcePosition *Position `json:"sourcePosition"`
+	TargetPosition *Position `json:"targetPosition"`
+	Trial          bool      `json:"trial"`
+	Strict         bool      `json:"strict"`
+}
+
 type FrameFillOptions struct {
 	ElementHandleBaseOptions
 	Strict bool `json:"strict"`

@@ -84,6 +84,28 @@ func TestLocator(t *testing.T) {
 			},
 		},
 		{
+			"DragTo", func(tb *testBrowser, p *common.Page) {
+				source := p.Locator("#dragSource", nil)
+				target := p.Locator("#dragTarget", nil)
+
+				err := source.DragTo(target)
+				require.NoError(t, err)
+				drag := p.Evaluate(`() => window.drag`)
+				dragend := p.Evaluate(`() => window.dragend`)
+				dragover := p.Evaluate(`() => window.dragover`)
+				dragenter := p.Evaluate(`() => window.dragenter`)
+				dragleave := p.Evaluate(`() => window.dragleave`)
+				drop := p.Evaluate(`() => window.drop`)
+
+				require.True(t, asBool(t, drag), "cannot not drag the source")
+				require.True(t, asBool(t, dragend), "cannot not dragend the source")
+				require.True(t, asBool(t, dragover), "cannot not dragover the target")
+				require.True(t, asBool(t, dragenter), "cannot not dragenter the target")
+				require.True(t, asBool(t, dragleave), "cannot not dragleave the target")
+				require.True(t, asBool(t, drop), "cannot not drop the target")
+			},
+		},
+		{
 			"DispatchEvent", func(tb *testBrowser, p *common.Page) {
 				result := func() bool {
 					v := p.Evaluate(`() => window.result`)
