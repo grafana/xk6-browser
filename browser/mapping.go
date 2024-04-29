@@ -96,6 +96,14 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 	}
 }
 
+func parseDragAndDropOptions(ctx context.Context, opts goja.Value, defaultTimeout time.Duration) (*common.FrameDragAndDropOptions, error) {
+	copts := common.NewFrameDragAndDropOptions(defaultTimeout)
+	if err := copts.Parse(ctx, opts); err != nil {
+		return nil, fmt.Errorf("parsing drag and drop options: %w", err)
+	}
+	return copts, nil
+}
+
 func parseFrameClickOptions(
 	ctx context.Context, opts goja.Value, defaultTimeout time.Duration,
 ) (*common.FrameClickOptions, error) {
@@ -387,7 +395,17 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping {
 			}
 			return f.DispatchEvent(selector, typ, exportArg(eventInit), popts) //nolint:wrapcheck
 		},
-		"dragAndDrop": f.DragAndDrop,
+		"dragAndDrop": func(sourceSelector string, targetSelector string, opts goja.Value) (*goja.Promise, error) {
+			popts, err := parseDragAndDropOptions(vu.Context(), opts, f.Timeout())
+			if err != nil {
+				return nil, err
+			}
+
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				err := f.DragAndDrop(sourceSelector, targetSelector, popts)
+				return nil, err //nolint:wrapcheck
+			}), nil
+		},
 		"evaluate": func(pageFunction goja.Value, gargs ...goja.Value) any {
 			return f.Evaluate(pageFunction.String(), exportArgs(gargs)...)
 		},
@@ -580,7 +598,16 @@ func mapPage(vu moduleVU, p *common.Page) mapping {
 			}
 			return p.DispatchEvent(selector, typ, exportArg(eventInit), popts) //nolint:wrapcheck
 		},
-		"dragAndDrop":             p.DragAndDrop,
+		"dragAndDrop": func(sourceSelector, targetSelector string, opts goja.Value) (*goja.Promise, error) {
+			popts, err := parseDragAndDropOptions(vu.Context(), opts, p.Timeout())
+			if err != nil {
+				return nil, err
+			}
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				err := p.DragAndDrop(sourceSelector, targetSelector, popts)
+				return nil, err //nolint:wrapcheck
+			}), nil
+		},
 		"emulateMedia":            p.EmulateMedia,
 		"emulateVisionDeficiency": p.EmulateVisionDeficiency,
 		"evaluate": func(pageFunction goja.Value, gargs ...goja.Value) any {

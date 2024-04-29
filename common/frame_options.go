@@ -274,6 +274,27 @@ func (o *FrameDblclickOptions) Parse(ctx context.Context, opts goja.Value) error
 	return nil
 }
 
+func NewFrameDragAndDropOptions(defaultTimeout time.Duration) *FrameDragAndDropOptions {
+	return &FrameDragAndDropOptions{
+		ElementHandleBaseOptions: *NewElementHandleBaseOptions(defaultTimeout),
+		SourcePosition:           nil,
+		TargetPosition:           nil,
+		Trial:                    false,
+		Strict:                   false,
+	}
+}
+
+func (o *FrameDragAndDropOptions) Parse(ctx context.Context, opts goja.Value) error {
+	if err := o.ElementHandleBaseOptions.Parse(ctx, opts); err != nil {
+		return err
+	}
+
+	// TODO: parse additional options
+
+	o.Strict = parseStrict(ctx, opts)
+	return nil
+}
+
 func NewFrameFillOptions(defaultTimeout time.Duration) *FrameFillOptions {
 	return &FrameFillOptions{
 		ElementHandleBaseOptions: *NewElementHandleBaseOptions(defaultTimeout),

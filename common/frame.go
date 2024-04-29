@@ -580,42 +580,38 @@ func (f *Frame) Click(selector string, opts *FrameClickOptions) error {
 	return nil
 }
 
-func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts goja.Value) error {
-	popts := FrameDragAndDropOptions{
-		ElementHandleBaseOptions: *NewElementHandleBaseOptions(f.defaultTimeout()),
-	}
-
+func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts *FrameDragAndDropOptions) error {
 	getPosition := func(apiCtx context.Context, handle *ElementHandle, p *Position) (any, error) {
 		return p, nil
 	}
 
 	sourceOpts := &ElementHandleBasePointerOptions{
-		ElementHandleBaseOptions: popts.ElementHandleBaseOptions,
-		Position:                 popts.SourcePosition,
-		Trial:                    popts.Trial,
+		ElementHandleBaseOptions: opts.ElementHandleBaseOptions,
+		Position:                 opts.SourcePosition,
+		Trial:                    opts.Trial,
 	}
 
 	act := f.newPointerAction(
-		sourceSelector, DOMElementStateVisible, popts.Strict, getPosition, sourceOpts,
+		sourceSelector, DOMElementStateVisible, opts.Strict, getPosition, sourceOpts,
 	)
 
-	sourcePosAny, err := call(f.ctx, act, popts.Timeout)
+	sourcePosAny, err := call(f.ctx, act, opts.Timeout)
 
 	if err != nil {
 		return errorFromDOMError(err)
 	}
 
 	targetOps := &ElementHandleBasePointerOptions{
-		ElementHandleBaseOptions: popts.ElementHandleBaseOptions,
-		Position:                 popts.SourcePosition,
-		Trial:                    popts.Trial,
+		ElementHandleBaseOptions: opts.ElementHandleBaseOptions,
+		Position:                 opts.SourcePosition,
+		Trial:                    opts.Trial,
 	}
 
 	act = f.newPointerAction(
-		targetSelector, DOMElementStateVisible, popts.Strict, getPosition, targetOps,
+		targetSelector, DOMElementStateVisible, opts.Strict, getPosition, targetOps,
 	)
 
-	targetPosAny, err := call(f.ctx, act, popts.Timeout)
+	targetPosAny, err := call(f.ctx, act, opts.Timeout)
 
 	if err != nil {
 		return errorFromDOMError(err)

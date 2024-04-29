@@ -1252,7 +1252,7 @@ func (p *Page) Type(selector string, text string, opts goja.Value) {
 	p.MainFrame().Type(selector, text, opts)
 }
 
-func (p *Page) DragAndDrop(sourceSelector string, targetSelector string, opts goja.Value) error {
+func (p *Page) DragAndDrop(sourceSelector string, targetSelector string, opts *FrameDragAndDropOptions) error {
 	p.logger.Debugf("Page:DragAndDrop", "sid:%v source selector:%s, target selector: %s", p.sessionID(), sourceSelector, targetSelector)
 
 	return p.MainFrame().DragAndDrop(sourceSelector, targetSelector, opts)
