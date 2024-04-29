@@ -196,6 +196,7 @@ func TestFrameDragAndDrop(t *testing.T) {
 
 	p.MainFrame().DragAndDrop("#drag-source", "#drop-target", nil)
 
+	p.MainFrame().WaitForTimeout(2000)
 	h, err := p.WaitForSelector("#drop-target", nil)
 
 	require.NoError(t, err)

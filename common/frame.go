@@ -627,19 +627,19 @@ func (f *Frame) DragAndDrop(sourceSelector string, targetSelector string, opts g
 	targetPos := &Position{}
 	convert(targetPosAny, targetPos)
 
-	if err := f.page.Mouse.move(sourcePos.X, sourcePos.Y, &MouseMoveOptions{}); err != nil {
+	if err := f.page.Mouse.move(sourcePos.X, sourcePos.Y, NewMouseMoveOptions()); err != nil {
 		return errorFromDOMError(err)
 	}
 
-	if err := f.page.Mouse.down(sourcePos.X, sourcePos.Y, &MouseDownUpOptions{}); err != nil {
+	if err := f.page.Mouse.down(sourcePos.X, sourcePos.Y, NewMouseDownUpOptions()); err != nil {
 		return errorFromDOMError(err)
 	}
 
-	if err := f.page.Mouse.move(targetPos.X, targetPos.Y, &MouseMoveOptions{}); err != nil {
+	if err := f.page.Mouse.move(targetPos.X, targetPos.Y, NewMouseMoveOptions()); err != nil {
 		return errorFromDOMError(err)
 	}
 
-	if err := f.page.Mouse.up(targetPos.X, targetPos.Y, &MouseDownUpOptions{}); err != nil {
+	if err := f.page.Mouse.up(targetPos.X, targetPos.Y, NewMouseDownUpOptions()); err != nil {
 		return errorFromDOMError(err)
 	}
 
