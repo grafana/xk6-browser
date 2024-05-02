@@ -9,5 +9,30 @@ defaults:
     shell: bash
 
 jobs:
-  checks:
-    uses: grafana/k6-ci/.github/workflows/all.yml@main
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+      - name: Check dependencies
+        run: |
+          go version
+          test -z "$(go mod tidy  && git status --porcelain)"
+          go mod verify
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run k6's golangci-lint CI
+        uses: grafana/k6/.github/actions/lint@master
+
