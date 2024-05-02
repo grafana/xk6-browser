@@ -32,6 +32,32 @@ issues:
       - funlen
       - cyclop
 
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - prefix(github.com/grafana/xk6-browser)
+      - prefix(go.k6.io)
+      - default
+  dupl:
+    threshold: 400
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/grafana/xk6-browser
+  importas:
+    alias:
+      - pkg: go.k6.io/k6/.*/(\w+)
+        alias: k6$1
+  nlreturn:
+    block-size: 10
+  lll:
+    maxlength: 120
+  gosec:
+    config:
+      G301: '0755'
+      G306: '0644'
+
 linters:
   disable-all: true
   enable:
@@ -85,29 +111,3 @@ linters:
     - wastedassign
     - whitespace
     - wrapcheck
-
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - prefix(github.com/grafana/xk6-browser)
-      - prefix(go.k6.io)
-      - default
-  dupl:
-    threshold: 400
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/grafana/xk6-browser
-  importas:
-    alias:
-      - pkg: go.k6.io/k6/.*/(\w+)
-        alias: k6$1
-  nlreturn:
-    block-size: 10
-  lll:
-    maxlength: 120
-  gosec:
-    config:
-      G301: '0755'
-      G306: '0644'
