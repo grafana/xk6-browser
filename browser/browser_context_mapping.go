@@ -15,6 +15,12 @@ import (
 func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolint:funlen,gocognit,cyclop
 	rt := vu.Runtime()
 	return mapping{
+		"addCookiesAsync": func(cookies []*common.Cookie) *goja.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				err := bc.AddCookies(cookies)
+				return nil, err //nolint:wrapcheck
+			})
+		},
 		"addCookies": bc.AddCookies,
 		"addInitScript": func(script goja.Value) error {
 			if !gojaValueExists(script) {

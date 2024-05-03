@@ -113,6 +113,9 @@ func TestMappings(t *testing.T) {
 			}
 			// to detect if a method is redundantly mapped.
 			tested[m] = true
+			// TODO: Remove this once we turn all our relevant methods
+			// from sync to async.
+			tested[m+"Async"] = true
 		}
 		// detect redundant mappings.
 		for m := range mapped {
