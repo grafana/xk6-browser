@@ -1,38 +1,32 @@
-name: Lint
-on:
-  # Enable manually triggering this workflow via the API or web UI
-  workflow_dispatch:
-  pull_request:
+name: golangci-lint-k6
+description: Run golangci-lint with the k6 ruleset
 
-defaults:
-  run:
-    shell: bash
+runs:
+  using: composite
+  steps:
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.22.x
+        check-latest: true
+    - name: Get golangci-lint version and download rules
+      shell: bash
+      env: #TODO: remove after https://github.com/actions/runner/issues/2473 is fixed
+        GITHUB_ACTION_REF: ${{ github.action_ref || github.head_ref }}
+      run: |
+        branch="master"
+        if [ "${{ github.event.pull_request.head.repo.full_name }}" = "grafana/k6" ]; then
+            branch="${{ env.GITHUB_ACTION_REF }}"
+        fi
+        rules_url="https://raw.githubusercontent.com/grafana/k6/${branch}/.golangci.yml"
+        echo "Downloading '${rules_url}' ..."
+        curl --silent --show-error --fail --no-location "${rules_url}" --output "${{ github.action_path }}/.golangci.yml"
 
-jobs:
-  dependencies:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21.x
-      - name: Check dependencies
-        run: |
-          go version
-          test -z "$(go mod tidy  && git status --porcelain)"
-          go mod verify
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Run k6's golangci-lint CI
-        uses: grafana/k6/.github/actions/lint@master
-
+        echo "GolangCIVersion=$(head -n 1 "${{ github.action_path }}/.golangci.yml" | tr -d '# ')" >> "${GITHUB_OUTPUT}"
+      id: getenv
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@349d20632dbaed38f0a492cc991152e3d351e854 # latest commit at the time that uses node20
+      with:
+        version: ${{ steps.getenv.outputs.GolangCIVersion }}
+        args: "--config=${{ github.action_path }}/.golangci.yml"
+        only-new-issues: true
