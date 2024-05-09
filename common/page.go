@@ -294,6 +294,13 @@ func NewPage(
 		p.emulatedSize = NewEmulatedSize(bctx.opts.Viewport, bctx.opts.Screen)
 	}
 
+	// Hack to get the page to load when a link that opens in a new window is clicked.
+	reloadAction := cdppage.Reload()
+	if err := reloadAction.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+		err := fmt.Errorf("reloading page: %w", err)
+		return nil, err
+	}
+
 	var err error
 	p.frameManager = NewFrameManager(ctx, s, &p, p.timeoutSettings, p.logger)
 	p.mainFrameSession, err = NewFrameSession(ctx, s, &p, nil, tid, p.logger)
