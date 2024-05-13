@@ -1,8 +1,6 @@
 package browser
 
 import (
-	"fmt"
-
 	"github.com/dop251/goja"
 
 	"github.com/grafana/xk6-browser/common"
@@ -89,11 +87,11 @@ func initBrowserContext(bctx *common.BrowserContext, testRunID string) error {
 	// on the current test run. This allows external applications
 	// (such as Grafana Faro) to identify that the session is a k6
 	// automated one and not one driven by a real person.
-	if err := bctx.AddInitScript(
-		fmt.Sprintf(`window.k6 = { testRunId: %q }`, testRunID),
-	); err != nil {
-		return fmt.Errorf("adding k6 object to new browser context: %w", err)
-	}
+	// if err := bctx.AddInitScript(
+	// 	fmt.Sprintf(`window.k6 = { testRunId: %q }`, testRunID),
+	// ); err != nil {
+	// 	return fmt.Errorf("adding k6 object to new browser context: %w", err)
+	// }
 
 	return nil
 }
