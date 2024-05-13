@@ -22,7 +22,6 @@ import (
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/inspector"
 	cdplog "github.com/chromedp/cdproto/log"
@@ -164,7 +163,7 @@ func NewFrameSession(
 }
 
 func (fs *FrameSession) emulateLocale() error {
-	action := emulation.SetLocaleOverride().WithLocale(fs.page.browserCtx.opts.Locale)
+	action := emulation.SetLocaleOverride().WithLocale("en-US")
 	if err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
 		if strings.Contains(err.Error(), "Another locale override is already in effect") {
 			return nil
