@@ -569,6 +569,7 @@ func (fs *FrameSession) initRendererEvents() {
 		cdproto.EventTargetAttachedToTarget,
 		cdproto.EventTargetDetachedFromTarget,
 		cdproto.EventRuntimeBindingCalled,
+		cdproto.EventPageWindowOpen,
 	}
 	fs.session.on(fs.ctx, events, fs.eventCh)
 }
