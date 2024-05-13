@@ -11,7 +11,6 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
-	cdppage "github.com/chromedp/cdproto/page"
 	"github.com/dop251/goja"
 	"go.opentelemetry.io/otel/attribute"
 
@@ -155,14 +154,14 @@ func (h *ElementHandle) clickablePoint() (*Position, error) {
 		return nil, fmt.Errorf("node is either not visible or not an HTMLElement: %w", err)
 	}
 
-	// Filter out quads that have too small area to click into.
-	var layoutViewport *cdppage.LayoutViewport
-	getLayoutMetrics := cdppage.GetLayoutMetrics()
-	if _, _, _, layoutViewport, _, _, err = getLayoutMetrics.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
-		return nil, fmt.Errorf("getting page layout metrics %T: %w", getLayoutMetrics, err)
-	}
+	// // Filter out quads that have too small area to click into.
+	// var layoutViewport *cdppage.LayoutViewport
+	// getLayoutMetrics := cdppage.GetLayoutMetrics()
+	// if _, _, _, layoutViewport, _, _, err = getLayoutMetrics.Do(cdp.WithExecutor(h.ctx, h.session)); err != nil {
+	// 	return nil, fmt.Errorf("getting page layout metrics %T: %w", getLayoutMetrics, err)
+	// }
 
-	return filterQuads(layoutViewport.ClientWidth, layoutViewport.ClientHeight, quads)
+	return filterQuads(1280, 720, quads)
 }
 
 func filterQuads(viewportWidth, viewportHeight int64, quads []dom.Quad) (*Position, error) {
