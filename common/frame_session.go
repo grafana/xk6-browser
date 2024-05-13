@@ -493,14 +493,16 @@ func (fs *FrameSession) initOptions() error {
 	if !opts.JavaScriptEnabled {
 		optActions = append(optActions, emulation.SetScriptExecutionDisabled(true))
 	}
-	if opts.UserAgent != "" || opts.Locale != "" {
-		optActions = append(optActions, emulation.SetUserAgentOverride(opts.UserAgent).WithAcceptLanguage(opts.Locale))
+	// if opts.UserAgent != "" || opts.Locale != "" {
+	optActions = append(optActions, emulation.
+		SetUserAgentOverride("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.40 Safari/537.36").
+		WithAcceptLanguage("en-US"))
+	// }
+	// if opts.Locale != "" {
+	if err := fs.emulateLocale(); err != nil {
+		return err
 	}
-	if opts.Locale != "" {
-		if err := fs.emulateLocale(); err != nil {
-			return err
-		}
-	}
+	// }
 	if opts.TimezoneID != "" {
 		if err := fs.emulateTimezone(); err != nil {
 			return err
