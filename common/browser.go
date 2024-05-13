@@ -590,6 +590,12 @@ func (b *Browser) NewContext(opts goja.Value) (*BrowserContext, error) {
 	defer b.contextMu.Unlock()
 	b.context = browserCtx
 
+	action3 := cdpbrowser.SetDownloadBehavior(cdpbrowser.SetDownloadBehaviorBehaviorAllowAndName).
+		WithBrowserContextID(browserCtx.id).WithDownloadPath("/tmp/").WithEventsEnabled(true)
+	if err := action3.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
+		return nil, fmt.Errorf("download behavior: %w", err)
+	}
+
 	return browserCtx, nil
 }
 
