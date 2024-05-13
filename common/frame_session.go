@@ -191,7 +191,7 @@ func (fs *FrameSession) getNetworkManager() *NetworkManager {
 func (fs *FrameSession) initDomains() error {
 	actions := []Action{
 		// TODO: can we get rid of the following by doing DOM related stuff in JS instead?
-		dom.Enable(),
+		// dom.Enable(),
 		cdplog.Enable(),
 		cdpruntime.Enable(),
 		target.SetAutoAttach(true, true).WithFlatten(true),
