@@ -16,7 +16,6 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
 	cdppage "github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/target"
 	"github.com/dop251/goja"
@@ -33,7 +32,7 @@ import (
 const BlankPage = "about:blank"
 
 const (
-	webVitalBinding = "k6browserSendWebVitalMetric"
+	// webVitalBinding = "k6browserSendWebVitalMetric"
 
 	eventPageConsoleAPICalled = "console"
 )
@@ -655,12 +654,12 @@ func (p *Page) Close(_ goja.Value) error {
 		p.logger.Warnf("Page:Close", "failed to hide page: %v", err)
 	}
 
-	add := runtime.RemoveBinding(webVitalBinding)
-	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-		err := fmt.Errorf("internal error while removing binding from page: %w", err)
-		spanRecordError(span, err)
-		return err
-	}
+	// add := runtime.RemoveBinding(webVitalBinding)
+	// if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	// 	err := fmt.Errorf("internal error while removing binding from page: %w", err)
+	// 	spanRecordError(span, err)
+	// 	return err
+	// }
 
 	action := target.CloseTarget(p.targetID)
 	err = action.Do(cdp.WithExecutor(p.ctx, p.session))
