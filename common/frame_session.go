@@ -469,7 +469,7 @@ func (fs *FrameSession) initOptions() error {
 	var (
 		opts       = fs.manager.page.browserCtx.opts
 		optActions = []Action{}
-		state      = fs.vu.State()
+		// state      = fs.vu.State()
 	)
 
 	if fs.isMainFrame() {
