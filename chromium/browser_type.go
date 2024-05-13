@@ -327,17 +327,26 @@ func parseArgs(flags map[string]any) ([]string, error) {
 func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[string]any, error) {
 	// After Puppeteer's and Playwright's default behavior.
 	f := map[string]any{
-		"disable-background-networking":                      true,
-		"enable-features":                                    "NetworkService,NetworkServiceInProcess",
-		"disable-background-timer-throttling":                true,
-		"disable-backgrounding-occluded-windows":             true,
-		"disable-breakpad":                                   true,
-		"disable-component-extensions-with-background-pages": true,
-		"disable-default-apps":                               true,
-		"disable-dev-shm-usage":                              true,
-		"disable-extensions":                                 true,
-		//nolint:lll
-		"disable-features":                "ImprovedCookieControls,LazyFrameLoading,GlobalMediaControls,DestroyProfileOnBrowserClose,MediaRouter,AcceptCHFrame",
+		"disable-field-trial-config":                             true, // https://source.chromium.org/chromium/chromium/src/+/main:testing/variations/README.md
+		"disable-background-networking":                          true,
+		"enable-features=NetworkService,NetworkServiceInProcess": true,
+		"disable-background-timer-throttling":                    true,
+		"disable-backgrounding-occluded-windows":                 true,
+		"disable-back-forward-cache":                             true, // Avoids surprises like main request not being intercepted during page.goBack().
+		"disable-breakpad":                                       true,
+		"disable-client-side-phishing-detection":                 true,
+		"disable-component-extensions-with-background-pages":     true,
+		"disable-component-update":                               true, // Avoids unneeded network activity after startup.
+		"no-default-browser-check":                               true,
+		"disable-default-apps":                                   true,
+		"disable-dev-shm-usage":                                  true,
+		"disable-extensions":                                     true,
+		// AvoidUnnecessaryBeforeUnloadCheckSync - https://github.com/microsoft/playwright/issues/14047
+		// Translate - https://github.com/microsoft/playwright/issues/16126
+		// HttpsUpgrades - https://github.com/microsoft/playwright/pull/27605
+		// PaintHolding - https://github.com/microsoft/playwright/issues/28023
+		"disable-features":                "ImprovedCookieControls,LazyFrameLoading,GlobalMediaControls,DestroyProfileOnBrowserClose,MediaRouter,DialMediaRouteProvider,AcceptCHFrame,AutoExpandDetailsElement,CertificateTransparencyComponentUpdater,AvoidUnnecessaryBeforeUnloadCheckSync,Translate,HttpsUpgrades,PaintHolding",
+		"allow-pre-commit-input":          true,
 		"disable-hang-monitor":            true,
 		"disable-ipc-flooding-protection": true,
 		"disable-popup-blocking":          true,
@@ -349,12 +358,17 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"enable-automation":               true,
 		"password-store":                  "basic",
 		"use-mock-keychain":               true,
-		"no-service-autorun":              true,
+		// See https://chromium-review.googlesource.com/c/chromium/src/+/2436773
+		"no-service-autorun": true,
+		"export-tagged-pdf":  true,
+		// https://chromium-review.googlesource.com/c/chromium/src/+/4853540
+		"disable-search-engine-choice-screen": true,
+		// https://issues.chromium.org/41491762
+		"unsafely-disable-devtools-self-xss-warnings": true,
+		"no-startup-window":                           true,
 
-		"no-startup-window":        true,
-		"no-default-browser-check": true,
-		"headless":                 lopts.Headless,
-		"window-size":              fmt.Sprintf("%d,%d", 800, 600),
+		"headless":    lopts.Headless,
+		"window-size": fmt.Sprintf("%d,%d", 800, 600),
 	}
 	if lopts.Headless {
 		f["hide-scrollbars"] = true
