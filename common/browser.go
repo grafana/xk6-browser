@@ -210,6 +210,14 @@ func (b *Browser) initEvents() error {
 		}
 	}()
 
+	action2 := cdpbrowser.GetVersion()
+	protocolVersion, product, revision, userAgent, jsVersion, err := action2.Do(cdp.WithExecutor(b.ctx, b.conn))
+	if err != nil {
+		return fmt.Errorf("internal error while getting chrome version: %w", err)
+	} else {
+		b.logger.Infof("browser version", protocolVersion, product, revision, userAgent, jsVersion)
+	}
+
 	action := target.SetAutoAttach(true, true).WithFlatten(true)
 	if err := action.Do(cdp.WithExecutor(b.ctx, b.conn)); err != nil {
 		return fmt.Errorf("internal error while auto-attaching to browser pages: %w", err)
