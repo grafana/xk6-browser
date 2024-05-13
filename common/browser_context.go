@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/xk6-browser/common/js"
 	"github.com/grafana/xk6-browser/k6error"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
@@ -108,12 +107,12 @@ func NewBrowserContext(
 		}
 	}
 
-	if err := b.AddInitScript(js.WebVitalIIFEScript); err != nil {
-		return nil, fmt.Errorf("adding web vital script to new browser context: %w", err)
-	}
-	if err := b.AddInitScript(js.WebVitalInitScript); err != nil {
-		return nil, fmt.Errorf("adding web vital init script to new browser context: %w", err)
-	}
+	// if err := b.AddInitScript(js.WebVitalIIFEScript); err != nil {
+	// 	return nil, fmt.Errorf("adding web vital script to new browser context: %w", err)
+	// }
+	// if err := b.AddInitScript(js.WebVitalInitScript); err != nil {
+	// 	return nil, fmt.Errorf("adding web vital init script to new browser context: %w", err)
+	// }
 
 	return &b, nil
 }
