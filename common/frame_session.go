@@ -282,6 +282,9 @@ func (fs *FrameSession) initEvents() {
 					fs.onEventJavascriptDialogOpening(ev)
 				case *cdpruntime.EventBindingCalled:
 					fs.onEventBindingCalled(ev)
+				case *cdppage.EventWindowOpen:
+					fs.logger.Infof("FrameSession:initEvents:cdppage.EventWindowOpen",
+						"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 				}
 			}
 		}
