@@ -104,17 +104,6 @@ func NewFrameSession(
 		logger:               l,
 	}
 
-	var parentNM *NetworkManager
-	if fs.parent != nil {
-		parentNM = fs.parent.networkManager
-	}
-	fs.networkManager, err = NewNetworkManager(ctx, k6Metrics, s, fs.manager, parentNM)
-	if err != nil {
-		l.Debugf("NewFrameSession:NewNetworkManager", "sid:%v tid:%v err:%v",
-			s.ID(), tid, err)
-		return nil, err
-	}
-
 	action := browser.GetWindowForTarget().WithTargetID(fs.targetID)
 	if fs.windowID, _, err = action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
 		l.Debugf(
@@ -125,39 +114,65 @@ func NewFrameSession(
 		return nil, fmt.Errorf("getting browser window ID: %w", err)
 	}
 
-	fs.initEvents()
-	if err = fs.initFrameTree(); err != nil {
-		l.Debugf(
-			"NewFrameSession:initFrameTree",
-			"sid:%v tid:%v err:%v",
-			s.ID(), tid, err)
+	go func() {
+		if err = fs.initFrameTree(); err != nil {
+			l.Debugf(
+				"NewFrameSession:initFrameTree",
+				"sid:%v tid:%v err:%v",
+				s.ID(), tid, err)
 
-		return nil, err
-	}
-	if err = fs.initIsolatedWorld(utilityWorldName); err != nil {
-		l.Debugf(
-			"NewFrameSession:initIsolatedWorld",
-			"sid:%v tid:%v err:%v",
-			s.ID(), tid, err)
+			// return nil, err
+		}
+	}()
 
-		return nil, err
-	}
-	if err = fs.initOptions(); err != nil {
-		l.Debugf(
-			"NewFrameSession:initOptions",
-			"sid:%v tid:%v err:%v",
-			s.ID(), tid, err)
+	go func() {
+		if err = fs.initDomains(); err != nil {
+			l.Debugf(
+				"NewFrameSession:initDomains",
+				"sid:%v tid:%v err:%v",
+				s.ID(), tid, err)
 
-		return nil, err
-	}
-	if err = fs.initDomains(); err != nil {
-		l.Debugf(
-			"NewFrameSession:initDomains",
-			"sid:%v tid:%v err:%v",
-			s.ID(), tid, err)
+			// return nil, err
+		}
+	}()
 
-		return nil, err
+	var parentNM *NetworkManager
+	if fs.parent != nil {
+		parentNM = fs.parent.networkManager
 	}
+
+	go func() {
+		fs.initEvents()
+	}()
+
+	go func() {
+		if err = fs.initIsolatedWorld(utilityWorldName); err != nil {
+			l.Debugf(
+				"NewFrameSession:initIsolatedWorld",
+				"sid:%v tid:%v err:%v",
+				s.ID(), tid, err)
+
+			// return nil, err
+		}
+	}()
+	go func() {
+		fs.networkManager, err = NewNetworkManager(ctx, k6Metrics, s, fs.manager, parentNM)
+		if err != nil {
+			l.Debugf("NewFrameSession:NewNetworkManager", "sid:%v tid:%v err:%v",
+				s.ID(), tid, err)
+			// return nil, err
+		}
+	}()
+	go func() {
+		if err = fs.initOptions(); err != nil {
+			l.Debugf(
+				"NewFrameSession:initOptions",
+				"sid:%v tid:%v err:%v",
+				s.ID(), tid, err)
+
+			// return nil, err
+		}
+	}()
 
 	return &fs, nil
 }
@@ -385,10 +400,12 @@ func (fs *FrameSession) initFrameTree() error {
 	fs.logger.Debugf("NewFrameSession:initFrameTree",
 		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
-	action := cdppage.Enable()
-	if err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
-		return fmt.Errorf("enabling page domain: %w", err)
-	}
+	go func() {
+		action := cdppage.Enable()
+		if err := action.Do(cdp.WithExecutor(fs.ctx, fs.session)); err != nil {
+			// return fmt.Errorf("enabling page domain: %w", err)
+		}
+	}()
 
 	var frameTree *cdppage.FrameTree
 	var err error
