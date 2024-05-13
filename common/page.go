@@ -293,6 +293,19 @@ func NewPage(
 		p.emulatedSize = NewEmulatedSize(bctx.opts.Viewport, bctx.opts.Screen)
 	}
 
+	go func() {
+		action := target.SetAutoAttach(true, true).WithFlatten(true)
+		if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+			// return nil, fmt.Errorf("internal error while auto attaching to browser pages: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := bctx.applyAllInitScripts(&p); err != nil {
+			// return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
+		}
+	}()
+
 	var err error
 	p.frameManager = NewFrameManager(ctx, s, &p, p.timeoutSettings, p.logger)
 	p.mainFrameSession, err = NewFrameSession(ctx, s, &p, nil, tid, p.logger)
@@ -310,19 +323,10 @@ func NewPage(
 
 	p.initEvents()
 
-	action := target.SetAutoAttach(true, true).WithFlatten(true)
-	if err := action.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-		return nil, fmt.Errorf("internal error while auto attaching to browser pages: %w", err)
-	}
-
-	add := runtime.AddBinding(webVitalBinding)
-	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
-		return nil, fmt.Errorf("internal error while adding binding to page: %w", err)
-	}
-
-	if err := bctx.applyAllInitScripts(&p); err != nil {
-		return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
-	}
+	// add := runtime.AddBinding(webVitalBinding)
+	// if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+	// 	return nil, fmt.Errorf("internal error while adding binding to page: %w", err)
+	// }
 
 	return &p, nil
 }
