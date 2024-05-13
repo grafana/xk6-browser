@@ -776,27 +776,27 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 		fs.ctx, fs.targetID.String(), trace.WithAttributes(attribute.String("navigation.url", frame.URL)),
 	)
 
-	var (
-		spanID       = fs.mainFrameSpan.SpanContext().SpanID().String()
-		newFrame, ok = fs.manager.getFrameByID(frame.ID)
-	)
+	// var (
+	// 	spanID       = fs.mainFrameSpan.SpanContext().SpanID().String()
+	// 	newFrame, ok = fs.manager.getFrameByID(frame.ID)
+	// )
 
-	// Only set the k6SpanId reference if it's a new frame.
-	if !ok {
-		return
-	}
+	// // Only set the k6SpanId reference if it's a new frame.
+	// if !ok {
+	// 	return
+	// }
 
 	// Set k6SpanId property in the page so it can be retrieved when pushing
 	// the Web Vitals events from the page execution context and used to
 	// correlate them with the navigation span to which they belong to.
 	setSpanIDProp := func() {
-		js := fmt.Sprintf("window.k6SpanId = '%s';", spanID)
-		err := newFrame.EvaluateGlobal(fs.ctx, js)
-		if err != nil {
-			fs.logger.Errorf(
-				"FrameSession:onFrameNavigated", "error on evaluating window.k6SpanId: %v", err,
-			)
-		}
+		// js := fmt.Sprintf("window.k6SpanId = '%s';", spanID)
+		// err := newFrame.EvaluateGlobal(fs.ctx, js)
+		// if err != nil {
+		// 	fs.logger.Errorf(
+		// 		"FrameSession:onFrameNavigated", "error on evaluating window.k6SpanId: %v", err,
+		// 	)
+		// }
 	}
 
 	// Executing a CDP command in the event parsing goroutine might deadlock in some cases.

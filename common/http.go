@@ -376,22 +376,22 @@ func NewHTTPResponse(
 }
 
 func (r *Response) fetchBody() error {
-	cached := func() bool {
-		r.bodyMu.RLock()
-		defer r.bodyMu.RUnlock()
+	// cached := func() bool {
+	// 	r.bodyMu.RLock()
+	// 	defer r.bodyMu.RUnlock()
 
-		return r.body != nil || r.request.frame == nil
-	}
-	if cached() {
-		return nil
-	}
-	action := network.GetResponseBody(r.request.requestID)
-	body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
-	if err != nil {
-		return fmt.Errorf("fetching response body: %w", err)
-	}
+	// 	return r.body != nil || r.request.frame == nil
+	// }
+	// if cached() {
+	// 	return nil
+	// }
+	// action := network.GetResponseBody(r.request.requestID)
+	// body, err := action.Do(cdp.WithExecutor(r.ctx, r.request.frame.manager.session))
+	// if err != nil {
+	// 	return fmt.Errorf("fetching response body: %w", err)
+	// }
 	r.bodyMu.Lock()
-	r.body = body
+	r.body = []byte{}
 	r.bodyMu.Unlock()
 
 	return nil
