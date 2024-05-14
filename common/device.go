@@ -145,133 +145,12 @@ func GetDevices() map[string]Device {
 			IsMobile:          true,
 			HasTouch:          true,
 		},
-		"Galaxy S20": {
-			Name:      "Galaxy S20",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G980F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  869,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S20+": {
-			Name:      "Galaxy S20+",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G985F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  869,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
 		"Galaxy S20 Ultra": {
 			Name:      "Galaxy S20 Ultra",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G988B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
+			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
 			Viewport: Viewport{
-				Width:  869,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S21": {
-			Name:      "Galaxy S21",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  847,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S21+": {
-			Name:      "Galaxy S21+",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  847,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S21 Ultra": {
-			Name:      "Galaxy S21 Ultra",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  847,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S22": {
-			Name:      "Galaxy S22",
-			UserAgent: "Mozilla/5.0 (Linux; Android 14; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S22+": {
-			Name:      "Galaxy S22+",
-			UserAgent: "Mozilla/5.0 (Linux; Android 14; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S22 Ultra": {
-			Name:      "Galaxy S22 Ultra",
-			UserAgent: "Mozilla/5.0 (Linux; Android 14; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S23": {
-			Name:      "Galaxy S23",
-			UserAgent: "Mozilla/5.0 (Linux; Android 15; SM-S230B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S23+": {
-			Name:      "Galaxy S23+",
-			UserAgent: "Mozilla/5.0 (Linux; Android 15; SM-S235B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Galaxy S23 Ultra": {
-			Name:      "Galaxy S23 Ultra",
-			UserAgent: "Mozilla/5.0 (Linux; Android 15; SM-S238B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  906,
-				Height: 412,
+				Width:  412,
+				Height: 915,
 			},
 			DeviceScaleFactor: 3,
 			IsMobile:          true,
@@ -301,7 +180,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPad Mini": {
 			Name:      "iPad Mini",
-			UserAgent: "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  768,
 				Height: 1024,
@@ -312,7 +191,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPad Mini landscape": {
 			Name:      "iPad Mini landscape",
-			UserAgent: "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  1024,
 				Height: 768,
@@ -323,7 +202,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPad Pro": {
 			Name:      "iPad Pro",
-			UserAgent: "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
+			UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
 			Viewport: Viewport{
 				Width:  1024,
 				Height: 1366,
@@ -334,7 +213,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPad Pro landscape": {
 			Name:      "iPad Pro landscape",
-			UserAgent: "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
+			UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
 			Viewport: Viewport{
 				Width:  1366,
 				Height: 1024,
@@ -389,7 +268,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 6": {
 			Name:      "iPhone 6",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  375,
 				Height: 667,
@@ -400,7 +279,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 6 landscape": {
 			Name:      "iPhone 6 landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  667,
 				Height: 375,
@@ -411,7 +290,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 6 Plus": {
 			Name:      "iPhone 6 Plus",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  414,
 				Height: 736,
@@ -422,7 +301,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 6 Plus landscape": {
 			Name:      "iPhone 6 Plus landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  736,
 				Height: 414,
@@ -433,7 +312,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 7": {
 			Name:      "iPhone 7",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  375,
 				Height: 667,
@@ -444,7 +323,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 7 landscape": {
 			Name:      "iPhone 7 landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  667,
 				Height: 375,
@@ -455,7 +334,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 7 Plus": {
 			Name:      "iPhone 7 Plus",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  414,
 				Height: 736,
@@ -466,7 +345,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 7 Plus landscape": {
 			Name:      "iPhone 7 Plus landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  736,
 				Height: 414,
@@ -477,7 +356,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 8": {
 			Name:      "iPhone 8",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  375,
 				Height: 667,
@@ -488,7 +367,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 8 landscape": {
 			Name:      "iPhone 8 landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  667,
 				Height: 375,
@@ -499,7 +378,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone 8 Plus": {
 			Name:      "iPhone 8 Plus",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  414,
 				Height: 736,
@@ -543,7 +422,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone X": {
 			Name:      "iPhone X",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  375,
 				Height: 812,
@@ -554,7 +433,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone X landscape": {
 			Name:      "iPhone X landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  812,
 				Height: 375,
@@ -565,7 +444,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone XR": {
 			Name:      "iPhone XR",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  414,
 				Height: 896,
@@ -576,7 +455,7 @@ func GetDevices() map[string]Device {
 		},
 		"iPhone XR landscape": {
 			Name:      "iPhone XR landscape",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
 				Width:  896,
 				Height: 414,
@@ -585,111 +464,23 @@ func GetDevices() map[string]Device {
 			IsMobile:          true,
 			HasTouch:          true,
 		},
-		"iPhone 11": {
-			Name:      "iPhone 11",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  896,
-				Height: 414,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 11 pro": {
-			Name:      "iPhone 11 pro",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  812,
-				Height: 375,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 12": {
-			Name:      "iPhone 12",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
 		"iPhone 12 pro": {
 			Name:      "iPhone 12 pro",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
+				Width:  390,
+				Height: 844,
 			},
 			DeviceScaleFactor: 3.5,
 			IsMobile:          true,
 			HasTouch:          true,
 		},
-		"iPhone 13": {
-			Name:      "iPhone 13",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
+		"iPhone 14 pro max": {
+			Name:      "iPhone 14 pro max",
+			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
 			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 13 pro": {
-			Name:      "iPhone 13 pro",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 14": {
-			Name:      "iPhone 14",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 14 pro": {
-			Name:      "iPhone 14 pro",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 15": {
-			Name:      "iPhone 15",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"iPhone 15 pro": {
-			Name:      "iPhone 15 pro",
-			UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/85.0.4183.121 Mobile/15E148 Safari/604.1",
-			Viewport: Viewport{
-				Width:  844,
-				Height: 390,
+				Width:  430,
+				Height: 932,
 			},
 			DeviceScaleFactor: 3.5,
 			IsMobile:          true,
@@ -1036,9 +827,9 @@ func GetDevices() map[string]Device {
 			IsMobile:          true,
 			HasTouch:          true,
 		},
-		"Redmi note 9": {
+		"Redmi note 8 pro": {
 			Name:      "Redmi note 9",
-			UserAgent: "Mozilla/5.0 (Linux; Android 11; Redmi Note 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
+			UserAgent: "Mozilla/5.0 (Linux; Android 11; Redmi Note 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
 			Viewport: Viewport{
 				Width:  869,
 				Height: 412,
@@ -1049,87 +840,10 @@ func GetDevices() map[string]Device {
 		},
 		"Redmi note 9 pro": {
 			Name:      "Redmi note 9 pro",
-			UserAgent: "Mozilla/5.0 (Linux; Android 11; Redmi Note 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
+			UserAgent: "Mozilla/5.0 (Linux; Android 12; Redmi Note 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
 			Viewport: Viewport{
 				Width:  869,
 				Height: 412,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 10": {
-			Name:      "Redmi note 10",
-			UserAgent: "Mozilla/5.0 (Linux; Android 12; Redmi Note 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  781,
-				Height: 393,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 10 pro": {
-			Name:      "Redmi note 10 pro",
-			UserAgent: "Mozilla/5.0 (Linux; Android 12; Redmi Note 10 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  781,
-				Height: 393,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 11": {
-			Name:      "Redmi note 11",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; Redmi Note 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  847,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 11 pro": {
-			Name:      "Redmi note 11 pro",
-			UserAgent: "Mozilla/5.0 (Linux; Android 13; Redmi Note 11 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  847,
-				Height: 412,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 12": {
-			Name:      "Redmi note 12",
-			UserAgent: "Mozilla/5.0 (Linux; Android 14; Redmi Note 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  781,
-				Height: 393,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 12 pro": {
-			Name:      "Redmi note 12 pro",
-			UserAgent: "Mozilla/5.0 (Linux; Android 14; Redmi Note 12 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  781,
-				Height: 393,
-			},
-			DeviceScaleFactor: 3.5,
-			IsMobile:          true,
-			HasTouch:          true,
-		},
-		"Redmi note 13": {
-			Name:      "Redmi note 13",
-			UserAgent: "Mozilla/5.0 (Linux; Android 15; Redmi Note 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.9999.99 Mobile Safari/537.36",
-			Viewport: Viewport{
-				Width:  781,
-				Height: 393,
 			},
 			DeviceScaleFactor: 3.5,
 			IsMobile:          true,
