@@ -1699,3 +1699,57 @@ func TestShadowDOMAndDocumentFragment(t *testing.T) {
 		})
 	}
 }
+
+func TestPageTargetBlank(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t, withHTTPServer())
+	tb.withHandler("/home", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(
+			`<!DOCTYPE html><html><head></head><body>
+				<a href="/link" target="_blank">click me</a>
+			</body></html>`,
+		))
+		require.NoError(t, err)
+	})
+	tb.withHandler("/link", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write(
+			[]byte(`<!DOCTYPE html><html><head></head><body><h1>you clicked!</h1></body></html>`),
+		)
+		require.NoError(t, err)
+	})
+
+	p := tb.NewPage(nil)
+
+	// Navigate to the page with a link that opens a new page.
+	opts := &common.FrameGotoOptions{
+		Timeout: common.DefaultTimeout,
+	}
+	resp, err := p.Goto(tb.url("/home"), opts)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Current page count should be 1.
+	pp := p.Context().Pages()
+	assert.Equal(t, 1, len(pp))
+
+	// This link should open the link on a new page.
+	err = p.Click("a[href='/link']", common.NewFrameClickOptions(p.Timeout()))
+	require.NoError(t, err)
+
+	// Wait for the page to be created and for it to navigate to the link.
+	obj, err := p.Context().WaitForEvent("page", nil, common.DefaultTimeout)
+	require.NoError(t, err)
+	p2, ok := obj.(*common.Page)
+	require.True(t, ok, "return from WaitForEvent is not a Page")
+
+	p2.WaitForLoadState(common.LifecycleEventLoad.String(), nil)
+
+	// Now there should be 2 pages.
+	pp = p.Context().Pages()
+	assert.Equal(t, 2, len(pp))
+
+	// Make sure the new page contains the correct page.
+	got := p2.InnerHTML("h1", nil)
+	assert.Equal(t, "you clicked!", got)
+}
