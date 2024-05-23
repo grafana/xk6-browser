@@ -18,7 +18,17 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 	rt := vu.Runtime()
 	maps := mapping{
 		"bringToFront": p.BringToFront,
-		"check":        p.Check,
+		"captureVideo": func(opts goja.Value) error {
+			ctx := vu.Context()
+
+			popts := common.NewVidepCaptureOptions()
+			if err := popts.Parse(ctx, opts); err != nil {
+				return fmt.Errorf("parsing page screencast options: %w", err)
+			}
+
+			return p.CaptureVideo(popts, vu.filePersister)
+		},
+		"check": p.Check,
 		"click": func(selector string, opts goja.Value) (*goja.Promise, error) {
 			popts, err := parseFrameClickOptions(vu.Context(), opts, p.Timeout())
 			if err != nil {
@@ -163,6 +173,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		"setExtraHTTPHeaders":         p.SetExtraHTTPHeaders,
 		"setInputFiles":               p.SetInputFiles,
 		"setViewportSize":             p.SetViewportSize,
+		"stopVideoCapture":            p.StopVideCapture,
 		"tap": func(selector string, opts goja.Value) (*goja.Promise, error) {
 			popts := common.NewFrameTapOptions(p.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
