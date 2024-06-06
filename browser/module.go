@@ -14,7 +14,7 @@ import (
 	_ "net/http/pprof" //nolint:gosec
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
@@ -43,7 +43,7 @@ type (
 
 	// JSModule exposes the properties available to the JS script.
 	JSModule struct {
-		Browser         *goja.Object
+		Browser         *sobek.Object
 		Devices         map[string]common.Device
 		NetworkProfiles map[string]common.NetworkProfile `js:"networkProfiles"`
 	}

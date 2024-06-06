@@ -1,7 +1,7 @@
 package browser
 
 import (
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 )
@@ -11,7 +11,7 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
 		"allHeaders": r.AllHeaders,
-		"frame": func() *goja.Object {
+		"frame": func() *sobek.Object {
 			mf := mapFrame(vu, r.Frame())
 			return rt.ToValue(mf).ToObject(rt)
 		},
@@ -23,7 +23,7 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 		"postData":            r.PostData,
 		"postDataBuffer":      r.PostDataBuffer,
 		"resourceType":        r.ResourceType,
-		"response": func() *goja.Object {
+		"response": func() *sobek.Object {
 			mr := mapResponse(vu, r.Response())
 			return rt.ToValue(mr).ToObject(rt)
 		},

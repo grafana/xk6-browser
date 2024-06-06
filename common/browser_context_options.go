@@ -8,7 +8,7 @@ import (
 
 	"github.com/grafana/xk6-browser/k6ext"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 // Geolocation represents a geolocation.
@@ -24,13 +24,13 @@ func NewGeolocation() *Geolocation {
 }
 
 // Parse parses the geolocation options.
-func (g *Geolocation) Parse(ctx context.Context, opts goja.Value) error { //nolint:cyclop
+func (g *Geolocation) Parse(ctx context.Context, opts sobek.Value) error { //nolint:cyclop
 	rt := k6ext.Runtime(ctx)
 	longitude := 0.0
 	latitude := 0.0
 	accuracy := 0.0
 
-	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
+	if opts != nil && !sobek.IsUndefined(opts) && !sobek.IsNull(opts) {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
@@ -100,9 +100,9 @@ func NewBrowserContextOptions() *BrowserContextOptions {
 	}
 }
 
-func (b *BrowserContextOptions) Parse(ctx context.Context, opts goja.Value) error {
+func (b *BrowserContextOptions) Parse(ctx context.Context, opts sobek.Value) error {
 	rt := k6ext.Runtime(ctx)
-	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
+	if opts != nil && !sobek.IsUndefined(opts) && !sobek.IsNull(opts) {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {
@@ -188,7 +188,7 @@ func (b *BrowserContextOptions) Parse(ctx context.Context, opts goja.Value) erro
 // WaitForEventOptions are the options used by the browserContext.waitForEvent API.
 type WaitForEventOptions struct {
 	Timeout     time.Duration
-	PredicateFn goja.Callable
+	PredicateFn sobek.Callable
 }
 
 // NewWaitForEventOptions created a new instance of WaitForEventOptions with a
@@ -202,7 +202,7 @@ func NewWaitForEventOptions(defaultTimeout time.Duration) *WaitForEventOptions {
 // Parse will parse the options or a callable predicate function. It can parse
 // only a callable predicate function or an object which contains a callable
 // predicate function and a timeout.
-func (w *WaitForEventOptions) Parse(ctx context.Context, optsOrPredicate goja.Value) error {
+func (w *WaitForEventOptions) Parse(ctx context.Context, optsOrPredicate sobek.Value) error {
 	if !gojaValueExists(optsOrPredicate) {
 		return nil
 	}
@@ -212,7 +212,7 @@ func (w *WaitForEventOptions) Parse(ctx context.Context, optsOrPredicate goja.Va
 		rt         = k6ext.Runtime(ctx)
 	)
 
-	w.PredicateFn, isCallable = goja.AssertFunction(optsOrPredicate)
+	w.PredicateFn, isCallable = sobek.AssertFunction(optsOrPredicate)
 	if isCallable {
 		return nil
 	}
@@ -221,7 +221,7 @@ func (w *WaitForEventOptions) Parse(ctx context.Context, optsOrPredicate goja.Va
 	for _, k := range opts.Keys() {
 		switch k {
 		case "predicate":
-			w.PredicateFn, isCallable = goja.AssertFunction(opts.Get(k))
+			w.PredicateFn, isCallable = sobek.AssertFunction(opts.Get(k))
 			if !isCallable {
 				return errors.New("predicate function is not callable")
 			}
@@ -244,7 +244,7 @@ func NewGrantPermissionsOptions() *GrantPermissionsOptions {
 }
 
 // Parse parses the options from opts if opts exists in the Goja runtime.
-func (g *GrantPermissionsOptions) Parse(ctx context.Context, opts goja.Value) {
+func (g *GrantPermissionsOptions) Parse(ctx context.Context, opts sobek.Value) {
 	rt := k6ext.Runtime(ctx)
 
 	if gojaValueExists(opts) {

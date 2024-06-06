@@ -12,7 +12,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	cdppage "github.com/chromedp/cdproto/page"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grafana/xk6-browser/common/js"
@@ -468,9 +468,9 @@ func (h *ElementHandle) press(apiCtx context.Context, key string, opts *Keyboard
 }
 
 //nolint:funlen,gocognit,cyclop
-func (h *ElementHandle) selectOption(apiCtx context.Context, values goja.Value) (any, error) {
-	convertSelectOptionValues := func(values goja.Value) ([]any, error) {
-		if goja.IsNull(values) || goja.IsUndefined(values) {
+func (h *ElementHandle) selectOption(apiCtx context.Context, values sobek.Value) (any, error) {
+	convertSelectOptionValues := func(values sobek.Value) ([]any, error) {
+		if sobek.IsNull(values) || sobek.IsUndefined(values) {
 			return nil, nil
 		}
 
@@ -489,7 +489,7 @@ func (h *ElementHandle) selectOption(apiCtx context.Context, values goja.Value) 
 					return nil, fmt.Errorf("options[%d]: expected object, got null", i)
 				case reflect.TypeOf(&ElementHandle{}).Kind():
 					opts = append(opts, t.(*ElementHandle))
-				case reflect.TypeOf(goja.Object{}).Kind():
+				case reflect.TypeOf(sobek.Object{}).Kind():
 					obj := values.ToObject(rt)
 					opt := SelectOption{}
 					for _, k := range obj.Keys() {
@@ -514,7 +514,7 @@ func (h *ElementHandle) selectOption(apiCtx context.Context, values goja.Value) 
 			}
 		case reflect.TypeOf(&ElementHandle{}).Kind():
 			opts = append(opts, t.(*ElementHandle))
-		case reflect.TypeOf(goja.Object{}).Kind():
+		case reflect.TypeOf(sobek.Object{}).Kind():
 			obj := values.ToObject(rt)
 			opt := SelectOption{}
 			for _, k := range obj.Keys() {
@@ -748,7 +748,7 @@ func (h *ElementHandle) ContentFrame() (*Frame, error) {
 	return frame, nil
 }
 
-func (h *ElementHandle) Dblclick(opts goja.Value) {
+func (h *ElementHandle) Dblclick(opts sobek.Value) {
 	actionOpts := NewElementHandleDblclickOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing element double click options: %w", err)
@@ -781,7 +781,7 @@ func (h *ElementHandle) DispatchEvent(typ string, eventInit any) error {
 	return nil
 }
 
-func (h *ElementHandle) Fill(value string, opts goja.Value) {
+func (h *ElementHandle) Fill(value string, opts sobek.Value) {
 	actionOpts := NewElementHandleBaseOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing element fill options: %w", err)
@@ -831,7 +831,7 @@ func (h *ElementHandle) GetAttribute(name string) any {
 }
 
 // Hover scrolls element into view and hovers over its center point.
-func (h *ElementHandle) Hover(opts goja.Value) {
+func (h *ElementHandle) Hover(opts sobek.Value) {
 	actionOpts := NewElementHandleHoverOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing element hover options: %w", err)
@@ -883,7 +883,7 @@ func (h *ElementHandle) InnerText() string {
 	return v.(string) //nolint:forcetypeassert
 }
 
-func (h *ElementHandle) InputValue(opts goja.Value) string {
+func (h *ElementHandle) InputValue(opts sobek.Value) string {
 	actionOpts := NewElementHandleBaseOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing element input value options: %w", err)
@@ -1002,7 +1002,7 @@ func (h *ElementHandle) OwnerFrame() (*Frame, error) {
 	return frame, nil
 }
 
-func (h *ElementHandle) Press(key string, opts goja.Value) {
+func (h *ElementHandle) Press(key string, opts sobek.Value) {
 	parsedOpts := NewElementHandlePressOptions(h.defaultTimeout())
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing press %q options: %v", key, err)
@@ -1111,7 +1111,7 @@ func (h *ElementHandle) queryAll(selector string, eval evalFunc) ([]*ElementHand
 }
 
 // SetChecked checks or unchecks an element.
-func (h *ElementHandle) SetChecked(checked bool, opts goja.Value) {
+func (h *ElementHandle) SetChecked(checked bool, opts sobek.Value) {
 	parsedOpts := NewElementHandleSetCheckedOptions(h.defaultTimeout())
 	err := parsedOpts.Parse(h.ctx, opts)
 	if err != nil {
@@ -1131,13 +1131,13 @@ func (h *ElementHandle) SetChecked(checked bool, opts goja.Value) {
 
 // Uncheck scrolls element into view, and if it's an input element of type
 // checkbox that is already checked, clicks on it to mark it as unchecked.
-func (h *ElementHandle) Uncheck(opts goja.Value) {
+func (h *ElementHandle) Uncheck(opts sobek.Value) {
 	h.SetChecked(false, opts)
 }
 
 // Check scrolls element into view, and if it's an input element of type
 // checkbox that is unchecked, clicks on it to mark it as checked.
-func (h *ElementHandle) Check(opts goja.Value) {
+func (h *ElementHandle) Check(opts sobek.Value) {
 	h.SetChecked(true, opts)
 }
 
@@ -1191,7 +1191,7 @@ func (h *ElementHandle) Screenshot(
 	return buf, err
 }
 
-func (h *ElementHandle) ScrollIntoViewIfNeeded(opts goja.Value) {
+func (h *ElementHandle) ScrollIntoViewIfNeeded(opts sobek.Value) {
 	actionOpts := NewElementHandleBaseOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing scrollIntoViewIfNeeded options: %w", err)
@@ -1203,7 +1203,7 @@ func (h *ElementHandle) ScrollIntoViewIfNeeded(opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
-func (h *ElementHandle) SelectOption(values goja.Value, opts goja.Value) []string {
+func (h *ElementHandle) SelectOption(values sobek.Value, opts sobek.Value) []string {
 	actionOpts := NewElementHandleBaseOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing selectOption options: %w", err)
@@ -1226,7 +1226,7 @@ func (h *ElementHandle) SelectOption(values goja.Value, opts goja.Value) []strin
 	return returnVal
 }
 
-func (h *ElementHandle) SelectText(opts goja.Value) {
+func (h *ElementHandle) SelectText(opts sobek.Value) {
 	actionOpts := NewElementHandleBaseOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing selectText options: %w", err)
@@ -1243,7 +1243,7 @@ func (h *ElementHandle) SelectText(opts goja.Value) {
 }
 
 // SetInputFiles sets the given files into the input file element.
-func (h *ElementHandle) SetInputFiles(files goja.Value, opts goja.Value) error {
+func (h *ElementHandle) SetInputFiles(files sobek.Value, opts sobek.Value) error {
 	actionOpts := NewElementHandleSetInputFilesOptions(h.defaultTimeout())
 	if err := actionOpts.Parse(h.ctx, opts); err != nil {
 		return fmt.Errorf("parsing setInputFiles options: %w", err)
@@ -1336,7 +1336,7 @@ func (h *ElementHandle) Timeout() time.Duration {
 }
 
 // Type scrolls element into view, focuses element and types text.
-func (h *ElementHandle) Type(text string, opts goja.Value) {
+func (h *ElementHandle) Type(text string, opts sobek.Value) {
 	parsedOpts := NewElementHandleTypeOptions(h.defaultTimeout())
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		k6ext.Panic(h.ctx, "parsing type options: %v", err)
@@ -1352,7 +1352,7 @@ func (h *ElementHandle) Type(text string, opts goja.Value) {
 	applySlowMo(h.ctx)
 }
 
-func (h *ElementHandle) WaitForElementState(state string, opts goja.Value) {
+func (h *ElementHandle) WaitForElementState(state string, opts sobek.Value) {
 	parsedOpts := NewElementHandleWaitForElementStateOptions(h.defaultTimeout())
 	err := parsedOpts.Parse(h.ctx, opts)
 	if err != nil {
@@ -1365,7 +1365,7 @@ func (h *ElementHandle) WaitForElementState(state string, opts goja.Value) {
 }
 
 // WaitForSelector waits for the selector to appear in the DOM.
-func (h *ElementHandle) WaitForSelector(selector string, opts goja.Value) (*ElementHandle, error) {
+func (h *ElementHandle) WaitForSelector(selector string, opts sobek.Value) (*ElementHandle, error) {
 	parsedOpts := NewFrameWaitForSelectorOptions(h.defaultTimeout())
 	if err := parsedOpts.Parse(h.ctx, opts); err != nil {
 		return nil, fmt.Errorf("parsing waitForSelector %q options: %w", selector, err)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 
@@ -21,7 +21,7 @@ type mapping = map[string]any
 // The motivation of this mapping was to support $ and $$ wildcard
 // methods.
 // See issue #661 for more details.
-func mapBrowserToGoja(vu moduleVU) *goja.Object {
+func mapBrowserToGoja(vu moduleVU) *sobek.Object {
 	var (
 		rt  = vu.Runtime()
 		obj = rt.NewObject()
@@ -37,7 +37,7 @@ func mapBrowserToGoja(vu moduleVU) *goja.Object {
 }
 
 func parseFrameClickOptions(
-	ctx context.Context, opts goja.Value, defaultTimeout time.Duration,
+	ctx context.Context, opts sobek.Value, defaultTimeout time.Duration,
 ) (*common.FrameClickOptions, error) {
 	copts := common.NewFrameClickOptions(defaultTimeout)
 	if err := copts.Parse(ctx, opts); err != nil {

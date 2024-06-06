@@ -18,7 +18,7 @@ import (
 	cdpbrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/target"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/gorilla/websocket"
 )
 
@@ -570,7 +570,7 @@ func (b *Browser) IsConnected() bool {
 }
 
 // NewContext creates a new incognito-like browser context.
-func (b *Browser) NewContext(opts goja.Value) (*BrowserContext, error) {
+func (b *Browser) NewContext(opts sobek.Value) (*BrowserContext, error) {
 	_, span := TraceAPICall(b.ctx, "", "browser.newContext")
 	defer span.End()
 
@@ -611,7 +611,7 @@ func (b *Browser) NewContext(opts goja.Value) (*BrowserContext, error) {
 }
 
 // NewPage creates a new tab in the browser window.
-func (b *Browser) NewPage(opts goja.Value) (*Page, error) {
+func (b *Browser) NewPage(opts sobek.Value) (*Page, error) {
 	_, span := TraceAPICall(b.ctx, "", "browser.newPage")
 	defer span.End()
 

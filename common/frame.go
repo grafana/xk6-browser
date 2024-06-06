@@ -17,7 +17,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 // maxRetry controls how many times to retry if an action fails.
@@ -604,7 +604,7 @@ func (f *Frame) click(selector string, opts *FrameClickOptions) error {
 }
 
 // Check clicks the first element found that matches selector.
-func (f *Frame) Check(selector string, opts goja.Value) {
+func (f *Frame) Check(selector string, opts sobek.Value) {
 	f.log.Debugf("Frame:Check", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameCheckOptions(f.defaultTimeout())
@@ -632,7 +632,7 @@ func (f *Frame) check(selector string, opts *FrameCheckOptions) error {
 }
 
 // Uncheck the first found element that matches the selector.
-func (f *Frame) Uncheck(selector string, opts goja.Value) {
+func (f *Frame) Uncheck(selector string, opts sobek.Value) {
 	f.log.Debugf("Frame:Uncheck", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameUncheckOptions(f.defaultTimeout())
@@ -661,7 +661,7 @@ func (f *Frame) uncheck(selector string, opts *FrameUncheckOptions) error {
 
 // IsChecked returns true if the first element that matches the selector
 // is checked. Otherwise, returns false.
-func (f *Frame) IsChecked(selector string, opts goja.Value) bool {
+func (f *Frame) IsChecked(selector string, opts sobek.Value) bool {
 	f.log.Debugf("Frame:IsChecked", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsCheckedOptions(f.defaultTimeout())
@@ -721,7 +721,7 @@ func (f *Frame) Content() string {
 }
 
 // Dblclick double clicks an element matching provided selector.
-func (f *Frame) Dblclick(selector string, opts goja.Value) {
+func (f *Frame) Dblclick(selector string, opts sobek.Value) {
 	f.log.Debugf("Frame:DblClick", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameDblClickOptions(f.defaultTimeout())
@@ -861,7 +861,7 @@ func (f *Frame) EvaluateHandle(pageFunc string, args ...any) (handle JSHandleAPI
 }
 
 // Fill fills out the first element found that matches the selector.
-func (f *Frame) Fill(selector, value string, opts goja.Value) {
+func (f *Frame) Fill(selector, value string, opts sobek.Value) {
 	f.log.Debugf("Frame:Fill", "fid:%s furl:%q sel:%q val:%q", f.ID(), f.URL(), selector, value)
 
 	popts := NewFrameFillOptions(f.defaultTimeout())
@@ -891,7 +891,7 @@ func (f *Frame) fill(selector, value string, opts *FrameFillOptions) error {
 }
 
 // Focus focuses on the first element that matches the selector.
-func (f *Frame) Focus(selector string, opts goja.Value) {
+func (f *Frame) Focus(selector string, opts sobek.Value) {
 	f.log.Debugf("Frame:Focus", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameBaseOptions(f.defaultTimeout())
@@ -931,7 +931,7 @@ func (f *Frame) FrameElement() (*ElementHandle, error) {
 }
 
 // GetAttribute of the first element found that matches the selector.
-func (f *Frame) GetAttribute(selector, name string, opts goja.Value) any {
+func (f *Frame) GetAttribute(selector, name string, opts sobek.Value) any {
 	f.log.Debugf("Frame:GetAttribute", "fid:%s furl:%q sel:%q name:%s", f.ID(), f.URL(), selector, name)
 
 	popts := NewFrameBaseOptions(f.defaultTimeout())
@@ -996,7 +996,7 @@ func (f *Frame) Goto(url string, opts *FrameGotoOptions) (*Response, error) {
 }
 
 // Hover moves the pointer over the first element that matches the selector.
-func (f *Frame) Hover(selector string, opts goja.Value) {
+func (f *Frame) Hover(selector string, opts sobek.Value) {
 	f.log.Debugf("Frame:Hover", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameHoverOptions(f.defaultTimeout())
@@ -1026,7 +1026,7 @@ func (f *Frame) hover(selector string, opts *FrameHoverOptions) error {
 
 // InnerHTML returns the innerHTML attribute of the first element found
 // that matches the selector.
-func (f *Frame) InnerHTML(selector string, opts goja.Value) string {
+func (f *Frame) InnerHTML(selector string, opts sobek.Value) string {
 	f.log.Debugf("Frame:InnerHTML", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameInnerHTMLOptions(f.defaultTimeout())
@@ -1068,7 +1068,7 @@ func (f *Frame) innerHTML(selector string, opts *FrameInnerHTMLOptions) (string,
 
 // InnerText returns the inner text of the first element found
 // that matches the selector.
-func (f *Frame) InnerText(selector string, opts goja.Value) string {
+func (f *Frame) InnerText(selector string, opts sobek.Value) string {
 	f.log.Debugf("Frame:InnerText", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameInnerTextOptions(f.defaultTimeout())
@@ -1110,7 +1110,7 @@ func (f *Frame) innerText(selector string, opts *FrameInnerTextOptions) (string,
 
 // InputValue returns the input value of the first element found
 // that matches the selector.
-func (f *Frame) InputValue(selector string, opts goja.Value) string {
+func (f *Frame) InputValue(selector string, opts sobek.Value) string {
 	f.log.Debugf("Frame:InputValue", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameInputValueOptions(f.defaultTimeout())
@@ -1163,7 +1163,7 @@ func (f *Frame) setDetached(detached bool) {
 
 // IsEditable returns true if the first element that matches the selector
 // is editable. Otherwise, returns false.
-func (f *Frame) IsEditable(selector string, opts goja.Value) bool {
+func (f *Frame) IsEditable(selector string, opts sobek.Value) bool {
 	f.log.Debugf("Frame:IsEditable", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsEditableOptions(f.defaultTimeout())
@@ -1204,7 +1204,7 @@ func (f *Frame) isEditable(selector string, opts *FrameIsEditableOptions) (bool,
 
 // IsEnabled returns true if the first element that matches the selector
 // is enabled. Otherwise, returns false.
-func (f *Frame) IsEnabled(selector string, opts goja.Value) bool {
+func (f *Frame) IsEnabled(selector string, opts sobek.Value) bool {
 	f.log.Debugf("Frame:IsEnabled", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsEnabledOptions(f.defaultTimeout())
@@ -1245,7 +1245,7 @@ func (f *Frame) isEnabled(selector string, opts *FrameIsEnabledOptions) (bool, e
 
 // IsDisabled returns true if the first element that matches the selector
 // is disabled. Otherwise, returns false.
-func (f *Frame) IsDisabled(selector string, opts goja.Value) bool {
+func (f *Frame) IsDisabled(selector string, opts sobek.Value) bool {
 	f.log.Debugf("Frame:IsDisabled", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsDisabledOptions(f.defaultTimeout())
@@ -1286,7 +1286,7 @@ func (f *Frame) isDisabled(selector string, opts *FrameIsDisabledOptions) (bool,
 
 // IsHidden returns true if the first element that matches the selector
 // is hidden. Otherwise, returns false.
-func (f *Frame) IsHidden(selector string, opts goja.Value) (bool, error) {
+func (f *Frame) IsHidden(selector string, opts sobek.Value) (bool, error) {
 	f.log.Debugf("Frame:IsHidden", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsHiddenOptions()
@@ -1319,7 +1319,7 @@ func (f *Frame) isHidden(selector string, opts *FrameIsHiddenOptions) (bool, err
 
 // IsVisible returns true if the first element that matches the selector
 // is visible. Otherwise, returns false.
-func (f *Frame) IsVisible(selector string, opts goja.Value) (bool, error) {
+func (f *Frame) IsVisible(selector string, opts sobek.Value) (bool, error) {
 	f.log.Debugf("Frame:IsVisible", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameIsVisibleOptions()
@@ -1359,7 +1359,7 @@ func (f *Frame) ID() string {
 }
 
 // Locator creates and returns a new locator for this frame.
-func (f *Frame) Locator(selector string, opts goja.Value) *Locator {
+func (f *Frame) Locator(selector string, opts sobek.Value) *Locator {
 	f.log.Debugf("Frame:Locator", "fid:%s furl:%q selector:%q opts:%+v", f.ID(), f.URL(), selector, opts)
 
 	return NewLocator(f.ctx, selector, f, f.log)
@@ -1415,7 +1415,7 @@ func (f *Frame) ParentFrame() *Frame {
 }
 
 // Press presses the given key for the first element found that matches the selector.
-func (f *Frame) Press(selector, key string, opts goja.Value) {
+func (f *Frame) Press(selector, key string, opts sobek.Value) {
 	f.log.Debugf("Frame:Press", "fid:%s furl:%q sel:%q key:%q", f.ID(), f.URL(), selector, key)
 
 	popts := NewFramePressOptions(f.defaultTimeout())
@@ -1446,7 +1446,7 @@ func (f *Frame) press(selector, key string, opts *FramePressOptions) error {
 
 // SelectOption selects the given options and returns the array of
 // option values of the first element found that matches the selector.
-func (f *Frame) SelectOption(selector string, values goja.Value, opts goja.Value) []string {
+func (f *Frame) SelectOption(selector string, values sobek.Value, opts sobek.Value) []string {
 	f.log.Debugf("Frame:SelectOption", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameSelectOptionOptions(f.defaultTimeout())
@@ -1463,7 +1463,7 @@ func (f *Frame) SelectOption(selector string, values goja.Value, opts goja.Value
 	return v
 }
 
-func (f *Frame) selectOption(selector string, values goja.Value, opts *FrameSelectOptionOptions) ([]string, error) {
+func (f *Frame) selectOption(selector string, values sobek.Value, opts *FrameSelectOptionOptions) ([]string, error) {
 	selectOption := func(apiCtx context.Context, handle *ElementHandle) (any, error) {
 		return handle.selectOption(apiCtx, values)
 	}
@@ -1504,7 +1504,7 @@ func (f *Frame) selectOption(selector string, values goja.Value, opts *FrameSele
 }
 
 // SetContent replaces the entire HTML document content.
-func (f *Frame) SetContent(html string, opts goja.Value) {
+func (f *Frame) SetContent(html string, opts sobek.Value) {
 	f.log.Debugf("Frame:SetContent", "fid:%s furl:%q", f.ID(), f.URL())
 
 	parsedOpts := NewFrameSetContentOptions(
@@ -1535,7 +1535,7 @@ func (f *Frame) SetContent(html string, opts goja.Value) {
 }
 
 // SetInputFiles sets input files for the selected element.
-func (f *Frame) SetInputFiles(selector string, files goja.Value, opts goja.Value) error {
+func (f *Frame) SetInputFiles(selector string, files sobek.Value, opts sobek.Value) error {
 	f.log.Debugf("Frame:SetInputFiles", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameSetInputFilesOptions(f.defaultTimeout())
@@ -1603,7 +1603,7 @@ func (f *Frame) setInputFiles(selector string, files *Files, opts *FrameSetInput
 
 // TextContent returns the textContent attribute of the first element found
 // that matches the selector.
-func (f *Frame) TextContent(selector string, opts goja.Value) string {
+func (f *Frame) TextContent(selector string, opts sobek.Value) string {
 	f.log.Debugf("Frame:TextContent", "fid:%s furl:%q sel:%q", f.ID(), f.URL(), selector)
 
 	popts := NewFrameTextContentOptions(f.defaultTimeout())
@@ -1661,7 +1661,7 @@ func (f *Frame) Title() string {
 }
 
 // Type text on the first element found matches the selector.
-func (f *Frame) Type(selector, text string, opts goja.Value) {
+func (f *Frame) Type(selector, text string, opts sobek.Value) {
 	f.log.Debugf("Frame:Type", "fid:%s furl:%q sel:%q text:%q", f.ID(), f.URL(), selector, text)
 
 	popts := NewFrameTypeOptions(f.defaultTimeout())
@@ -1792,7 +1792,7 @@ func (f *Frame) waitForFunction(
 
 // WaitForLoadState waits for the given load state to be reached.
 // This will unblock if that lifecycle event has already been received.
-func (f *Frame) WaitForLoadState(state string, opts goja.Value) {
+func (f *Frame) WaitForLoadState(state string, opts sobek.Value) {
 	f.log.Debugf("Frame:WaitForLoadState", "fid:%s furl:%q state:%s", f.ID(), f.URL(), state)
 	defer f.log.Debugf("Frame:WaitForLoadState:return", "fid:%s furl:%q state:%s", f.ID(), f.URL(), state)
 
@@ -1922,7 +1922,7 @@ func (f *Frame) WaitForNavigation(opts *FrameWaitForNavigationOptions) (*Respons
 }
 
 // WaitForSelector waits for the given selector to match the waiting criteria.
-func (f *Frame) WaitForSelector(selector string, opts goja.Value) (*ElementHandle, error) {
+func (f *Frame) WaitForSelector(selector string, opts sobek.Value) (*ElementHandle, error) {
 	parsedOpts := NewFrameWaitForSelectorOptions(f.defaultTimeout())
 	if err := parsedOpts.Parse(f.ctx, opts); err != nil {
 		return nil, fmt.Errorf("parsing wait for selector %q options: %w", selector, err)

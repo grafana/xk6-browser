@@ -12,7 +12,7 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
@@ -179,12 +179,12 @@ func (r *Request) Frame() *Frame {
 }
 
 // HeaderValue returns the value of the given header.
-func (r *Request) HeaderValue(name string) goja.Value {
+func (r *Request) HeaderValue(name string) sobek.Value {
 	rt := r.vu.Runtime()
 	headers := r.AllHeaders()
 	val, ok := headers[name]
 	if !ok {
-		return goja.Null()
+		return sobek.Null()
 	}
 	return rt.ToValue(val)
 }
@@ -225,7 +225,7 @@ func (r *Request) PostData() string {
 }
 
 // PostDataBuffer returns the request post data as an ArrayBuffer.
-func (r *Request) PostDataBuffer() goja.ArrayBuffer {
+func (r *Request) PostDataBuffer() sobek.ArrayBuffer {
 	rt := r.vu.Runtime()
 	return rt.NewArrayBuffer([]byte(r.postData))
 }
@@ -249,7 +249,7 @@ func (r *Request) Size() HTTPMessageSize {
 }
 
 // Timing returns the request timing information.
-func (r *Request) Timing() goja.Value {
+func (r *Request) Timing() sobek.Value {
 	type resourceTiming struct {
 		StartTime             float64 `js:"startTime"`
 		DomainLookupStart     float64 `js:"domainLookupStart"`
@@ -420,7 +420,7 @@ func (r *Response) AllHeaders() map[string]string {
 }
 
 // Body returns the response body as a binary buffer.
-func (r *Response) Body() goja.ArrayBuffer {
+func (r *Response) Body() sobek.ArrayBuffer {
 	if r.status >= 300 && r.status <= 399 {
 		k6ext.Panic(r.ctx, "Response body is unavailable for redirect responses")
 	}
@@ -457,11 +457,11 @@ func (r *Response) Frame() *Frame {
 }
 
 // HeaderValue returns the value of the given header.
-func (r *Response) HeaderValue(name string) goja.Value {
+func (r *Response) HeaderValue(name string) sobek.Value {
 	headers := r.AllHeaders()
 	val, ok := headers[name]
 	if !ok {
-		return goja.Null()
+		return sobek.Null()
 	}
 	rt := r.vu.Runtime()
 	return rt.ToValue(val)
@@ -509,7 +509,7 @@ func (r *Response) HeadersArray() []HTTPHeader {
 }
 
 // JSON returns the response body as JSON data.
-func (r *Response) JSON() goja.Value {
+func (r *Response) JSON() sobek.Value {
 	if r.cachedJSON == nil {
 		if err := r.fetchBody(); err != nil {
 			k6ext.Panic(r.ctx, "getting response body: %w", err)
@@ -542,13 +542,13 @@ func (r *Response) Request() *Request {
 }
 
 // SecurityDetails returns the security details of the response.
-func (r *Response) SecurityDetails() goja.Value {
+func (r *Response) SecurityDetails() sobek.Value {
 	rt := r.vu.Runtime()
 	return rt.ToValue(r.securityDetails)
 }
 
 // ServerAddr returns the remote address of the server.
-func (r *Response) ServerAddr() goja.Value {
+func (r *Response) ServerAddr() sobek.Value {
 	rt := r.vu.Runtime()
 	return rt.ToValue(r.remoteAddress)
 }

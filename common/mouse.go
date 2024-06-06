@@ -7,7 +7,7 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/input"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/k6ext"
 )
@@ -106,7 +106,7 @@ func (m *Mouse) up(opts *MouseDownUpOptions) error {
 }
 
 // Click will trigger a series of MouseMove, MouseDown and MouseUp events in the browser.
-func (m *Mouse) Click(x float64, y float64, opts goja.Value) {
+func (m *Mouse) Click(x float64, y float64, opts sobek.Value) {
 	mouseOpts := NewMouseClickOptions()
 	if err := mouseOpts.Parse(m.ctx, opts); err != nil {
 		k6ext.Panic(m.ctx, "parsing mouse click options: %w", err)
@@ -117,7 +117,7 @@ func (m *Mouse) Click(x float64, y float64, opts goja.Value) {
 }
 
 // DblClick will trigger Click twice in quick succession.
-func (m *Mouse) DblClick(x float64, y float64, opts goja.Value) {
+func (m *Mouse) DblClick(x float64, y float64, opts sobek.Value) {
 	mouseOpts := NewMouseDblClickOptions()
 	if err := mouseOpts.Parse(m.ctx, opts); err != nil {
 		k6ext.Panic(m.ctx, "parsing double click options: %w", err)
@@ -128,7 +128,7 @@ func (m *Mouse) DblClick(x float64, y float64, opts goja.Value) {
 }
 
 // Down will trigger a MouseDown event in the browser.
-func (m *Mouse) Down(opts goja.Value) {
+func (m *Mouse) Down(opts sobek.Value) {
 	mouseOpts := NewMouseDownUpOptions()
 	if err := mouseOpts.Parse(m.ctx, opts); err != nil {
 		k6ext.Panic(m.ctx, "parsing mouse down options: %w", err)
@@ -139,7 +139,7 @@ func (m *Mouse) Down(opts goja.Value) {
 }
 
 // Move will trigger a MouseMoved event in the browser.
-func (m *Mouse) Move(x float64, y float64, opts goja.Value) {
+func (m *Mouse) Move(x float64, y float64, opts sobek.Value) {
 	mouseOpts := NewMouseMoveOptions()
 	if err := mouseOpts.Parse(m.ctx, opts); err != nil {
 		k6ext.Panic(m.ctx, "parsing mouse move options: %w", err)
@@ -150,7 +150,7 @@ func (m *Mouse) Move(x float64, y float64, opts goja.Value) {
 }
 
 // Up will trigger a MouseUp event in the browser.
-func (m *Mouse) Up(opts goja.Value) {
+func (m *Mouse) Up(opts sobek.Value) {
 	mouseOpts := NewMouseDownUpOptions()
 	if err := mouseOpts.Parse(m.ctx, opts); err != nil {
 		k6ext.Panic(m.ctx, "parsing mouse up options: %w", err)
@@ -161,11 +161,11 @@ func (m *Mouse) Up(opts goja.Value) {
 }
 
 // Wheel will trigger a MouseWheel event in the browser
-/*func (m *Mouse) Wheel(opts goja.Value) {
+/*func (m *Mouse) Wheel(opts sobek.Value) {
 	var deltaX float64 = 0.0
 	var deltaY float64 = 0.0
 
-	if opts != nil && !goja.IsUndefined(opts) && !goja.IsNull(opts) {
+	if opts != nil && !sobek.IsUndefined(opts) && !sobek.IsNull(opts) {
 		opts := opts.ToObject(rt)
 		for _, k := range opts.Keys() {
 			switch k {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/k6ext"
 )
@@ -53,9 +53,9 @@ func (s Size) enclosingIntSize() *Size {
 }
 
 // Parse size details from a given goja viewport value.
-func (s *Size) Parse(ctx context.Context, viewport goja.Value) error {
+func (s *Size) Parse(ctx context.Context, viewport sobek.Value) error {
 	rt := k6ext.Runtime(ctx)
-	if viewport != nil && !goja.IsUndefined(viewport) && !goja.IsNull(viewport) {
+	if viewport != nil && !sobek.IsUndefined(viewport) && !sobek.IsNull(viewport) {
 		viewport := viewport.ToObject(rt)
 		for _, k := range viewport.Keys() {
 			switch k {
@@ -81,9 +81,9 @@ type Viewport struct {
 }
 
 // Parse viewport details from a given goja viewport value.
-func (v *Viewport) Parse(ctx context.Context, viewport goja.Value) error {
+func (v *Viewport) Parse(ctx context.Context, viewport sobek.Value) error {
 	rt := k6ext.Runtime(ctx)
-	if viewport != nil && !goja.IsUndefined(viewport) && !goja.IsNull(viewport) {
+	if viewport != nil && !sobek.IsUndefined(viewport) && !sobek.IsNull(viewport) {
 		viewport := viewport.ToObject(rt)
 		for _, k := range viewport.Keys() {
 			switch k {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 
@@ -26,7 +26,7 @@ import (
 
 // VU is a k6 VU instance.
 // TODO: Do we still need this VU wrapper?
-// ToGojaValue can be a helper function that takes a goja.Runtime (although it's
+// ToGojaValue can be a helper function that takes a sobek.Runtime (although it's
 // not much of a helper from calling ToValue(i) directly...), and we can access
 // EventLoop from modulestest.Runtime.EventLoop.
 type VU struct {
@@ -38,7 +38,7 @@ type VU struct {
 }
 
 // ToGojaValue is a convenience method for converting any value to a goja value.
-func (v *VU) ToGojaValue(i any) goja.Value { return v.Runtime().ToValue(i) }
+func (v *VU) ToGojaValue(i any) sobek.Value { return v.Runtime().ToValue(i) }
 
 // ActivateVU mimicks activation of the VU as in k6.
 // It transitions the VU from the init stage to the execution stage by

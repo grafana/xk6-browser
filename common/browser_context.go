@@ -19,7 +19,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/cdproto/target"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 // waitForEventType represents the event types that can be used when working
@@ -259,7 +259,7 @@ func (b *BrowserContext) SetDefaultTimeout(timeout int64) {
 }
 
 // SetGeolocation overrides the geo location of the user.
-func (b *BrowserContext) SetGeolocation(geolocation goja.Value) {
+func (b *BrowserContext) SetGeolocation(geolocation sobek.Value) {
 	b.logger.Debugf("BrowserContext:SetGeolocation", "bctxid:%v", b.id)
 
 	g := NewGeolocation()
@@ -281,7 +281,7 @@ func (b *BrowserContext) SetGeolocation(geolocation goja.Value) {
 // See for details:
 // - https://github.com/microsoft/playwright/issues/2196#issuecomment-627134837
 // - https://github.com/microsoft/playwright/pull/2763
-func (b *BrowserContext) SetHTTPCredentials(httpCredentials goja.Value) {
+func (b *BrowserContext) SetHTTPCredentials(httpCredentials sobek.Value) {
 	b.logger.Warnf("setHTTPCredentials", "setHTTPCredentials is deprecated."+
 		" Create a new BrowserContext with httpCredentials instead.")
 	b.logger.Debugf("BrowserContext:SetHTTPCredentials", "bctxid:%v", b.id)

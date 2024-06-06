@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 // Strict mode:
@@ -82,7 +82,7 @@ func (l *Locator) click(opts *FrameClickOptions) error {
 }
 
 // Dblclick double clicks on an element using locator's selector with strict mode on.
-func (l *Locator) Dblclick(opts goja.Value) {
+func (l *Locator) Dblclick(opts sobek.Value) {
 	l.log.Debugf("Locator:Dblclick", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -107,7 +107,7 @@ func (l *Locator) dblclick(opts *FrameDblclickOptions) error {
 }
 
 // Check on an element using locator's selector with strict mode on.
-func (l *Locator) Check(opts goja.Value) {
+func (l *Locator) Check(opts sobek.Value) {
 	l.log.Debugf("Locator:Check", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -132,7 +132,7 @@ func (l *Locator) check(opts *FrameCheckOptions) error {
 }
 
 // Uncheck on an element using locator's selector with strict mode on.
-func (l *Locator) Uncheck(opts goja.Value) {
+func (l *Locator) Uncheck(opts sobek.Value) {
 	l.log.Debugf("Locator:Uncheck", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -158,7 +158,7 @@ func (l *Locator) uncheck(opts *FrameUncheckOptions) error {
 
 // IsChecked returns true if the element matches the locator's
 // selector and is checked. Otherwise, returns false.
-func (l *Locator) IsChecked(opts goja.Value) bool {
+func (l *Locator) IsChecked(opts sobek.Value) bool {
 	l.log.Debugf("Locator:IsChecked", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameIsCheckedOptions(l.frame.defaultTimeout())
@@ -182,7 +182,7 @@ func (l *Locator) isChecked(opts *FrameIsCheckedOptions) (bool, error) {
 
 // IsEditable returns true if the element matches the locator's
 // selector and is Editable. Otherwise, returns false.
-func (l *Locator) IsEditable(opts goja.Value) bool {
+func (l *Locator) IsEditable(opts sobek.Value) bool {
 	l.log.Debugf("Locator:IsEditable", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameIsEditableOptions(l.frame.defaultTimeout())
@@ -206,7 +206,7 @@ func (l *Locator) isEditable(opts *FrameIsEditableOptions) (bool, error) {
 
 // IsEnabled returns true if the element matches the locator's
 // selector and is Enabled. Otherwise, returns false.
-func (l *Locator) IsEnabled(opts goja.Value) bool {
+func (l *Locator) IsEnabled(opts sobek.Value) bool {
 	l.log.Debugf("Locator:IsEnabled", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameIsEnabledOptions(l.frame.defaultTimeout())
@@ -230,7 +230,7 @@ func (l *Locator) isEnabled(opts *FrameIsEnabledOptions) (bool, error) {
 
 // IsDisabled returns true if the element matches the locator's
 // selector and is disabled. Otherwise, returns false.
-func (l *Locator) IsDisabled(opts goja.Value) bool {
+func (l *Locator) IsDisabled(opts sobek.Value) bool {
 	l.log.Debugf("Locator:IsDisabled", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameIsDisabledOptions(l.frame.defaultTimeout())
@@ -279,7 +279,7 @@ func (l *Locator) IsHidden() (bool, error) {
 }
 
 // Fill out the element using locator's selector with strict mode on.
-func (l *Locator) Fill(value string, opts goja.Value) {
+func (l *Locator) Fill(value string, opts sobek.Value) {
 	l.log.Debugf(
 		"Locator:Fill", "fid:%s furl:%q sel:%q val:%q opts:%+v",
 		l.frame.ID(), l.frame.URL(), l.selector, value, opts,
@@ -305,7 +305,7 @@ func (l *Locator) fill(value string, opts *FrameFillOptions) error {
 }
 
 // Focus on the element using locator's selector with strict mode on.
-func (l *Locator) Focus(opts goja.Value) {
+func (l *Locator) Focus(opts sobek.Value) {
 	l.log.Debugf("Locator:Focus", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -328,7 +328,7 @@ func (l *Locator) focus(opts *FrameBaseOptions) error {
 }
 
 // GetAttribute of the element using locator's selector with strict mode on.
-func (l *Locator) GetAttribute(name string, opts goja.Value) any {
+func (l *Locator) GetAttribute(name string, opts sobek.Value) any {
 	l.log.Debugf(
 		"Locator:GetAttribute", "fid:%s furl:%q sel:%q name:%q opts:%+v",
 		l.frame.ID(), l.frame.URL(), l.selector, name, opts,
@@ -358,7 +358,7 @@ func (l *Locator) getAttribute(name string, opts *FrameBaseOptions) (any, error)
 
 // InnerHTML returns the element's inner HTML that matches
 // the locator's selector with strict mode on.
-func (l *Locator) InnerHTML(opts goja.Value) string {
+func (l *Locator) InnerHTML(opts sobek.Value) string {
 	l.log.Debugf("Locator:InnerHTML", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -385,7 +385,7 @@ func (l *Locator) innerHTML(opts *FrameInnerHTMLOptions) (string, error) {
 
 // InnerText returns the element's inner text that matches
 // the locator's selector with strict mode on.
-func (l *Locator) InnerText(opts goja.Value) string {
+func (l *Locator) InnerText(opts sobek.Value) string {
 	l.log.Debugf("Locator:InnerText", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -412,7 +412,7 @@ func (l *Locator) innerText(opts *FrameInnerTextOptions) (string, error) {
 
 // TextContent returns the element's text content that matches
 // the locator's selector with strict mode on.
-func (l *Locator) TextContent(opts goja.Value) string {
+func (l *Locator) TextContent(opts sobek.Value) string {
 	l.log.Debugf("Locator:TextContent", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -439,7 +439,7 @@ func (l *Locator) textContent(opts *FrameTextContentOptions) (string, error) {
 
 // InputValue returns the element's input value that matches
 // the locator's selector with strict mode on.
-func (l *Locator) InputValue(opts goja.Value) string {
+func (l *Locator) InputValue(opts sobek.Value) string {
 	l.log.Debugf("Locator:InputValue", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameInputValueOptions(l.frame.defaultTimeout())
@@ -462,7 +462,7 @@ func (l *Locator) inputValue(opts *FrameInputValueOptions) (string, error) {
 // SelectOption filters option values of the first element that matches
 // the locator's selector (with strict mode on), selects the options,
 // and returns the filtered options.
-func (l *Locator) SelectOption(values goja.Value, opts goja.Value) []string {
+func (l *Locator) SelectOption(values sobek.Value, opts sobek.Value) []string {
 	l.log.Debugf("Locator:SelectOption", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	copts := NewFrameSelectOptionOptions(l.frame.defaultTimeout())
@@ -477,14 +477,14 @@ func (l *Locator) SelectOption(values goja.Value, opts goja.Value) []string {
 	return v
 }
 
-func (l *Locator) selectOption(values goja.Value, opts *FrameSelectOptionOptions) ([]string, error) {
+func (l *Locator) selectOption(values sobek.Value, opts *FrameSelectOptionOptions) ([]string, error) {
 	opts.Strict = true
 	return l.frame.selectOption(l.selector, values, opts)
 }
 
 // Press the given key on the element found that matches the locator's
 // selector with strict mode on.
-func (l *Locator) Press(key string, opts goja.Value) {
+func (l *Locator) Press(key string, opts sobek.Value) {
 	l.log.Debugf(
 		"Locator:Press", "fid:%s furl:%q sel:%q key:%q opts:%+v",
 		l.frame.ID(), l.frame.URL(), l.selector, key, opts,
@@ -511,7 +511,7 @@ func (l *Locator) press(key string, opts *FramePressOptions) error {
 
 // Type text on the element found that matches the locator's
 // selector with strict mode on.
-func (l *Locator) Type(text string, opts goja.Value) error {
+func (l *Locator) Type(text string, opts sobek.Value) error {
 	l.log.Debugf(
 		"Locator:Type", "fid:%s furl:%q sel:%q text:%q opts:%+v",
 		l.frame.ID(), l.frame.URL(), l.selector, text, opts,
@@ -543,7 +543,7 @@ func (l *Locator) typ(text string, opts *FrameTypeOptions) error {
 
 // Hover moves the pointer over the element that matches the locator's
 // selector with strict mode on.
-func (l *Locator) Hover(opts goja.Value) {
+func (l *Locator) Hover(opts sobek.Value) {
 	l.log.Debugf("Locator:Hover", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	var err error
@@ -603,7 +603,7 @@ func (l *Locator) dispatchEvent(typ string, eventInit any, opts *FrameDispatchEv
 }
 
 // WaitFor waits for the element matching the locator's selector with strict mode on.
-func (l *Locator) WaitFor(opts goja.Value) {
+func (l *Locator) WaitFor(opts sobek.Value) {
 	l.log.Debugf("Locator:WaitFor", "fid:%s furl:%q sel:%q opts:%+v", l.frame.ID(), l.frame.URL(), l.selector, opts)
 
 	popts := NewFrameWaitForSelectorOptions(l.frame.defaultTimeout())

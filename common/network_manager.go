@@ -25,7 +25,7 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 // Credentials holds HTTP authentication credentials.
@@ -40,9 +40,9 @@ func NewCredentials() *Credentials {
 }
 
 // Parse credentials details from a given goja credentials value.
-func (c *Credentials) Parse(ctx context.Context, credentials goja.Value) error {
+func (c *Credentials) Parse(ctx context.Context, credentials sobek.Value) error {
 	rt := k6ext.Runtime(ctx)
-	if credentials != nil && !goja.IsUndefined(credentials) && !goja.IsNull(credentials) {
+	if credentials != nil && !sobek.IsUndefined(credentials) && !sobek.IsNull(credentials) {
 		credentials := credentials.ToObject(rt)
 		for _, k := range credentials.Keys() {
 			switch k {
@@ -716,7 +716,7 @@ func (m *NetworkManager) Authenticate(credentials *Credentials) {
 }
 
 // ExtraHTTPHeaders returns the currently set extra HTTP request headers.
-func (m *NetworkManager) ExtraHTTPHeaders() goja.Value {
+func (m *NetworkManager) ExtraHTTPHeaders() sobek.Value {
 	rt := m.vu.Runtime()
 	return rt.ToValue(m.extraHTTPHeaders)
 }

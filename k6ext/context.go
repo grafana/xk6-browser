@@ -6,7 +6,7 @@ import (
 	k6modules "go.k6.io/k6/js/modules"
 	k6lib "go.k6.io/k6/lib"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 type ctxKey int
@@ -49,7 +49,7 @@ func GetCustomMetrics(ctx context.Context) *CustomMetrics {
 }
 
 // Runtime is a convenience function for getting a k6 VU runtime.
-func Runtime(ctx context.Context) *goja.Runtime {
+func Runtime(ctx context.Context) *sobek.Runtime {
 	return GetVU(ctx).Runtime()
 }
 

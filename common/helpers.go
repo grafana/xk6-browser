@@ -9,7 +9,7 @@ import (
 	"time"
 
 	cdpruntime "github.com/chromedp/cdproto/runtime"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/k6ext"
 )
@@ -37,7 +37,7 @@ func convertArgument(
 	ctx context.Context, execCtx *ExecutionContext, arg any,
 ) (*cdpruntime.CallArgument, error) {
 	if escapesGojaValues(arg) {
-		return nil, errors.New("goja.Value escaped")
+		return nil, errors.New("sobek.Value escaped")
 	}
 	switch a := arg.(type) {
 	case int64:
@@ -222,14 +222,14 @@ func TrimQuotes(s string) string {
 
 // gojaValueExists returns true if a given value is not nil and exists
 // (defined and not null) in the goja runtime.
-func gojaValueExists(v goja.Value) bool {
-	return v != nil && !goja.IsUndefined(v) && !goja.IsNull(v)
+func gojaValueExists(v sobek.Value) bool {
+	return v != nil && !sobek.IsUndefined(v) && !sobek.IsNull(v)
 }
 
 // asGojaValue return v as a goja value.
 // panics if v is not a goja value.
-func asGojaValue(ctx context.Context, v any) goja.Value {
-	gv, ok := v.(goja.Value)
+func asGojaValue(ctx context.Context, v any) sobek.Value {
+	gv, ok := v.(sobek.Value)
 	if !ok {
 		k6ext.Panic(ctx, "unexpected type %T", v)
 	}
@@ -257,7 +257,7 @@ func convert[T any](from any, to *T) error {
 // business logic works.
 func escapesGojaValues(args ...any) bool {
 	for _, arg := range args {
-		if _, ok := arg.(goja.Value); ok {
+		if _, ok := arg.(sobek.Value); ok {
 			return true
 		}
 	}

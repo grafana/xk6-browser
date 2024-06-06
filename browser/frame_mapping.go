@@ -3,7 +3,7 @@ package browser
 import (
 	"fmt"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -16,7 +16,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 	rt := vu.Runtime()
 	maps := mapping{
 		"check": f.Check,
-		"childFrames": func() *goja.Object {
+		"childFrames": func() *sobek.Object {
 			var (
 				mcfs []mapping
 				cfs  = f.ChildFrames()
@@ -26,7 +26,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}
 			return rt.ToValue(mcfs).ToObject(rt)
 		},
-		"click": func(selector string, opts goja.Value) (*goja.Promise, error) {
+		"click": func(selector string, opts sobek.Value) (*sobek.Promise, error) {
 			popts, err := parseFrameClickOptions(vu.Context(), opts, f.Timeout())
 			if err != nil {
 				return nil, err
@@ -39,17 +39,17 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		},
 		"content":  f.Content,
 		"dblclick": f.Dblclick,
-		"dispatchEvent": func(selector, typ string, eventInit, opts goja.Value) error {
+		"dispatchEvent": func(selector, typ string, eventInit, opts sobek.Value) error {
 			popts := common.NewFrameDispatchEventOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return fmt.Errorf("parsing frame dispatch event options: %w", err)
 			}
 			return f.DispatchEvent(selector, typ, exportArg(eventInit), popts) //nolint:wrapcheck
 		},
-		"evaluate": func(pageFunction goja.Value, gargs ...goja.Value) any {
+		"evaluate": func(pageFunction sobek.Value, gargs ...sobek.Value) any {
 			return f.Evaluate(pageFunction.String(), exportArgs(gargs)...)
 		},
-		"evaluateHandle": func(pageFunction goja.Value, gargs ...goja.Value) (mapping, error) {
+		"evaluateHandle": func(pageFunction sobek.Value, gargs ...sobek.Value) (mapping, error) {
 			jsh, err := f.EvaluateHandle(pageFunction.String(), exportArgs(gargs)...)
 			if err != nil {
 				return nil, err //nolint:wrapcheck
@@ -66,7 +66,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			return mapElementHandle(vu, fe), nil
 		},
 		"getAttribute": f.GetAttribute,
-		"goto": func(url string, opts goja.Value) (*goja.Promise, error) {
+		"goto": func(url string, opts sobek.Value) (*sobek.Promise, error) {
 			gopts := common.NewFrameGotoOptions(
 				f.Referrer(),
 				f.NavigationTimeout(),
@@ -94,16 +94,16 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		"isEnabled":  f.IsEnabled,
 		"isHidden":   f.IsHidden,
 		"isVisible":  f.IsVisible,
-		"locator": func(selector string, opts goja.Value) *goja.Object {
+		"locator": func(selector string, opts sobek.Value) *sobek.Object {
 			ml := mapLocator(vu, f.Locator(selector, opts))
 			return rt.ToValue(ml).ToObject(rt)
 		},
 		"name": f.Name,
-		"page": func() *goja.Object {
+		"page": func() *sobek.Object {
 			mp := mapPage(vu, f.Page())
 			return rt.ToValue(mp).ToObject(rt)
 		},
-		"parentFrame": func() *goja.Object {
+		"parentFrame": func() *sobek.Object {
 			mf := mapFrame(vu, f.ParentFrame())
 			return rt.ToValue(mf).ToObject(rt)
 		},
@@ -111,7 +111,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		"selectOption":  f.SelectOption,
 		"setContent":    f.SetContent,
 		"setInputFiles": f.SetInputFiles,
-		"tap": func(selector string, opts goja.Value) (*goja.Promise, error) {
+		"tap": func(selector string, opts sobek.Value) (*sobek.Promise, error) {
 			popts := common.NewFrameTapOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing frame tap options: %w", err)
@@ -125,7 +125,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		"type":        f.Type,
 		"uncheck":     f.Uncheck,
 		"url":         f.URL,
-		"waitForFunction": func(pageFunc, opts goja.Value, args ...goja.Value) (*goja.Promise, error) {
+		"waitForFunction": func(pageFunc, opts sobek.Value, args ...sobek.Value) (*sobek.Promise, error) {
 			js, popts, pargs, err := parseWaitForFunctionArgs(
 				vu.Context(), f.Timeout(), pageFunc, opts, args...,
 			)
@@ -138,7 +138,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"waitForLoadState": f.WaitForLoadState,
-		"waitForNavigation": func(opts goja.Value) (*goja.Promise, error) {
+		"waitForNavigation": func(opts sobek.Value) (*sobek.Promise, error) {
 			popts := common.NewFrameWaitForNavigationOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing frame wait for navigation options: %w", err)
@@ -152,7 +152,7 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 				return mapResponse(vu, resp), nil
 			}), nil
 		},
-		"waitForSelector": func(selector string, opts goja.Value) (mapping, error) {
+		"waitForSelector": func(selector string, opts sobek.Value) (mapping, error) {
 			eh, err := f.WaitForSelector(selector, opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck

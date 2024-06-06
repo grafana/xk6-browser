@@ -3,7 +3,7 @@ package browser
 import (
 	"fmt"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -17,7 +17,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping { //nolint:
 	maps := mapping{
 		"boundingBox": eh.BoundingBox,
 		"check":       eh.Check,
-		"click": func(opts goja.Value) (*goja.Promise, error) {
+		"click": func(opts sobek.Value) (*sobek.Promise, error) {
 			ctx := vu.Context()
 
 			popts := common.NewElementHandleClickOptions(eh.Timeout())
@@ -38,7 +38,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping { //nolint:
 			return mapFrame(vu, f), nil
 		},
 		"dblclick": eh.Dblclick,
-		"dispatchEvent": func(typ string, eventInit goja.Value) error {
+		"dispatchEvent": func(typ string, eventInit sobek.Value) error {
 			return eh.DispatchEvent(typ, exportArg(eventInit)) //nolint:wrapcheck
 		},
 		"fill":         eh.Fill,
@@ -62,7 +62,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping { //nolint:
 			return mapFrame(vu, f), nil
 		},
 		"press": eh.Press,
-		"screenshot": func(opts goja.Value) (*goja.ArrayBuffer, error) {
+		"screenshot": func(opts sobek.Value) (*sobek.ArrayBuffer, error) {
 			ctx := vu.Context()
 
 			popts := common.NewElementHandleScreenshotOptions(eh.Timeout())
@@ -83,7 +83,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping { //nolint:
 		"selectOption":           eh.SelectOption,
 		"selectText":             eh.SelectText,
 		"setInputFiles":          eh.SetInputFiles,
-		"tap": func(opts goja.Value) (*goja.Promise, error) {
+		"tap": func(opts sobek.Value) (*sobek.Promise, error) {
 			popts := common.NewElementHandleTapOptions(eh.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing element tap options: %w", err)
@@ -96,7 +96,7 @@ func mapElementHandle(vu moduleVU, eh *common.ElementHandle) mapping { //nolint:
 		"type":                eh.Type,
 		"uncheck":             eh.Uncheck,
 		"waitForElementState": eh.WaitForElementState,
-		"waitForSelector": func(selector string, opts goja.Value) (mapping, error) {
+		"waitForSelector": func(selector string, opts sobek.Value) (mapping, error) {
 			eh, err := eh.WaitForSelector(selector, opts)
 			if err != nil {
 				return nil, err //nolint:wrapcheck

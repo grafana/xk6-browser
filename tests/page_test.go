@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -197,12 +197,12 @@ func TestPageEvaluateMapping(t *testing.T) {
 		{
 			name:   "arrow_func_no_return",
 			script: "() => {2}",
-			want:   goja.Null(),
+			want:   sobek.Null(),
 		},
 		{
 			name:   "full_func_no_return",
 			script: "function() {3}",
-			want:   goja.Null(),
+			want:   sobek.Null(),
 		},
 		{
 			name:   "async_func",
@@ -825,7 +825,7 @@ func TestPageWaitForFunction(t *testing.T) {
 // force all tests that work with this to go through the mapping layer.
 // This returns a cleanup function which should be deferred.
 // The opts are passed to k6test.NewVU as is without any modification.
-func startIteration(t *testing.T, opts ...any) (*k6test.VU, *goja.Runtime, *[]string, func()) {
+func startIteration(t *testing.T, opts ...any) (*k6test.VU, *sobek.Runtime, *[]string, func()) {
 	t.Helper()
 
 	vu := k6test.NewVU(t, opts...)
@@ -1198,12 +1198,12 @@ func TestPageOn(t *testing.T) {
 	}
 }
 
-func assertExceptionContains(t *testing.T, rt *goja.Runtime, fn func(), expErrMsg string) {
+func assertExceptionContains(t *testing.T, rt *sobek.Runtime, fn func(), expErrMsg string) {
 	t.Helper()
 
-	cal, _ := goja.AssertFunction(rt.ToValue(fn))
+	cal, _ := sobek.AssertFunction(rt.ToValue(fn))
 
-	_, err := cal(goja.Undefined())
+	_, err := cal(sobek.Undefined())
 	require.ErrorContains(t, err, expErrMsg)
 }
 

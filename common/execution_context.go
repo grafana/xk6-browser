@@ -158,7 +158,7 @@ func (e *ExecutionContext) eval(
 	apiCtx context.Context, opts evalOptions, js string, args ...any,
 ) (any, error) {
 	if escapesGojaValues(args...) {
-		return nil, errors.New("goja.Value escaped")
+		return nil, errors.New("sobek.Value escaped")
 	}
 	e.logger.Debugf(
 		"ExecutionContext:eval",
@@ -300,7 +300,7 @@ func (e *ExecutionContext) getInjectedScript(apiCtx context.Context) (JSHandleAP
 // returns a value or handle.
 func (e *ExecutionContext) Eval(apiCtx context.Context, js string, args ...any) (any, error) {
 	if escapesGojaValues(args...) {
-		return nil, errors.New("goja.Value escaped")
+		return nil, errors.New("sobek.Value escaped")
 	}
 	opts := evalOptions{
 		forceCallable: true,
@@ -318,7 +318,7 @@ func (e *ExecutionContext) Eval(apiCtx context.Context, js string, args ...any) 
 // and returns a JSHandle.
 func (e *ExecutionContext) EvalHandle(apiCtx context.Context, js string, args ...any) (JSHandleAPI, error) {
 	if escapesGojaValues(args...) {
-		return nil, errors.New("goja.Value escaped")
+		return nil, errors.New("sobek.Value escaped")
 	}
 	opts := evalOptions{
 		forceCallable: true,

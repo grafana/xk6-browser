@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -266,7 +266,7 @@ func TestLocator(t *testing.T) {
 		})
 	}
 
-	timeout := func(tb *testBrowser) goja.Value {
+	timeout := func(tb *testBrowser) sobek.Value {
 		return tb.toGojaValue(jsFrameBaseOpts{Timeout: "100"})
 	}
 	sanityTests := []struct {
@@ -455,7 +455,7 @@ func TestLocatorElementState(t *testing.T) {
 		})
 	}
 
-	timeout := func(tb *testBrowser) goja.Value {
+	timeout := func(tb *testBrowser) sobek.Value {
 		return tb.toGojaValue(jsFrameBaseOpts{Timeout: "100"})
 	}
 	sanityTests := []struct {

@@ -3,7 +3,7 @@ package browser
 import (
 	"fmt"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/k6ext"
@@ -12,7 +12,7 @@ import (
 // mapLocator API to the JS module.
 func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 	return mapping{
-		"clear": func(opts goja.Value) error {
+		"clear": func(opts sobek.Value) error {
 			ctx := vu.Context()
 
 			copts := common.NewFrameFillOptions(lo.Timeout())
@@ -22,7 +22,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 
 			return lo.Clear(copts) //nolint:wrapcheck
 		},
-		"click": func(opts goja.Value) (*goja.Promise, error) {
+		"click": func(opts sobek.Value) (*sobek.Promise, error) {
 			popts, err := parseFrameClickOptions(vu.Context(), opts, lo.Timeout())
 			if err != nil {
 				return nil, err
@@ -52,7 +52,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 		"press":        lo.Press,
 		"type":         lo.Type,
 		"hover":        lo.Hover,
-		"tap": func(opts goja.Value) (*goja.Promise, error) {
+		"tap": func(opts sobek.Value) (*sobek.Promise, error) {
 			copts := common.NewFrameTapOptions(lo.DefaultTimeout())
 			if err := copts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing locator tap options: %w", err)
@@ -61,7 +61,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping {
 				return nil, lo.Tap(copts) //nolint:wrapcheck
 			}), nil
 		},
-		"dispatchEvent": func(typ string, eventInit, opts goja.Value) error {
+		"dispatchEvent": func(typ string, eventInit, opts sobek.Value) error {
 			popts := common.NewFrameDispatchEventOptions(lo.DefaultTimeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return fmt.Errorf("parsing locator dispatch event options: %w", err)
