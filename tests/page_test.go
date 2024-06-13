@@ -558,6 +558,7 @@ func TestPageFill(t *testing.T) {
 	p := newTestBrowser(t).NewPage(nil)
 	err := p.SetContent(`
 		<input id="text" type="text" value="something" />
+		<input id="dotted.id" type="text" value="dotted" />
 		<input id="date" type="date" value="2012-03-12"/>
 		<input id="number" type="number" value="42"/>
 		<input id="unfillable" type="radio" />
@@ -566,6 +567,7 @@ func TestPageFill(t *testing.T) {
 
 	happy := []struct{ name, selector, value string }{
 		{name: "text", selector: "#text", value: "fill me up"},
+		{name: "dotted", selector: "#dotted.id", value: "fill me up"},
 		{name: "date", selector: "#date", value: "2012-03-13"},
 		{name: "number", selector: "#number", value: "42"},
 	}

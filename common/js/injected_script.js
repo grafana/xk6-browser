@@ -108,6 +108,19 @@ function oneLine(s) {
 
 class CSSQueryEngine {
   queryAll(root, selector) {
+    // Add \\ for each dot the ID selector contains.
+    //
+    // This is for the case when the selector contains an ID selector
+    // that contains a dot (e.g., #my.id). The querier cannot find elements
+    // with a dot in the ID selector (e.g., #my.id) without escaping the dot.
+    //
+    // This is because the dot is interpreted as a class selector.
+    //
+    // Adding \\ before the dot will escape it and allow the querier to find
+    // the element.
+    if (selector.startsWith("#") && selector.includes(".")) {
+      selector = selector.split(".").join("\\.");
+    }
     return root.querySelectorAll(selector);
   }
 }
@@ -984,7 +997,6 @@ class InjectedScript {
 
   waitForSelector(selector, root, strict, state, polling, timeout, ...args) {
     let lastElement;
-    let previewNode = this.previewNode;
     const predicate = () => {
       const elements = this.querySelectorAll(selector, root || document);
       const element = elements[0];
