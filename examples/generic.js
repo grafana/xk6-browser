@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/experimental/browser';
+import { browser } from 'k6/browser';
 
 export const options = {
   scenarios: {
@@ -18,16 +18,16 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
     // Goto front page, find login link and click it
     await page.goto('https://test.k6.io/my_messages.php');
 
     // Enter login credentials and login
-    page.locator('input[name="login"]').type('admin');
-    page.locator('input[name="password"]').type('123');
+    await page.locator('input[name="login"]').type('admin');
+    await page.locator('input[name="password"]').type('123');
 
     // Submit and wait for navigation
     await Promise.all([
@@ -36,10 +36,10 @@ export default async function() {
     ]);
 
     // Check we've logged in
-    check(page, {
-      'header': p => p.locator('h2').textContent() == 'Welcome, admin!',
-    });
+    const h2 = page.locator('h2');
+    const headerOK = await h2.textContent() == 'Welcome, admin!';
+    check(headerOK, { 'header': headerOK });
   } finally {
-    page.close();
+    await page.close();
   }
 }
