@@ -10,6 +10,11 @@ import (
 	"github.com/grafana/xk6-browser/k6ext"
 )
 
+const (
+	optionWidth  = "width"
+	optionHeight = "height"
+)
+
 // ParseBrowserContextOptions parses the browser context options.
 func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 	ctx context.Context,
@@ -159,9 +164,9 @@ func ParseScreen(ctx context.Context, opts sobek.Value) (*common.Screen, error) 
 	o := opts.ToObject(k6ext.Runtime(ctx))
 	for _, k := range o.Keys() {
 		switch k {
-		case "width":
+		case optionWidth:
 			screen.Width = o.Get(k).ToInteger()
-		case "height":
+		case optionHeight:
 			screen.Height = o.Get(k).ToInteger()
 		}
 	}
@@ -180,9 +185,9 @@ func ParseViewport(ctx context.Context, opts sobek.Value) (*common.Viewport, err
 	o := opts.ToObject(k6ext.Runtime(ctx))
 	for _, k := range o.Keys() {
 		switch k {
-		case "width":
+		case optionWidth:
 			viewport.Width = o.Get(k).ToInteger()
-		case "height":
+		case optionHeight:
 			viewport.Height = o.Get(k).ToInteger()
 		}
 	}
