@@ -54,11 +54,11 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 		case "hasTouch":
 			popts.HasTouch = o.Get(k).ToBoolean()
 		case "httpCredentials":
-			credentials := common.NewCredentials()
-			if err := credentials.Parse(ctx, o.Get(k).ToObject(rt)); err != nil {
+			creds, err := ParseCredentials(ctx, o.Get(k).ToObject(rt))
+			if err != nil {
 				return nil, fmt.Errorf("parsing httpCredentials options: %w", err)
 			}
-			popts.HttpCredentials = credentials
+			popts.HttpCredentials = creds
 		case "ignoreHTTPSErrors":
 			popts.IgnoreHTTPSErrors = o.Get(k).ToBoolean()
 		case "isMobile":
@@ -125,4 +125,25 @@ func ParseGeolocation(ctx context.Context, opts sobek.Value) (*common.Geolocatio
 	}
 
 	return &geoloc, nil
+}
+
+// ParseCredentials parses the credentials.
+func ParseCredentials(ctx context.Context, opts sobek.Value) (*common.Credentials, error) {
+	var creds common.Credentials
+
+	if !sobekValueExists(opts) {
+		return &creds, nil // return the default options
+	}
+
+	o := opts.ToObject(k6ext.Runtime(ctx))
+	for _, k := range o.Keys() {
+		switch k {
+		case "username":
+			creds.Username = o.Get(k).String()
+		case "password":
+			creds.Password = o.Get(k).String()
+		}
+	}
+
+	return &creds, nil
 }
