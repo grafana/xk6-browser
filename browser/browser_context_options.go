@@ -15,11 +15,11 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 	ctx context.Context,
 	opts sobek.Value,
 ) (*common.BrowserContextOptions, error) {
-	if !sobekValueExists(opts) {
-		return nil, nil //nolint:nilnil
-	}
-
 	popts := common.NewBrowserContextOptions()
+
+	if !sobekValueExists(opts) {
+		return popts, nil // return the default options
+	}
 
 	rt := k6ext.Runtime(ctx)
 	o := opts.ToObject(rt)
@@ -46,11 +46,11 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 				popts.ExtraHTTPHeaders[k] = headers.Get(k).String()
 			}
 		case "geolocation":
-			geolocation := common.NewGeolocation()
-			if err := geolocation.Parse(ctx, o.Get(k).ToObject(rt)); err != nil {
+			geoloc, err := ParseGeolocation(ctx, o.Get(k).ToObject(rt))
+			if err != nil {
 				return nil, fmt.Errorf("parsing geolocation options: %w", err)
 			}
-			popts.Geolocation = geolocation
+			popts.Geolocation = geoloc
 		case "hasTouch":
 			popts.HasTouch = o.Get(k).ToBoolean()
 		case "httpCredentials":
@@ -102,4 +102,27 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 	}
 
 	return popts, nil
+}
+
+// ParseGeolocation parses the geolocation.
+func ParseGeolocation(ctx context.Context, opts sobek.Value) (*common.Geolocation, error) {
+	var geoloc common.Geolocation
+
+	if !sobekValueExists(opts) {
+		return &geoloc, nil // return the default options
+	}
+
+	o := opts.ToObject(k6ext.Runtime(ctx))
+	for _, k := range o.Keys() {
+		switch k {
+		case "accuracy":
+			geoloc.Accurracy = o.Get(k).ToFloat()
+		case "latitude":
+			geoloc.Latitude = o.Get(k).ToFloat()
+		case "longitude":
+			geoloc.Longitude = o.Get(k).ToFloat()
+		}
+	}
+
+	return &geoloc, nil
 }

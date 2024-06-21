@@ -265,15 +265,10 @@ func (b *BrowserContext) SetDefaultTimeout(timeout int64) {
 }
 
 // SetGeolocation overrides the geo location of the user.
-func (b *BrowserContext) SetGeolocation(geolocation sobek.Value) error {
+func (b *BrowserContext) SetGeolocation(geolocation *Geolocation) error {
 	b.logger.Debugf("BrowserContext:SetGeolocation", "bctxid:%v", b.id)
 
-	g := NewGeolocation()
-	if err := g.Parse(b.ctx, geolocation); err != nil {
-		return fmt.Errorf("parsing geo location: %w", err)
-	}
-
-	b.opts.Geolocation = g
+	b.opts.Geolocation = geolocation
 	for _, p := range b.browser.getPages() {
 		if err := p.updateGeolocation(); err != nil {
 			return fmt.Errorf("updating geo location in target ID %s: %w", p.targetID, err)

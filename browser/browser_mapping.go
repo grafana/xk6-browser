@@ -40,6 +40,9 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newContext options: %w", err)
 			}
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newContext options: %w", err)
+			}
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				b, err := vu.browser()
 				if err != nil {
@@ -74,6 +77,9 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			popts, err := ParseBrowserContextOptions(vu.Context(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newPage options: %w", err)
+			}
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newPage options: %w", err)
 			}
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				b, err := vu.browser()

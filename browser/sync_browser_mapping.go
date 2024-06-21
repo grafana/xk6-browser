@@ -36,6 +36,9 @@ func syncMapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newContext options: %w", err)
 			}
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newContext options: %w", err)
+			}
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err
@@ -71,6 +74,9 @@ func syncMapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop
 			popts, err := ParseBrowserContextOptions(vu.Context(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newPage options: %w", err)
+			}
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newPage options: %w", err)
 			}
 			b, err := vu.browser()
 			if err != nil {
