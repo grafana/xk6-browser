@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/grafana/sobek"
-
-	"github.com/grafana/xk6-browser/common"
 )
 
 // syncMapBrowser is like mapBrowser but returns synchronous functions.
@@ -34,11 +32,13 @@ func syncMapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop
 			return b.IsConnected(), nil
 		},
 		"newContext": func(opts sobek.Value) (*sobek.Object, error) {
-			popts := common.NewBrowserContextOptions()
-			if err := popts.Parse(vu.Context(), opts); err != nil {
+			popts, err := ParseBrowserContextOptions(rt, opts)
+			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newContext options: %w", err)
 			}
-
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newContext options: %w", err)
+			}
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err
@@ -71,11 +71,13 @@ func syncMapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop
 			return b.Version(), nil
 		},
 		"newPage": func(opts sobek.Value) (mapping, error) {
-			popts := common.NewBrowserContextOptions()
-			if err := popts.Parse(vu.Context(), opts); err != nil {
-				return nil, fmt.Errorf("parsing browser.newContext options: %w", err)
+			popts, err := ParseBrowserContextOptions(rt, opts)
+			if err != nil {
+				return nil, fmt.Errorf("parsing browser.newPage options: %w", err)
 			}
-
+			if err := popts.Validate(); err != nil {
+				return nil, fmt.Errorf("validating browser.newPage options: %w", err)
+			}
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err

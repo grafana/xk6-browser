@@ -57,8 +57,14 @@ func syncMapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //n
 		"setDefaultNavigationTimeout": bc.SetDefaultNavigationTimeout,
 		"setDefaultTimeout":           bc.SetDefaultTimeout,
 		"setGeolocation":              bc.SetGeolocation,
-		"setHTTPCredentials":          bc.SetHTTPCredentials, //nolint:staticcheck
-		"setOffline":                  bc.SetOffline,
+		"setHTTPCredentials": func(httpCredentials sobek.Value) error {
+			creds, err := ParseCredentials(rt, httpCredentials)
+			if err != nil {
+				return fmt.Errorf("parsing httpCredentials options: %w", err)
+			}
+			return bc.SetHTTPCredentials(creds) //nolint:wrapcheck,staticcheck
+		},
+		"setOffline": bc.SetOffline,
 		"waitForEvent": func(event string, optsOrPredicate sobek.Value) (*sobek.Promise, error) {
 			ctx := vu.Context()
 			popts := common.NewWaitForEventOptions(
