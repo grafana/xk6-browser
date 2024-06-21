@@ -83,8 +83,8 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 				popts.ReducedMotion = common.ReducedMotionNoPreference
 			}
 		case "screen":
-			screen := &common.Screen{}
-			if err := screen.Parse(ctx, o.Get(k).ToObject(rt)); err != nil {
+			screen, err := ParseScreen(ctx, o.Get(k).ToObject(rt))
+			if err != nil {
 				return nil, fmt.Errorf("parsing screen options: %w", err)
 			}
 			popts.Screen = screen
@@ -146,4 +146,25 @@ func ParseCredentials(ctx context.Context, opts sobek.Value) (*common.Credential
 	}
 
 	return &creds, nil
+}
+
+// ParseScreen parses the screen options.
+func ParseScreen(ctx context.Context, opts sobek.Value) (*common.Screen, error) {
+	var screen common.Screen
+
+	if !sobekValueExists(opts) {
+		return &screen, nil // return the default options
+	}
+
+	o := opts.ToObject(k6ext.Runtime(ctx))
+	for _, k := range o.Keys() {
+		switch k {
+		case "width":
+			screen.Width = o.Get(k).ToInteger()
+		case "height":
+			screen.Height = o.Get(k).ToInteger()
+		}
+	}
+
+	return &screen, nil
 }
