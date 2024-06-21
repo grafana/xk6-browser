@@ -93,11 +93,11 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 		case "userAgent":
 			popts.UserAgent = o.Get(k).String()
 		case "viewport":
-			viewport := &common.Viewport{}
-			if err := viewport.Parse(ctx, o.Get(k).ToObject(rt)); err != nil {
+			vp, err := ParseViewport(ctx, o.Get(k).ToObject(rt))
+			if err != nil {
 				return nil, fmt.Errorf("parsing viewport options: %w", err)
 			}
-			popts.Viewport = viewport
+			popts.Viewport = vp
 		}
 	}
 
@@ -167,4 +167,25 @@ func ParseScreen(ctx context.Context, opts sobek.Value) (*common.Screen, error) 
 	}
 
 	return &screen, nil
+}
+
+// ParseViewport parses the viewport options.
+func ParseViewport(ctx context.Context, opts sobek.Value) (*common.Viewport, error) {
+	var viewport common.Viewport
+
+	if !sobekValueExists(opts) {
+		return &viewport, nil // return the default options
+	}
+
+	o := opts.ToObject(k6ext.Runtime(ctx))
+	for _, k := range o.Keys() {
+		switch k {
+		case "width":
+			viewport.Width = o.Get(k).ToInteger()
+		case "height":
+			viewport.Height = o.Get(k).ToInteger()
+		}
+	}
+
+	return &viewport, nil
 }
