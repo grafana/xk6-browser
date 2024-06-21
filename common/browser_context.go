@@ -12,7 +12,6 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/cdproto/target"
-	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common/js"
 	"github.com/grafana/xk6-browser/k6error"
@@ -284,17 +283,13 @@ func (b *BrowserContext) SetGeolocation(geolocation *Geolocation) error {
 // See for details:
 // - https://github.com/microsoft/playwright/issues/2196#issuecomment-627134837
 // - https://github.com/microsoft/playwright/pull/2763
-func (b *BrowserContext) SetHTTPCredentials(httpCredentials sobek.Value) error {
+func (b *BrowserContext) SetHTTPCredentials(httpCredentials *Credentials) error {
 	b.logger.Warnf("setHTTPCredentials", "setHTTPCredentials is deprecated."+
 		" Create a new BrowserContext with httpCredentials instead.")
 	b.logger.Debugf("BrowserContext:SetHTTPCredentials", "bctxid:%v", b.id)
 
-	c := NewCredentials()
-	if err := c.Parse(b.ctx, httpCredentials); err != nil {
-		return fmt.Errorf("parsing HTTP credentials: %w", err)
-	}
+	b.opts.HttpCredentials = httpCredentials
 
-	b.opts.HttpCredentials = c
 	for _, p := range b.browser.getPages() {
 		if err := p.updateHTTPCredentials(); err != nil {
 			return fmt.Errorf("setting HTTP credentials in target ID %s: %w", p.targetID, err)
