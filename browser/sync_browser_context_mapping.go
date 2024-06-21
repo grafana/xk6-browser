@@ -58,7 +58,7 @@ func syncMapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //n
 		"setDefaultTimeout":           bc.SetDefaultTimeout,
 		"setGeolocation":              bc.SetGeolocation,
 		"setHTTPCredentials": func(httpCredentials sobek.Value) error {
-			creds, err := ParseCredentials(vu.Context(), httpCredentials)
+			creds, err := ParseCredentials(rt, httpCredentials)
 			if err != nil {
 				return fmt.Errorf("parsing httpCredentials options: %w", err)
 			}

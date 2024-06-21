@@ -1,13 +1,11 @@
 package browser
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
-	"github.com/grafana/xk6-browser/k6ext"
 )
 
 const (
@@ -17,7 +15,7 @@ const (
 
 // ParseBrowserContextOptions parses the browser context options.
 func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
-	ctx context.Context,
+	rt *sobek.Runtime,
 	opts sobek.Value,
 ) (*common.BrowserContextOptions, error) {
 	popts := common.NewBrowserContextOptions()
@@ -26,7 +24,6 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 		return popts, nil // return the default options
 	}
 
-	rt := k6ext.Runtime(ctx)
 	o := opts.ToObject(rt)
 	for _, k := range o.Keys() {
 		switch k {
@@ -51,7 +48,7 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 				popts.ExtraHTTPHeaders[k] = headers.Get(k).String()
 			}
 		case "geolocation":
-			geoloc, err := ParseGeolocation(ctx, o.Get(k).ToObject(rt))
+			geoloc, err := ParseGeolocation(rt, o.Get(k).ToObject(rt))
 			if err != nil {
 				return nil, fmt.Errorf("parsing geolocation options: %w", err)
 			}
@@ -59,7 +56,7 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 		case "hasTouch":
 			popts.HasTouch = o.Get(k).ToBoolean()
 		case "httpCredentials":
-			creds, err := ParseCredentials(ctx, o.Get(k).ToObject(rt))
+			creds, err := ParseCredentials(rt, o.Get(k).ToObject(rt))
 			if err != nil {
 				return nil, fmt.Errorf("parsing httpCredentials options: %w", err)
 			}
@@ -88,7 +85,7 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 				popts.ReducedMotion = common.ReducedMotionNoPreference
 			}
 		case "screen":
-			screen, err := ParseScreen(ctx, o.Get(k).ToObject(rt))
+			screen, err := ParseScreen(rt, o.Get(k).ToObject(rt))
 			if err != nil {
 				return nil, fmt.Errorf("parsing screen options: %w", err)
 			}
@@ -98,7 +95,7 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 		case "userAgent":
 			popts.UserAgent = o.Get(k).String()
 		case "viewport":
-			vp, err := ParseViewport(ctx, o.Get(k).ToObject(rt))
+			vp, err := ParseViewport(rt, o.Get(k).ToObject(rt))
 			if err != nil {
 				return nil, fmt.Errorf("parsing viewport options: %w", err)
 			}
@@ -110,14 +107,14 @@ func ParseBrowserContextOptions( //nolint:funlen,gocognit,cyclop
 }
 
 // ParseGeolocation parses the geolocation.
-func ParseGeolocation(ctx context.Context, opts sobek.Value) (*common.Geolocation, error) {
+func ParseGeolocation(rt *sobek.Runtime, opts sobek.Value) (*common.Geolocation, error) {
 	var geoloc common.Geolocation
 
 	if !sobekValueExists(opts) {
 		return &geoloc, nil // return the default options
 	}
 
-	o := opts.ToObject(k6ext.Runtime(ctx))
+	o := opts.ToObject(rt)
 	for _, k := range o.Keys() {
 		switch k {
 		case "accuracy":
@@ -133,14 +130,14 @@ func ParseGeolocation(ctx context.Context, opts sobek.Value) (*common.Geolocatio
 }
 
 // ParseCredentials parses the credentials.
-func ParseCredentials(ctx context.Context, opts sobek.Value) (*common.Credentials, error) {
+func ParseCredentials(rt *sobek.Runtime, opts sobek.Value) (*common.Credentials, error) {
 	var creds common.Credentials
 
 	if !sobekValueExists(opts) {
 		return &creds, nil // return the default options
 	}
 
-	o := opts.ToObject(k6ext.Runtime(ctx))
+	o := opts.ToObject(rt)
 	for _, k := range o.Keys() {
 		switch k {
 		case "username":
@@ -154,14 +151,14 @@ func ParseCredentials(ctx context.Context, opts sobek.Value) (*common.Credential
 }
 
 // ParseScreen parses the screen options.
-func ParseScreen(ctx context.Context, opts sobek.Value) (*common.Screen, error) {
+func ParseScreen(rt *sobek.Runtime, opts sobek.Value) (*common.Screen, error) {
 	var screen common.Screen
 
 	if !sobekValueExists(opts) {
 		return &screen, nil // return the default options
 	}
 
-	o := opts.ToObject(k6ext.Runtime(ctx))
+	o := opts.ToObject(rt)
 	for _, k := range o.Keys() {
 		switch k {
 		case optionWidth:
@@ -175,14 +172,14 @@ func ParseScreen(ctx context.Context, opts sobek.Value) (*common.Screen, error) 
 }
 
 // ParseViewport parses the viewport options.
-func ParseViewport(ctx context.Context, opts sobek.Value) (*common.Viewport, error) {
+func ParseViewport(rt *sobek.Runtime, opts sobek.Value) (*common.Viewport, error) {
 	var viewport common.Viewport
 
 	if !sobekValueExists(opts) {
 		return &viewport, nil // return the default options
 	}
 
-	o := opts.ToObject(k6ext.Runtime(ctx))
+	o := opts.ToObject(rt)
 	for _, k := range o.Keys() {
 		switch k {
 		case optionWidth:

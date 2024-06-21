@@ -84,7 +84,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 		"setDefaultNavigationTimeout": bc.SetDefaultNavigationTimeout,
 		"setDefaultTimeout":           bc.SetDefaultTimeout,
 		"setGeolocation": func(geolocation sobek.Value) (*sobek.Promise, error) {
-			geoloc, err := ParseGeolocation(vu.Context(), geolocation)
+			geoloc, err := ParseGeolocation(rt, geolocation)
 			if err != nil {
 				return nil, fmt.Errorf("parsing geo location: %w", err)
 			}
@@ -96,7 +96,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			}), nil
 		},
 		"setHTTPCredentials": func(httpCredentials sobek.Value) (*sobek.Promise, error) {
-			creds, err := ParseCredentials(vu.Context(), httpCredentials)
+			creds, err := ParseCredentials(rt, httpCredentials)
 			if err != nil {
 				return nil, fmt.Errorf("parsing httpCredentials options: %w", err)
 			}

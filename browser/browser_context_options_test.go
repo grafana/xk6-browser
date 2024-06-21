@@ -11,7 +11,8 @@ import (
 func TestBrowserContextOptionsPermissions(t *testing.T) {
 	vu := k6test.NewVU(t)
 
-	opts, err := ParseBrowserContextOptions(vu.Context(),
+	opts, err := ParseBrowserContextOptions(
+		vu.Runtime(),
 		vu.ToSobekValue((struct {
 			Permissions []any `js:"permissions"`
 		}{
