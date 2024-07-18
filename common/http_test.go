@@ -21,10 +21,12 @@ func TestRequest(t *testing.T) {
 	evt := &network.EventRequestWillBeSent{
 		RequestID: network.RequestID("1234"),
 		Request: &network.Request{
-			URL:      "https://test/post",
-			Method:   "POST",
-			Headers:  network.Headers(headers),
-			PostData: "hello",
+			URL:     "https://test/post",
+			Method:  "POST",
+			Headers: network.Headers(headers),
+			PostDataEntries: []*network.PostDataEntry{
+				&network.PostDataEntry{Bytes: "hello"},
+			},
 		},
 		Timestamp: &ts,
 		WallTime:  &wt,

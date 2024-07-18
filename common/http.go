@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -105,12 +106,19 @@ func NewRequest(ctx context.Context, rp NewRequestParams) (*Request, error) {
 		ev.Type == network.ResourceTypeDocument
 
 	r := Request{
-		url:                 u,
-		frame:               rp.frame,
-		redirectChain:       rp.redirectChain,
-		requestID:           ev.RequestID,
-		method:              ev.Request.Method,
-		postData:            ev.Request.PostData,
+		url:           u,
+		frame:         rp.frame,
+		redirectChain: rp.redirectChain,
+		requestID:     ev.RequestID,
+		method:        ev.Request.Method,
+		// TODO(lukasz): This is most likely wrong. I just did it this way to make the code compile.
+		postData: func(ents []*network.PostDataEntry) string {
+			var b bytes.Buffer
+			for _, e := range ents {
+				b.WriteString(e.Bytes)
+			}
+			return b.String()
+		}(ev.Request.PostDataEntries),
 		resourceType:        ev.Type.String(),
 		isNavigationRequest: isNavigationRequest,
 		allowInterception:   rp.allowInterception,

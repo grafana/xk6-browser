@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+xk6-browser
 
 # Test binary, built with `go test -c`
 *.test
@@ -24,3 +25,6 @@
 
 # Screenshot example output
 screenshots
+
+# VS Code directory entries
+.vscode
