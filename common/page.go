@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto"
+	"github.com/chromedp/cdproto/audits"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/emulation"
@@ -321,6 +322,11 @@ func NewPage(
 		return nil, fmt.Errorf("internal error while adding binding to page: %w", err)
 	}
 
+	enableAction := audits.Enable()
+	if err := enableAction.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+		return nil, fmt.Errorf("internal error while enabling audits for a browser: %w", err)
+	}
+
 	if err := bctx.applyAllInitScripts(&p); err != nil {
 		return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
 	}
@@ -334,6 +340,7 @@ func (p *Page) initEvents() {
 
 	events := []string{
 		cdproto.EventRuntimeConsoleAPICalled,
+		cdproto.EventAuditsIssueAdded,
 	}
 	p.session.on(p.ctx, events, p.eventCh)
 
@@ -358,6 +365,10 @@ func (p *Page) initEvents() {
 			case event := <-p.eventCh:
 				if ev, ok := event.data.(*cdpruntime.EventConsoleAPICalled); ok {
 					p.onConsoleAPICalled(ev)
+				} else if ev, ok := event.data.(*audits.EventIssueAdded); ok {
+					p.logger.Debugf("Page:initEvents:onIssueAdded", "issue:%+v", ev.Issue)
+				} else {
+					p.logger.Debugf("Page:initEvents:unknownEvent", "event:%+v", event)
 				}
 			}
 		}

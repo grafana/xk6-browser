@@ -7,6 +7,9 @@ all: build
 build :
 	go install go.k6.io/xk6/cmd/xk6@latest && xk6 build --output xk6-browser --with github.com/grafana/xk6-browser=.
 
+build-debug:
+	go install go.k6.io/xk6/cmd/xk6@latest && XK6_BUILD_FLAGS='-gcflags=all="-N -l"' xk6 build --output xk6-browser --with github.com/grafana/xk6-browser=.
+
 format :
 	find . -name '*.go' -exec gofmt -s -w {} +
 
