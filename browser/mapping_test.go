@@ -334,6 +334,7 @@ type pageAPI interface {
 	Reload(opts sobek.Value) *common.Response
 	Screenshot(opts sobek.Value) ([]byte, error)
 	SelectOption(selector string, values sobek.Value, opts sobek.Value) ([]string, error)
+	SetChecked(selector string, checked bool, opts sobek.Value) error
 	SetContent(html string, opts sobek.Value) error
 	SetDefaultNavigationTimeout(timeout int64)
 	SetDefaultTimeout(timeout int64)
@@ -403,6 +404,7 @@ type frameAPI interface {
 	ParentFrame() *common.Frame
 	Press(selector string, key string, opts sobek.Value) error
 	SelectOption(selector string, values sobek.Value, opts sobek.Value) ([]string, error)
+	SetChecked(selector string, checked bool, opts sobek.Value) error
 	SetContent(html string, opts sobek.Value) error
 	SetInputFiles(selector string, files sobek.Value, opts sobek.Value)
 	Tap(selector string, opts sobek.Value) error
@@ -449,6 +451,7 @@ type elementHandleAPI interface {
 	ScrollIntoViewIfNeeded(opts sobek.Value) error
 	SelectOption(values sobek.Value, opts sobek.Value) ([]string, error)
 	SelectText(opts sobek.Value) error
+	SetChecked(checked bool, opts sobek.Value) error
 	SetInputFiles(files sobek.Value, opts sobek.Value) error
 	Tap(opts sobek.Value) error
 	TextContent() (string, bool, error)
@@ -502,6 +505,7 @@ type locatorAPI interface {
 	Clear(opts *common.FrameFillOptions) error
 	Click(opts sobek.Value) error
 	Dblclick(opts sobek.Value) error
+	SetChecked(checked bool, opts sobek.Value) error
 	Check(opts sobek.Value) error
 	Uncheck(opts sobek.Value) error
 	IsChecked(opts sobek.Value) (bool, error)
