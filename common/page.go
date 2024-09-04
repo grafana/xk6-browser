@@ -860,9 +860,14 @@ func (p *Page) Goto(url string, opts *FrameGotoOptions) (*Response, error) {
 		"page.goto",
 		trace.WithAttributes(attribute.String("page.goto.url", url)),
 	)
-	defer span.End()
+
+	p.MainFrame().NavSpan = span
 
 	resp, err := p.MainFrame().Goto(url, opts)
+	defer func() {
+		p.MainFrame().NavSpan.End()
+		p.MainFrame().NavSpan = nil
+	}()
 	if err != nil {
 		spanRecordError(span, err)
 		return nil, err
@@ -1332,9 +1337,13 @@ func (p *Page) WaitForLoadState(state string, opts sobek.Value) error {
 func (p *Page) WaitForNavigation(opts *FrameWaitForNavigationOptions) (*Response, error) {
 	p.logger.Debugf("Page:WaitForNavigation", "sid:%v", p.sessionID())
 	_, span := TraceAPICall(p.ctx, p.targetID.String(), "page.waitForNavigation")
-	defer span.End()
+	p.MainFrame().NavSpan = span
 
 	resp, err := p.frameManager.MainFrame().WaitForNavigation(opts)
+	defer func() {
+		p.MainFrame().NavSpan.End()
+		p.MainFrame().NavSpan = nil
+	}()
 	if err != nil {
 		spanRecordError(span, err)
 		return nil, err

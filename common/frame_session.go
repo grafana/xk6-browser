@@ -78,6 +78,12 @@ type FrameSession struct {
 	// Keep a reference to the main frame span so we can end it
 	// when FrameSession.ctx is Done
 	mainFrameSpan trace.Span
+	// This is set to false by default. When a goto is called it is set to true.
+	// The true is set when navigateFrame is called. It is reset back to false in
+	// onFrameNavigated where it will not create a new navigation span since one
+	// was created in navigateFrame. We need to start a navigation span earlier
+	// when a goto is called.
+	navCaught bool
 }
 
 // NewFrameSession initializes and returns a new FrameSession.
@@ -267,6 +273,8 @@ func (fs *FrameSession) initEvents() {
 					fs.onFrameDetached(ev.FrameID, ev.Reason)
 				case *cdppage.EventFrameNavigated:
 					const initial = false
+					fs.logger.Infof("FrameSession:initEvents:go:EventFrameNavigated",
+						"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 					fs.onFrameNavigated(ev.Frame, initial)
 				case *cdppage.EventFrameRequestedNavigation:
 					fs.onFrameRequestedNavigation(ev)
@@ -393,7 +401,7 @@ func (fs *FrameSession) onEventJavascriptDialogOpening(event *cdppage.EventJavas
 }
 
 func (fs *FrameSession) initFrameTree() error {
-	fs.logger.Debugf("NewFrameSession:initFrameTree",
+	fs.logger.Infof("NewFrameSession:initFrameTree",
 		"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
 	action := cdppage.Enable()
@@ -595,7 +603,7 @@ func (fs *FrameSession) isMainFrame() bool {
 }
 
 func (fs *FrameSession) handleFrameTree(frameTree *cdppage.FrameTree, initialFrame bool) {
-	fs.logger.Debugf("FrameSession:handleFrameTree",
+	fs.logger.Infof("FrameSession:handleFrameTree",
 		"fid:%v sid:%v tid:%v", frameTree.Frame.ID, fs.session.ID(), fs.targetID)
 
 	if frameTree.Frame.ParentID != "" {
@@ -611,9 +619,25 @@ func (fs *FrameSession) handleFrameTree(frameTree *cdppage.FrameTree, initialFra
 }
 
 func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) (string, error) {
-	fs.logger.Debugf("FrameSession:navigateFrame",
+	fs.logger.Infof("FrameSession:navigateFrame",
 		"sid:%v fid:%s tid:%v url:%q referrer:%q",
 		fs.session.ID(), frame.ID(), fs.targetID, url, referrer)
+
+	// if frame.NavSpan != nil {
+	// 	frame.NavSpan.End()
+	// }
+
+	// fs.navCaught = true
+	// fs.doNavigationSpanStuff(frame.page.frameManager.MainFrame() == frame, url, frame.id)
+
+	// if frame.NavSpan != nil {
+	// 	_, frame.NavSpan = TraceAPICall(
+	// 		fs.ctx,
+	// 		fs.targetID.String(),
+	// 		"navigate",
+	// 		trace.WithAttributes(attribute.String("navigate.url", url)),
+	// 	)
+	// }
 
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frame.ID()))
 	_, documentID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
@@ -770,7 +794,7 @@ func (fs *FrameSession) onFrameDetached(frameID cdp.FrameID, reason cdppage.Fram
 }
 
 func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
-	fs.logger.Debugf("FrameSession:onFrameNavigated",
+	fs.logger.Infof("FrameSession:onFrameNavigated",
 		"sid:%v tid:%v fid:%v",
 		fs.session.ID(), fs.targetID, frame.ID)
 
@@ -782,19 +806,28 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 			frame.URL+frame.URLFragment, err)
 	}
 
+	if fs.navCaught {
+		fs.navCaught = false
+		return
+	}
+
+	fs.doNavigationSpanStuff(frame.ParentID == "", frame.URL, frame.ID)
+}
+
+func (fs *FrameSession) doNavigationSpanStuff(isMainFrame bool, url string, id cdp.FrameID) {
 	// Trace navigation only for the main frame.
 	// TODO: How will this affect sub frames such as iframes?
-	if isMainFrame := frame.ParentID == ""; !isMainFrame {
+	if !isMainFrame {
 		return
 	}
 
 	_, fs.mainFrameSpan = TraceNavigation(
-		fs.ctx, fs.targetID.String(), trace.WithAttributes(attribute.String("navigation.url", frame.URL)),
+		fs.ctx, fs.targetID.String(), trace.WithAttributes(attribute.String("navigation.url", url)),
 	)
 
 	var (
 		spanID       = fs.mainFrameSpan.SpanContext().SpanID().String()
-		newFrame, ok = fs.manager.getFrameByID(frame.ID)
+		newFrame, ok = fs.manager.getFrameByID(id)
 	)
 
 	// Only set the k6SpanId reference if it's a new frame.
@@ -827,7 +860,7 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 }
 
 func (fs *FrameSession) onFrameRequestedNavigation(event *cdppage.EventFrameRequestedNavigation) {
-	fs.logger.Debugf("FrameSession:onFrameRequestedNavigation",
+	fs.logger.Infof("FrameSession:onFrameRequestedNavigation",
 		"sid:%v tid:%v fid:%v url:%q",
 		fs.session.ID(), fs.targetID, event.FrameID, event.URL)
 
@@ -840,9 +873,28 @@ func (fs *FrameSession) onFrameRequestedNavigation(event *cdppage.EventFrameRequ
 }
 
 func (fs *FrameSession) onFrameStartedLoading(frameID cdp.FrameID) {
-	fs.logger.Debugf("FrameSession:onFrameStartedLoading",
+	fs.logger.Infof("FrameSession:onFrameStartedLoading",
 		"sid:%v tid:%v fid:%v",
 		fs.session.ID(), fs.targetID, frameID)
+
+	frame, ok := fs.manager.getFrameByID(frameID)
+	if !fs.navCaught && ok {
+		if frame.NavSpan != nil {
+			frame.NavSpan.End()
+		}
+
+		fs.navCaught = true
+		fs.doNavigationSpanStuff(frame.page.frameManager.MainFrame() == frame, frame.URL(), frame.id)
+
+		if frame.NavSpan != nil {
+			_, frame.NavSpan = TraceAPICall(
+				fs.ctx,
+				fs.targetID.String(),
+				"navigate",
+				trace.WithAttributes(attribute.String("navigate.url", frame.URL())),
+			)
+		}
+	}
 
 	fs.manager.frameLoadingStarted(frameID)
 }

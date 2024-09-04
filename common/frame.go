@@ -13,6 +13,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/grafana/sobek"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
@@ -117,6 +118,10 @@ type Frame struct {
 	pendingDocument   *DocumentInfo
 
 	log *log.Logger
+
+	// Used to coordinate the starting of a navigation, and the actual navigation
+	// span.
+	NavSpan trace.Span
 }
 
 // NewFrame creates a new HTML document frame.

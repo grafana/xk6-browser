@@ -586,9 +586,9 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 		fid  = frame.ID()
 		furl = frame.URL()
 	)
-	m.logger.Debugf("FrameManager:NavigateFrame",
+	m.logger.Infof("FrameManager:NavigateFrame",
 		"fmid:%d fid:%v furl:%s url:%s", fmid, fid, furl, url)
-	defer m.logger.Debugf("FrameManager:NavigateFrame:return",
+	defer m.logger.Infof("FrameManager:NavigateFrame:return",
 		"fmid:%d fid:%v furl:%s url:%s", fmid, fid, furl, url)
 
 	timeoutCtx, timeoutCancelFn := context.WithTimeout(m.ctx, parsedOpts.Timeout)
@@ -648,6 +648,7 @@ func (m *FrameManager) NavigateFrame(frame *Frame, url string, parsedOpts *Frame
 		return nil, fmt.Errorf("navigating to %q: %w", url, err)
 	}
 
+	// TODO: How does this affect spans?
 	if newDocumentID == "" {
 		// It's a navigation within the same document (e.g. via anchor links or
 		// the History API), so don't wait for a response nor any lifecycle
