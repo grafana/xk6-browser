@@ -865,6 +865,7 @@ func (p *Page) Goto(url string, opts *FrameGotoOptions) (*Response, error) {
 
 	resp, err := p.MainFrame().Goto(url, opts)
 	defer func() {
+		p.MainFrame().NavSpan.SetAttributes(attribute.String("navigate.url", url))
 		p.MainFrame().NavSpan.End()
 		p.MainFrame().NavSpan = nil
 	}()
@@ -1341,6 +1342,7 @@ func (p *Page) WaitForNavigation(opts *FrameWaitForNavigationOptions) (*Response
 
 	resp, err := p.frameManager.MainFrame().WaitForNavigation(opts)
 	defer func() {
+		p.MainFrame().NavSpan.SetAttributes(attribute.String("navigate.url", p.MainFrame().URL()))
 		p.MainFrame().NavSpan.End()
 		p.MainFrame().NavSpan = nil
 	}()

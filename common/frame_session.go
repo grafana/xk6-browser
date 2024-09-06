@@ -243,6 +243,7 @@ func (fs *FrameSession) initEvents() {
 			// If there is an active span for main frame,
 			// end it before exiting so it can be flushed
 			if fs.mainFrameSpan != nil {
+				fs.mainFrameSpan.SetAttributes(attribute.String("navigation.url", fs.manager.MainFrame().URL()))
 				fs.mainFrameSpan.End()
 				fs.mainFrameSpan = nil
 			}
@@ -821,8 +822,12 @@ func (fs *FrameSession) doNavigationSpanStuff(isMainFrame bool, url string, id c
 		return
 	}
 
+	if fs.mainFrameSpan != nil {
+		fs.mainFrameSpan.SetAttributes(attribute.String("navigation.url", fs.manager.MainFrame().URL()))
+		fs.mainFrameSpan.End()
+	}
 	_, fs.mainFrameSpan = TraceNavigation(
-		fs.ctx, fs.targetID.String(), trace.WithAttributes(attribute.String("navigation.url", url)),
+		fs.ctx, fs.targetID.String(),
 	)
 
 	var (
@@ -891,7 +896,6 @@ func (fs *FrameSession) onFrameStartedLoading(frameID cdp.FrameID) {
 				fs.ctx,
 				fs.targetID.String(),
 				"navigate",
-				trace.WithAttributes(attribute.String("navigate.url", frame.URL())),
 			)
 		}
 	}
