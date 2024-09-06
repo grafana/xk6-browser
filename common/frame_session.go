@@ -243,6 +243,10 @@ func (fs *FrameSession) initEvents() {
 			// If there is an active span for main frame,
 			// end it before exiting so it can be flushed
 			if fs.mainFrameSpan != nil {
+				// The url needs to be added here instead of at the start of the span
+				// because at the start of the span we don't know the correct url for
+				// the page we're navigating to. At the end of the span we do have this
+				// information.
 				fs.mainFrameSpan.SetAttributes(attribute.String("navigation.url", fs.manager.MainFrame().URL()))
 				fs.mainFrameSpan.End()
 				fs.mainFrameSpan = nil
@@ -807,6 +811,10 @@ func (fs *FrameSession) doNavigationSpanStuff(isMainFrame bool, url string, id c
 	}
 
 	if fs.mainFrameSpan != nil {
+		// The url needs to be added here instead of at the start of the span
+		// because at the start of the span we don't know the correct url for
+		// the page we're navigating to. At the end of the span we do have this
+		// information.
 		fs.mainFrameSpan.SetAttributes(attribute.String("navigation.url", fs.manager.MainFrame().URL()))
 		fs.mainFrameSpan.End()
 	}
