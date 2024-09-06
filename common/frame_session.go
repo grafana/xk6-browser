@@ -795,6 +795,11 @@ func (fs *FrameSession) onFrameNavigated(frame *cdp.Frame, initial bool) {
 			frame.URL+frame.URLFragment, err)
 	}
 
+	// We only want to run the next step if we've not already caught a
+	// navigation. navCaught will only really be true when a new page is
+	// created and chromium navigates to about:blank. Subsequent navigations
+	// that occur on the same page will perform the navigation span work
+	// in onFrameStartedLoading.
 	if fs.navCaught {
 		fs.navCaught = false
 		return
