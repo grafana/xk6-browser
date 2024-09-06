@@ -624,22 +624,6 @@ func (fs *FrameSession) navigateFrame(frame *Frame, url, referrer string) (strin
 		"sid:%v fid:%s tid:%v url:%q referrer:%q",
 		fs.session.ID(), frame.ID(), fs.targetID, url, referrer)
 
-	// if frame.NavSpan != nil {
-	// 	frame.NavSpan.End()
-	// }
-
-	// fs.navCaught = true
-	// fs.doNavigationSpanStuff(frame.page.frameManager.MainFrame() == frame, url, frame.id)
-
-	// if frame.NavSpan != nil {
-	// 	_, frame.NavSpan = TraceAPICall(
-	// 		fs.ctx,
-	// 		fs.targetID.String(),
-	// 		"navigate",
-	// 		trace.WithAttributes(attribute.String("navigate.url", url)),
-	// 	)
-	// }
-
 	action := cdppage.Navigate(url).WithReferrer(referrer).WithFrameID(cdp.FrameID(frame.ID()))
 	_, documentID, errorText, err := action.Do(cdp.WithExecutor(fs.ctx, fs.session))
 	if err != nil {
@@ -884,20 +868,8 @@ func (fs *FrameSession) onFrameStartedLoading(frameID cdp.FrameID) {
 
 	frame, ok := fs.manager.getFrameByID(frameID)
 	if !fs.navCaught && ok {
-		if frame.NavSpan != nil {
-			frame.NavSpan.End()
-		}
-
 		fs.navCaught = true
 		fs.doNavigationSpanStuff(frame.page.frameManager.MainFrame() == frame, frame.URL(), frame.id)
-
-		if frame.NavSpan != nil {
-			_, frame.NavSpan = TraceAPICall(
-				fs.ctx,
-				fs.targetID.String(),
-				"navigate",
-			)
-		}
 	}
 
 	fs.manager.frameLoadingStarted(frameID)
