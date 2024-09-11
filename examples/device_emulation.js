@@ -1,5 +1,5 @@
 import { check, sleep } from 'k6';
-import { browser, devices } from 'k6/x/browser';
+import { browser, devices } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -23,12 +23,12 @@ export default async function() {
   // Object.assign instead to merge browser context and device options.
   // See https://github.com/grafana/k6/issues/2296
   const options = Object.assign({ locale: 'es-ES' }, device);
-  const context = browser.newContext(options);
-  const page = context.newPage();
+  const context = await browser.newContext(options);
+  const page = await context.newPage();
 
   try {
     await page.goto('https://k6.io/', { waitUntil: 'networkidle' });
-    const dimensions = page.evaluate(() => {
+    const dimensions = await page.evaluate(() => {
       return {
         width: document.documentElement.clientWidth,
         height: document.documentElement.clientHeight,
@@ -46,6 +46,6 @@ export default async function() {
       sleep(10);
     }
   } finally {
-    page.close();
+    await page.close();
   }
 }

@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -19,17 +19,17 @@ export const options = {
 export default async function() {
   // grant camera and microphone permissions to the
   // new browser context.
-  const context = browser.newContext({
+  const context = await browser.newContext({
     permissions: ["camera", "microphone"],
   });
 
-  const page = context.newPage();
+  const page = await context.newPage();
 
   try {
     await page.goto('https://test.k6.io/');
-    page.screenshot({ path: `example-chromium.png` });
-    context.clearPermissions();
+    await page.screenshot({ path: `example-chromium.png` });
+    await context.clearPermissions();
   } finally {
-    page.close();
+    await page.close();
   }
 }

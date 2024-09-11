@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,8 +18,8 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
     // Goto front page, find login link and click it
@@ -28,9 +28,11 @@ export default async function() {
       page.waitForNavigation(),
       page.locator('a[href="/my_messages.php"]').click(),
     ]);
+
     // Enter login credentials and login
-    page.locator('input[name="login"]').type('admin');
-    page.locator('input[name="password"]').type('123');
+    await page.locator('input[name="login"]').type('admin');
+    await page.locator('input[name="password"]').type("123");
+
     // We expect the form submission to trigger a navigation, so to prevent a
     // race condition, setup a waiter concurrently while waiting for the click
     // to resolve.
@@ -38,18 +40,19 @@ export default async function() {
       page.waitForNavigation(),
       page.locator('input[type="submit"]').click(),
     ]);
-    check(page, {
-      'header': p => p.locator('h2').textContent() == 'Welcome, admin!',
-    });
+
+    const h2 = page.locator('h2');
+    const headerOK = await h2.textContent() == 'Welcome, admin!';
+    check(headerOK, { 'header': headerOK });
 
     // Check whether we receive cookies from the logged site.
-    check(context.cookies(), {
+    check(await context.cookies(), {
       'session cookie is set': cookies => {
         const sessionID = cookies.find(c => c.name == 'sid')
         return typeof sessionID !== 'undefined'
       }
     })
   } finally {
-    page.close();
+    await page.close();
   }
 }

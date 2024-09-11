@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,12 +18,12 @@ export const options = {
 };
 
 export default async function () {
-  const page = browser.newPage();
+  const page = await browser.newPage();
   const context = page.context();
 
   try {
     // get cookies from the browser context
-    check(context.cookies().length, {
+    check((await context.cookies()).length, {
         'initial number of cookies should be zero': n => n === 0,
     });
 
@@ -32,7 +32,7 @@ export default async function () {
     const day = 60*60*24;
     const dayAfter = unixTimeSinceEpoch+day;
     const dayBefore = unixTimeSinceEpoch-day;
-    context.addCookies([
+    await context.addCookies([
       // this cookie expires at the end of the session
       {
         name: 'testcookie',
@@ -62,7 +62,7 @@ export default async function () {
         expires: dayBefore
       }
     ]);
-    let cookies = context.cookies();
+    let cookies = await context.cookies();
     check(cookies.length, {
       'number of cookies should be 2': n => n === 2,
     });
@@ -82,27 +82,27 @@ export default async function () {
     });
 
     // let's add more cookies to filter by urls.
-    context.addCookies([
+    await context.addCookies([
       {
-        name: 'foo',
-        value: '42',
-        sameSite: 'Strict',
-        url: 'http://foo.com'
+        name: "foo",
+        value: "42",
+        sameSite: "Strict",
+        url: "http://foo.com",
       },
       {
-        name: 'bar',
-        value: '43',
-        sameSite: 'Lax',
-        url: 'https://bar.com'
+        name: "bar",
+        value: "43",
+        sameSite: "Lax",
+        url: "https://bar.com",
       },
       {
-        name: 'baz',
-        value: '44',
-        sameSite: 'Lax',
-        url: 'https://baz.com'
-      }
+        name: "baz",
+        value: "44",
+        sameSite: "Lax",
+        url: "https://baz.com",
+      },
     ]);
-    cookies = context.cookies('http://foo.com', 'https://baz.com');
+    cookies = await context.cookies("http://foo.com", "https://baz.com");
     check(cookies.length, {
       'number of filtered cookies should be 2': n => n === 2,
     });
@@ -116,12 +116,12 @@ export default async function () {
     });
 
     // clear cookies
-    context.clearCookies();
-    cookies = context.cookies();
+    await context.clearCookies();
+    cookies = await context.cookies();
     check(cookies.length, {
       'number of cookies should be zero': n => n === 0,
     });
   } finally {
-    page.close();
+    await page.close();
   }
 }

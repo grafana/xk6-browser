@@ -1,46 +1,59 @@
 package browser
 
 import (
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 
 	"github.com/grafana/xk6-browser/common"
+	"github.com/grafana/xk6-browser/k6ext"
 )
 
 // mapJSHandle to the JS module.
 func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
-	rt := vu.Runtime()
 	return mapping{
-		"asElement": func() *goja.Object {
-			m := mapElementHandle(vu, jsh.AsElement())
-			return rt.ToValue(m).ToObject(rt)
+		"asElement": func() mapping {
+			return mapElementHandle(vu, jsh.AsElement())
 		},
-		"dispose": jsh.Dispose,
-		"evaluate": func(pageFunc goja.Value, gargs ...goja.Value) any {
-			args := make([]any, 0, len(gargs))
-			for _, a := range gargs {
-				args = append(args, exportArg(a))
-			}
-			return jsh.Evaluate(pageFunc.String(), args...)
+		"dispose": func() *sobek.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				return nil, jsh.Dispose() //nolint:wrapcheck
+			})
 		},
-		"evaluateHandle": func(pageFunc goja.Value, gargs ...goja.Value) (mapping, error) {
-			h, err := jsh.EvaluateHandle(pageFunc.String(), exportArgs(gargs)...)
-			if err != nil {
-				return nil, err //nolint:wrapcheck
-			}
-			return mapJSHandle(vu, h), nil
+		"evaluate": func(pageFunc sobek.Value, gargs ...sobek.Value) *sobek.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				args := make([]any, 0, len(gargs))
+				for _, a := range gargs {
+					args = append(args, exportArg(a))
+				}
+				return jsh.Evaluate(pageFunc.String(), args...) //nolint:wrapcheck
+			})
 		},
-		"getProperties": func() (mapping, error) {
-			props, err := jsh.GetProperties()
-			if err != nil {
-				return nil, err //nolint:wrapcheck
-			}
+		"evaluateHandle": func(pageFunc sobek.Value, gargs ...sobek.Value) *sobek.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				h, err := jsh.EvaluateHandle(pageFunc.String(), exportArgs(gargs)...)
+				if err != nil {
+					return nil, err //nolint:wrapcheck
+				}
+				return mapJSHandle(vu, h), nil
+			})
+		},
+		"getProperties": func() *sobek.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				props, err := jsh.GetProperties()
+				if err != nil {
+					return nil, err //nolint:wrapcheck
+				}
 
-			dst := make(map[string]any)
-			for k, v := range props {
-				dst[k] = mapJSHandle(vu, v)
-			}
-			return dst, nil
+				dst := make(map[string]any)
+				for k, v := range props {
+					dst[k] = mapJSHandle(vu, v)
+				}
+				return dst, nil
+			})
 		},
-		"jsonValue": jsh.JSONValue,
+		"jsonValue": func() *sobek.Promise {
+			return k6ext.Promise(vu.Context(), func() (any, error) {
+				return jsh.JSONValue() //nolint:wrapcheck
+			})
+		},
 	}
 }

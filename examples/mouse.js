@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -14,14 +14,18 @@ export const options = {
 }
 
 export default async function () {
-  const page = browser.newPage();
+  const page = await browser.newPage();
 
   await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
 
   // Obtain ElementHandle for news link and navigate to it
   // by clicking in the 'a' element's bounding box
-  const newsLinkBox = page.$('a[href="/news.php"]').boundingBox();
-  await page.mouse.click(newsLinkBox.x + newsLinkBox.width / 2, newsLinkBox.y);
+  const newsLinkBox = await page.$('a[href="/news.php"]').then(e => e.boundingBox());
+
+  await Promise.all([
+    page.waitForNavigation(),
+    page.mouse.click(newsLinkBox.x + newsLinkBox.width / 2, newsLinkBox.y)
+  ]);
 
   await page.close();
 }

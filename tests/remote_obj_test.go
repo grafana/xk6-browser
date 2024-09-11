@@ -93,10 +93,11 @@ func TestConsoleLogParse(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.log == "" {
-				p.Evaluate(`() => console.log("")`)
+				_, err = p.Evaluate(`() => console.log("")`)
 			} else {
-				p.Evaluate(fmt.Sprintf("() => console.log(%s)", tt.log))
+				_, err = p.Evaluate(fmt.Sprintf("() => console.log(%s)", tt.log))
 			}
+			require.NoError(t, err)
 
 			select {
 			case <-done:
@@ -143,7 +144,7 @@ func TestEvalRemoteObjectParse(t *testing.T) {
 			name: "empty", eval: "", want: "",
 		},
 		{
-			name: "null", eval: "null", want: "null",
+			name: "null", eval: "null", want: nil,
 		},
 		{
 			name: "undefined", eval: "undefined", want: nil,
@@ -178,13 +179,16 @@ func TestEvalRemoteObjectParse(t *testing.T) {
 			tb := newTestBrowser(t, withFileServer())
 			p := tb.NewPage(nil)
 
-			var got any
+			var (
+				got any
+				err error
+			)
 			if tt.eval == "" {
-				got = p.Evaluate(`() => ""`)
+				got, err = p.Evaluate(`() => ""`)
 			} else {
-				got = p.Evaluate(fmt.Sprintf("() => %s", tt.eval))
+				got, err = p.Evaluate(fmt.Sprintf("() => %s", tt.eval))
 			}
-
+			require.NoError(t, err)
 			assert.EqualValues(t, tt.want, got)
 		})
 	}

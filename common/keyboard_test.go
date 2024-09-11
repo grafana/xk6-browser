@@ -3,10 +3,11 @@ package common
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 	"github.com/grafana/xk6-browser/keyboardlayout"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSplit(t *testing.T) {
@@ -82,7 +83,7 @@ func TestKeyboardPress(t *testing.T) {
 
 		vu := k6test.NewVU(t)
 		k := NewKeyboard(vu.Context(), nil)
-		assert.Panics(t, func() { k.Press("", nil) })
+		require.Error(t, k.Press("", nil))
 	})
 }
 

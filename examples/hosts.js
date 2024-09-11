@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -19,8 +19,8 @@ export const options = {
 };
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
     const res = await page.goto('http://test.k6.io/', { waitUntil: 'load' });
@@ -28,6 +28,6 @@ export default async function() {
       'null response': r => r === null,
     });
   } finally {
-    page.close();
+    await page.close();
   }
 }

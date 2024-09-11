@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -14,19 +14,20 @@ export const options = {
 }
 
 export default async function () {
-  const page = browser.newPage();
+  const page = await browser.newPage();
 
   await page.goto('https://test.k6.io/my_messages.php', { waitUntil: 'networkidle' });
-    
+
   const userInput = page.locator('input[name="login"]');
   await userInput.click();
-  page.keyboard.type('admin');
-    
+  await page.keyboard.type("admin");
+
   const pwdInput = page.locator('input[name="password"]');
   await pwdInput.click();
-  page.keyboard.type('123');
+  await page.keyboard.type("123");
 
-  page.keyboard.press('Enter'); // submit
-    
+  await page.keyboard.press('Enter'); // submit
+  await page.waitForNavigation();
+
   await page.close();
 }

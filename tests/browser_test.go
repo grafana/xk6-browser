@@ -41,7 +41,7 @@ func TestBrowserNewPage(t *testing.T) {
 	_, err = b.Browser.NewPage(nil)
 	assert.EqualError(t, err, "new page: existing browser context must be closed before creating a new one")
 
-	b.Context().Close()
+	require.NoError(t, b.Context().Close())
 	c = b.Context()
 	assert.Nil(t, c)
 
@@ -62,7 +62,7 @@ func TestBrowserNewContext(t *testing.T) {
 	_, err = b.NewContext(nil)
 	assert.EqualError(t, err, "existing browser context must be closed before creating a new one")
 
-	bc1.Close()
+	require.NoError(t, bc1.Close())
 	c = b.Context()
 	assert.Nil(t, c)
 
@@ -99,8 +99,19 @@ func TestTmpDirCleanup(t *testing.T) {
 
 	b.Close()
 
-	matches, err = filepath.Glob(tmpDirPath + "/xk6-browser-data-*")
-	assert.NoError(t, err)
+	// We need to wait for something (k6 browser, chromium or the os) to
+	// actually complete the removal of the directory. It's a race condition.
+	// To try to mitigate the issue, we're adding a retry which waits half a
+	// second if the dir still exits.
+	for i := 0; i < 5; i++ {
+		matches, err = filepath.Glob(tmpDirPath + "/xk6-browser-data-*")
+		assert.NoError(t, err)
+		if len(matches) == 0 {
+			break
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
 	assert.Empty(t, matches, "a dir shouldn't exist which matches the pattern `xk6-browser-data-*`")
 }
 
@@ -195,7 +206,8 @@ func TestBrowserVersion(t *testing.T) {
 	t.Parallel()
 
 	const re = `^\d+\.\d+\.\d+\.\d+$`
-	r, _ := regexp.Compile(re)
+	r, err := regexp.Compile(re) //nolint:gocritic
+	require.NoError(t, err)
 	ver := newTestBrowser(t).Version()
 	assert.Regexp(t, r, ver, "expected browser version to match regex %q, but found %q", re, ver)
 }
@@ -218,6 +230,10 @@ func TestBrowserUserAgent(t *testing.T) {
 }
 
 func TestBrowserCrashErr(t *testing.T) {
+	// Skip until we get answer from Chromium team in an open issue
+	// https://issues.chromium.org/issues/364089353.
+	t.Skip("Skipping until we get response from Chromium team")
+
 	t.Parallel()
 
 	// create a new VU in an environment that requires a bad remote-debugging-port.
@@ -230,11 +246,10 @@ func TestBrowserCrashErr(t *testing.T) {
 	vu.ActivateVU()
 	vu.StartIteration(t)
 
-	rt := vu.Runtime()
-	require.NoError(t, rt.Set("browser", jsMod.Browser))
-	_, err := rt.RunString(`
-		const p = browser.newPage();
-		p.close();
+	vu.SetVar(t, "browser", jsMod.Browser)
+	_, err := vu.RunAsync(t, `
+		const p = await browser.newPage();
+		await p.close();
 	`)
 	assert.ErrorContains(t, err, "launching browser: Invalid devtools server port")
 }
@@ -340,7 +355,7 @@ func TestMultiConnectToSingleBrowser(t *testing.T) {
 
 	err = p1.Close(nil)
 	require.NoError(t, err, "failed to close page #1")
-	bctx1.Close()
+	require.NoError(t, bctx1.Close())
 
 	p2, err := bctx2.NewPage()
 	require.NoError(t, err, "failed to create page #2")

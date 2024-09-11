@@ -565,7 +565,8 @@ func TestBrowserContextCookies(t *testing.T) {
 			)
 
 			// setting document.cookie into the page
-			cookie := p.Evaluate(tt.documentCookiesSnippet)
+			cookie, err := p.Evaluate(tt.documentCookiesSnippet)
+			require.NoError(t, err)
 			require.Equalf(t,
 				tt.wantDocumentCookies,
 				cookie,
@@ -651,30 +652,28 @@ func TestK6Object(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, rt, _, cleanUp := startIteration(t, env.ConstLookup(env.K6TestRunID, tt.testRunID))
+			vu, _, _, cleanUp := startIteration(t, env.ConstLookup(env.K6TestRunID, tt.testRunID))
 			defer cleanUp()
 
 			// First test with browser.newPage
-			got, err := rt.RunString(`
-				const p = browser.newPage()
-				p.goto("about:blank")
-				const o = p.evaluate(() => window.k6)
-				JSON.stringify(o)
+			got := vu.RunPromise(t, `
+				const p = await browser.newPage();
+				await p.goto("about:blank");
+				const o = await p.evaluate(() => window.k6);
+				return JSON.stringify(o);
 			`)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got.String())
+			assert.Equal(t, tt.want, got.Result().String())
 
 			// Now test with browser.newContext
-			got, err = rt.RunString(`
-				browser.closeContext()
-				const c = browser.newContext()
-				const p2 = c.newPage()
-				p2.goto("about:blank")
-				const o2 = p2.evaluate(() => window.k6)
-				JSON.stringify(o2)
+			got = vu.RunPromise(t, `
+				await browser.closeContext();
+				const c = await browser.newContext();
+				const p2 = await c.newPage();
+				await p2.goto("about:blank");
+				const o2 = await p2.evaluate(() => window.k6);
+				return JSON.stringify(o2);
 			`)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got.String())
+			assert.Equal(t, tt.want, got.Result().String())
 		})
 	}
 }
@@ -698,17 +697,17 @@ func TestNewTab(t *testing.T) {
 	mux.Handle(path, http.StripPrefix(path, fs))
 
 	// Start the iteration
-	_, rt, _, cleanUp := startIteration(t, env.ConstLookup(env.K6TestRunID, "12345"))
+	vu, _, _, cleanUp := startIteration(t, env.ConstLookup(env.K6TestRunID, "12345"))
 	defer cleanUp()
 
 	// Run the test script
-	_, err := rt.RunString(fmt.Sprintf(`
-		const p = browser.newPage()
-		p.goto("%s/%s/ping.html")
-		
-		const p2 = browser.context().newPage()
-		p2.goto("%s/%s/ping.html")
-	`, s.URL, testBrowserStaticDir, s.URL, testBrowserStaticDir))
+	_, err := vu.RunAsync(t, `
+		const p = await browser.newPage()
+		await p.goto("%s/%s/ping.html")
+
+		const p2 = await browser.context().newPage()
+		await p2.goto("%s/%s/ping.html")
+	`, s.URL, testBrowserStaticDir, s.URL, testBrowserStaticDir)
 	require.NoError(t, err)
 }
 
@@ -936,7 +935,8 @@ func TestBrowserContextClearPermissions(t *testing.T) {
 				{ name: %q }
 			).then(result => result.state)
 		`, perm)
-		v := p.Evaluate(js)
+		v, err := p.Evaluate(js)
+		require.NoError(t, err)
 		s := asString(t, v)
 		return s == "granted"
 	}

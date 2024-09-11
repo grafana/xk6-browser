@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -57,21 +57,21 @@ export class Bet {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   const bet = new Bet(page);
   try {
     await bet.goto()
     await bet.tails();
-    console.log("Current bet:", bet.current());
+    console.log("Current bet:", await bet.current());
     await bet.heads();
-    console.log("Current bet:", bet.current());
+    console.log("Current bet:", await bet.current());
     await bet.tails();
-    console.log("Current bet:", bet.current());
+    console.log("Current bet:", await bet.current());
     await bet.heads();
-    console.log("Current bet:", bet.current());
+    console.log("Current bet:", await bet.current());
   } finally {
-    page.close();
+    await page.close();
   }
 }

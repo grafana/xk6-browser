@@ -9,10 +9,10 @@ import (
 	"io"
 	"testing"
 
-	"github.com/grafana/xk6-browser/common"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/xk6-browser/common"
 )
 
 //go:embed static/mouse_helper.js
@@ -59,7 +59,8 @@ func TestElementHandleBoundingBoxInvisibleElement(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`<div style="display:none">hello</div>`, nil)
+	err := p.SetContent(`<div style="display:none">hello</div>`, nil)
+	require.NoError(t, err)
 	element, err := p.Query("div")
 	require.NoError(t, err)
 	require.Nil(t, element.BoundingBox())
@@ -71,11 +72,12 @@ func TestElementHandleBoundingBoxSVG(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetContent(`
+	err := p.SetContent(`
 		<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
 			<rect id="theRect" x="30" y="50" width="200" height="300"></rect>
 		</svg>
 	`, nil)
+	require.NoError(t, err)
 
 	element, err := p.Query("#therect")
 	require.NoError(t, err)
@@ -85,7 +87,8 @@ func TestElementHandleBoundingBoxSVG(t *testing.T) {
         const rect = e.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     }`
-	box := p.Evaluate(pageFn, element)
+	box, err := p.Evaluate(pageFn, element)
+	require.NoError(t, err)
 	rect := convert(t, box, &common.Rect{})
 	require.EqualValues(t, bbox, rect)
 }
@@ -96,7 +99,8 @@ func TestElementHandleClick(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetContent(htmlInputButton, nil)
+	err := p.SetContent(htmlInputButton, nil)
+	require.NoError(t, err)
 
 	button, err := p.Query("button")
 	require.NoError(t, err)
@@ -108,7 +112,8 @@ func TestElementHandleClick(t *testing.T) {
 	err = button.Click(opts)
 	require.NoError(t, err)
 
-	res := p.Evaluate(`() => window['result']`)
+	res, err := p.Evaluate(`() => window['result']`)
+	require.NoError(t, err)
 	assert.Equal(t, res, "Clicked")
 }
 
@@ -118,10 +123,12 @@ func TestElementHandleClickWithNodeRemoved(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetContent(htmlInputButton, nil)
+	err := p.SetContent(htmlInputButton, nil)
+	require.NoError(t, err)
 
 	// Remove all nodes
-	p.Evaluate(`() => delete window['Node']`)
+	_, err = p.Evaluate(`() => delete window['Node']`)
+	require.NoError(t, err)
 
 	button, err := p.Query("button")
 	require.NoError(t, err)
@@ -133,7 +140,8 @@ func TestElementHandleClickWithNodeRemoved(t *testing.T) {
 	err = button.Click(opts)
 	require.NoError(t, err)
 
-	res := p.Evaluate(`() => window['result']`)
+	res, err := p.Evaluate(`() => window['result']`)
+	require.NoError(t, err)
 	assert.Equal(t, res, "Clicked")
 }
 
@@ -143,12 +151,14 @@ func TestElementHandleClickWithDetachedNode(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetContent(htmlInputButton, nil)
+	err := p.SetContent(htmlInputButton, nil)
+	require.NoError(t, err)
 	button, err := p.Query("button")
 	require.NoError(t, err)
 
 	// Detach node to panic when clicked
-	p.Evaluate(`button => button.remove()`, button)
+	_, err = p.Evaluate(`button => button.remove()`, button)
+	require.NoError(t, err)
 
 	opts := common.NewElementHandleClickOptions(button.Timeout())
 	// FIX: this is just a workaround because navigation is never triggered
@@ -171,26 +181,23 @@ func TestElementHandleClickConcealedLink(t *testing.T) {
 	)
 
 	tb := newTestBrowser(t, withFileServer())
-	bc, err := tb.NewContext(
-		tb.toGojaValue(struct {
-			Viewport common.Viewport `js:"viewport"`
-		}{
-			Viewport: common.Viewport{
-				Width:  500,
-				Height: 240,
-			},
-		}),
-	)
+
+	bcopts := common.NewBrowserContextOptions()
+	bcopts.Viewport = &common.Viewport{
+		Width:  500,
+		Height: 240,
+	}
+	bc, err := tb.NewContext(bcopts)
 	require.NoError(t, err)
+
 	p, err := bc.NewPage()
 	require.NoError(t, err)
 
-	clickResult := func() any {
+	clickResult := func() (any, error) {
 		const cmd = `
 			() => window.clickResult
 		`
-		cr := p.Evaluate(cmd)
-		return cr
+		return p.Evaluate(cmd)
 	}
 	opts := &common.FrameGotoOptions{
 		Timeout: common.DefaultTimeout,
@@ -201,11 +208,15 @@ func TestElementHandleClickConcealedLink(t *testing.T) {
 	)
 	require.NotNil(t, resp)
 	require.NoError(t, err)
-	require.Equal(t, wantBefore, clickResult())
+	result, err := clickResult()
+	require.NoError(t, err)
+	require.Equal(t, wantBefore, result)
 
 	err = p.Click("#concealed", common.NewFrameClickOptions(p.Timeout()))
 	require.NoError(t, err)
-	require.Equal(t, wantAfter, clickResult())
+	result, err = clickResult()
+	require.NoError(t, err)
+	require.Equal(t, wantAfter, result)
 }
 
 func TestElementHandleNonClickable(t *testing.T) {
@@ -235,18 +246,49 @@ func TestElementHandleNonClickable(t *testing.T) {
 func TestElementHandleGetAttribute(t *testing.T) {
 	t.Parallel()
 
-	const want = "https://somewhere"
-
 	p := newTestBrowser(t).NewPage(nil)
-	p.SetContent(`
-		<a id="dark-mode-toggle-X" href="https://somewhere">Dark</a>
-	`, nil)
-
-	el, err := p.Query("#dark-mode-toggle-X")
+	err := p.SetContent(`<a id="el" href="null">Something</a>`, nil)
 	require.NoError(t, err)
 
-	got := el.GetAttribute("href")
-	assert.Equal(t, want, got)
+	el, err := p.Query("#el")
+	require.NoError(t, err)
+
+	got, ok, err := el.GetAttribute("href")
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "null", got)
+}
+
+func TestElementHandleGetAttributeMissing(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<a id="el">Something</a>`, nil)
+	require.NoError(t, err)
+
+	el, err := p.Query("#el")
+	require.NoError(t, err)
+
+	got, ok, err := el.GetAttribute("missing")
+	require.NoError(t, err)
+	require.False(t, ok)
+	assert.Equal(t, "", got)
+}
+
+func TestElementHandleGetAttributeEmpty(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<a id="el" empty>Something</a>`, nil)
+	require.NoError(t, err)
+
+	el, err := p.Query("#el")
+	require.NoError(t, err)
+
+	got, ok, err := el.GetAttribute("empty")
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "", got)
 }
 
 func TestElementHandleInputValue(t *testing.T) {
@@ -254,31 +296,35 @@ func TestElementHandleInputValue(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`
+	err := p.SetContent(`
 		<input value="hello1">
 		<select><option value="hello2" selected></option></select>
 		<textarea>hello3</textarea>
-    	`, nil)
+    `, nil)
+	require.NoError(t, err)
 
 	element, err := p.Query("input")
 	require.NoError(t, err)
 
-	value := element.InputValue(nil)
-	element.Dispose()
+	value, err := element.InputValue(nil)
+	require.NoError(t, err)
+	require.NoError(t, element.Dispose())
 	assert.Equal(t, value, "hello1", `expected input value "hello1", got %q`, value)
 
 	element, err = p.Query("select")
 	require.NoError(t, err)
 
-	value = element.InputValue(nil)
-	element.Dispose()
+	value, err = element.InputValue(nil)
+	require.NoError(t, err)
+	require.NoError(t, element.Dispose())
 	assert.Equal(t, value, "hello2", `expected input value "hello2", got %q`, value)
 
 	element, err = p.Query("textarea")
 	require.NoError(t, err)
 
-	value = element.InputValue(nil)
-	element.Dispose()
+	value, err = element.InputValue(nil)
+	require.NoError(t, err)
+	require.NoError(t, element.Dispose())
 	assert.Equal(t, value, "hello3", `expected input value "hello3", got %q`, value)
 }
 
@@ -287,18 +333,24 @@ func TestElementHandleIsChecked(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`<input type="checkbox" checked>`, nil)
+	err := p.SetContent(`<input type="checkbox" checked>`, nil)
+	require.NoError(t, err)
 	element, err := p.Query("input")
 	require.NoError(t, err)
 
-	assert.True(t, element.IsChecked(), "expected checkbox to be checked")
-	element.Dispose()
+	checked, err := element.IsChecked()
+	require.NoError(t, err)
+	assert.True(t, checked, "expected checkbox to be checked")
+	require.NoError(t, element.Dispose())
 
-	p.SetContent(`<input type="checkbox">`, nil)
+	err = p.SetContent(`<input type="checkbox">`, nil)
+	require.NoError(t, err)
 	element, err = p.Query("input")
 	require.NoError(t, err)
-	assert.False(t, element.IsChecked(), "expected checkbox to be unchecked")
-	element.Dispose()
+	checked, err = element.IsChecked()
+	require.NoError(t, err)
+	assert.False(t, checked, "expected checkbox to be unchecked")
+	require.NoError(t, element.Dispose())
 }
 
 func TestElementHandleQueryAll(t *testing.T) {
@@ -310,12 +362,13 @@ func TestElementHandleQueryAll(t *testing.T) {
 	)
 
 	p := newTestBrowser(t).NewPage(nil)
-	p.SetContent(`
+	err := p.SetContent(`
 		<ul id="aul">
 			<li class="ali">1</li>
 			<li class="ali">2</li>
 		</ul>
   	`, nil)
+	require.NoError(t, err)
 
 	t.Run("element_handle", func(t *testing.T) {
 		t.Parallel()
@@ -357,11 +410,13 @@ func TestElementHandleScreenshot(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetViewportSize(tb.toGojaValue(struct {
+	err := p.SetViewportSize(tb.toSobekValue(struct {
 		Width  float64 `js:"width"`
 		Height float64 `js:"height"`
 	}{Width: 800, Height: 600}))
-	p.Evaluate(`
+	require.NoError(t, err)
+
+	_, err = p.Evaluate(`
 		() => {
 			document.body.style.margin = '0';
 			document.body.style.padding = '0';
@@ -377,7 +432,8 @@ func TestElementHandleScreenshot(t *testing.T) {
 
 			document.body.appendChild(div);
 		}
-    	`)
+	`)
+	require.NoError(t, err)
 
 	elem, err := p.Query("div")
 	require.NoError(t, err)
@@ -410,29 +466,31 @@ func TestElementHandleWaitForSelector(t *testing.T) {
 
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
-	p.SetContent(`<div class="root"></div>`, nil)
+	err := p.SetContent(`<div class="root"></div>`, nil)
+	require.NoError(t, err)
 
 	root, err := p.Query(".root")
 	require.NoError(t, err)
 
-	p.Evaluate(`
+	_, err = p.Evaluate(`
         () => {
-		setTimeout(() => {
-			const div = document.createElement('div');
-			div.className = 'element-to-appear';
-			div.appendChild(document.createTextNode("Hello World"));
-			root = document.querySelector('.root');
-			root.appendChild(div);
+			setTimeout(() => {
+				const div = document.createElement('div');
+				div.className = 'element-to-appear';
+				div.appendChild(document.createTextNode("Hello World"));
+				root = document.querySelector('.root');
+				root.appendChild(div);
 			}, 100);
 		}
 	`)
-	element, err := root.WaitForSelector(".element-to-appear", tb.toGojaValue(struct {
+	require.NoError(t, err)
+	element, err := root.WaitForSelector(".element-to-appear", tb.toSobekValue(struct {
 		Timeout int64 `js:"timeout"`
 	}{Timeout: 1000}))
 	require.NoError(t, err)
 	require.NotNil(t, element, "expected element to have been found after wait")
 
-	element.Dispose()
+	require.NoError(t, element.Dispose())
 }
 
 func TestElementHandlePress(t *testing.T) {
@@ -442,26 +500,102 @@ func TestElementHandlePress(t *testing.T) {
 
 	p := tb.NewPage(nil)
 
-	p.SetContent(`<input>`, nil)
+	err := p.SetContent(`<input>`, nil)
+	require.NoError(t, err)
 
 	el, err := p.Query("input")
 	require.NoError(t, err)
 
-	el.Press("Shift+KeyA", nil)
-	el.Press("KeyB", nil)
-	el.Press("Shift+KeyC", nil)
+	require.NoError(t, el.Press("Shift+KeyA", nil))
+	require.NoError(t, el.Press("KeyB", nil))
+	require.NoError(t, el.Press("Shift+KeyC", nil))
 
-	require.Equal(t, "AbC", el.InputValue(nil))
+	v, err := el.InputValue(nil)
+	require.NoError(t, err)
+	require.Equal(t, "AbC", v)
 }
 
 func TestElementHandleQuery(t *testing.T) {
 	t.Parallel()
 
 	p := newTestBrowser(t).NewPage(nil)
-	p.SetContent(`<div id="foo">hello</div>`, nil)
+	err := p.SetContent(`<div id="foo">hello</div>`, nil)
+	require.NoError(t, err)
 
 	element, err := p.Query("bar")
 
 	require.NoError(t, err)
 	require.Nil(t, element)
+}
+
+func TestElementHandleTextContent(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<div id="el">Something</div>`, nil)
+	require.NoError(t, err)
+
+	el, err := p.Query("#el")
+	require.NoError(t, err)
+
+	got, ok, err := el.TextContent()
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "Something", got)
+}
+
+func TestElementHandleTextContentMissing(t *testing.T) {
+	t.Parallel()
+
+	tb := newTestBrowser(t)
+	p := tb.NewPage(nil)
+
+	// document never has text content.
+	js, err := p.EvaluateHandle(`() => document`)
+	require.NoError(t, err)
+	_, ok, err := js.AsElement().TextContent()
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
+func TestElementHandleTextContentEmpty(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<div id="el"/>`, nil)
+	require.NoError(t, err)
+
+	el, err := p.Query("#el")
+	require.NoError(t, err)
+
+	got, ok, err := el.TextContent()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Empty(t, got)
+}
+
+func TestElementHandleSetChecked(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+
+	err := p.SetContent(`<input type="checkbox">`, nil)
+	require.NoError(t, err)
+	element, err := p.Query("input")
+	require.NoError(t, err)
+	checked, err := element.IsChecked()
+	require.NoError(t, err)
+	require.False(t, checked, "expected checkbox to be unchecked")
+
+	err = element.SetChecked(true, nil)
+	require.NoError(t, err)
+	checked, err = element.IsChecked()
+	require.NoError(t, err)
+	assert.True(t, checked, "expected checkbox to be checked")
+
+	err = element.SetChecked(false, nil)
+	require.NoError(t, err)
+	checked, err = element.IsChecked()
+	require.NoError(t, err)
+	assert.False(t, checked, "expected checkbox to be unchecked")
 }

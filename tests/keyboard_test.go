@@ -5,10 +5,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/grafana/xk6-browser/keyboardlayout"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/xk6-browser/keyboardlayout"
 )
 
 func TestKeyboardPress(t *testing.T) {
@@ -22,11 +22,9 @@ func TestKeyboardPress(t *testing.T) {
 		kb := p.GetKeyboard()
 		layout := keyboardlayout.GetKeyboardLayout("us")
 
-		assert.NotPanics(t, func() {
-			for k := range layout.Keys {
-				kb.Press(string(k), nil)
-			}
-		})
+		for k := range layout.Keys {
+			assert.NoError(t, kb.Press(string(k), nil))
+		}
 	})
 
 	t.Run("backspace", func(t *testing.T) {
@@ -36,16 +34,21 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<input>`, nil)
+		err := p.SetContent(`<input>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("input")
 		require.NoError(t, err)
-		p.Focus("input", nil)
+		require.NoError(t, p.Focus("input", nil))
 
-		kb.Type("Hello World!", nil)
-		require.Equal(t, "Hello World!", el.InputValue(nil))
+		require.NoError(t, kb.Type("Hello World!", nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		require.Equal(t, "Hello World!", v)
 
-		kb.Press("Backspace", nil)
-		assert.Equal(t, "Hello World", el.InputValue(nil))
+		require.NoError(t, kb.Press("Backspace", nil))
+		v, err = el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "Hello World", v)
 	})
 
 	t.Run("combo", func(t *testing.T) {
@@ -55,24 +58,27 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<input>`, nil)
+		err := p.SetContent(`<input>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("input")
 		require.NoError(t, err)
-		p.Focus("input", nil)
+		require.NoError(t, p.Focus("input", nil))
 
-		kb.Press("Shift++", nil)
-		kb.Press("Shift+=", nil)
-		kb.Press("Shift+@", nil)
-		kb.Press("Shift+6", nil)
-		kb.Press("Shift+KeyA", nil)
-		kb.Press("Shift+b", nil)
-		kb.Press("Shift+C", nil)
+		require.NoError(t, kb.Press("Shift++", nil))
+		require.NoError(t, kb.Press("Shift+=", nil))
+		require.NoError(t, kb.Press("Shift+@", nil))
+		require.NoError(t, kb.Press("Shift+6", nil))
+		require.NoError(t, kb.Press("Shift+KeyA", nil))
+		require.NoError(t, kb.Press("Shift+b", nil))
+		require.NoError(t, kb.Press("Shift+C", nil))
 
-		kb.Press("Control+KeyI", nil)
-		kb.Press("Control+J", nil)
-		kb.Press("Control+k", nil)
+		require.NoError(t, kb.Press("Control+KeyI", nil))
+		require.NoError(t, kb.Press("Control+J", nil))
+		require.NoError(t, kb.Press("Control+k", nil))
 
-		require.Equal(t, "+=@6AbC", el.InputValue(nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		require.Equal(t, "+=@6AbC", v)
 	})
 
 	t.Run("meta", func(t *testing.T) {
@@ -82,24 +88,29 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<input>`, nil)
+		err := p.SetContent(`<input>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("input")
 		require.NoError(t, err)
-		p.Focus("input", nil)
+		require.NoError(t, p.Focus("input", nil))
 
-		kb.Press("Shift+KeyA", nil)
-		kb.Press("Shift+b", nil)
-		kb.Press("Shift+C", nil)
+		require.NoError(t, kb.Press("Shift+KeyA", nil))
+		require.NoError(t, kb.Press("Shift+b", nil))
+		require.NoError(t, kb.Press("Shift+C", nil))
 
-		require.Equal(t, "AbC", el.InputValue(nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		require.Equal(t, "AbC", v)
 
 		metaKey := "Control"
 		if runtime.GOOS == "darwin" {
 			metaKey = "Meta"
 		}
-		kb.Press(metaKey+"+A", nil)
-		kb.Press("Delete", nil)
-		assert.Equal(t, "", el.InputValue(nil))
+		require.NoError(t, kb.Press(metaKey+"+A", nil))
+		require.NoError(t, kb.Press("Delete", nil))
+		v, err = el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "", v)
 	})
 
 	t.Run("type does not split on +", func(t *testing.T) {
@@ -109,13 +120,16 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<textarea>`, nil)
+		err := p.SetContent(`<textarea>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("textarea")
 		require.NoError(t, err)
-		p.Focus("textarea", nil)
+		require.NoError(t, p.Focus("textarea", nil))
 
-		kb.Type("L+m+KeyN", nil)
-		assert.Equal(t, "L+m+KeyN", el.InputValue(nil))
+		require.NoError(t, kb.Type("L+m+KeyN", nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "L+m+KeyN", v)
 	})
 
 	t.Run("capitalization", func(t *testing.T) {
@@ -125,25 +139,28 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<textarea>`, nil)
+		err := p.SetContent(`<textarea>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("textarea")
 		require.NoError(t, err)
-		p.Focus("textarea", nil)
+		require.NoError(t, p.Focus("textarea", nil))
 
-		kb.Press("C", nil)
-		kb.Press("d", nil)
-		kb.Press("KeyE", nil)
+		require.NoError(t, kb.Press("C", nil))
+		require.NoError(t, kb.Press("d", nil))
+		require.NoError(t, kb.Press("KeyE", nil))
 
-		kb.Down("Shift")
-		kb.Down("f")
-		kb.Up("f")
-		kb.Down("G")
-		kb.Up("G")
-		kb.Down("KeyH")
-		kb.Up("KeyH")
-		kb.Up("Shift")
+		require.NoError(t, kb.Down("Shift"))
+		require.NoError(t, kb.Down("f"))
+		require.NoError(t, kb.Up("f"))
+		require.NoError(t, kb.Down("G"))
+		require.NoError(t, kb.Up("G"))
+		require.NoError(t, kb.Down("KeyH"))
+		require.NoError(t, kb.Up("KeyH"))
+		require.NoError(t, kb.Up("Shift"))
 
-		assert.Equal(t, "CdefGH", el.InputValue(nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "CdefGH", v)
 	})
 
 	t.Run("type not affected by shift", func(t *testing.T) {
@@ -153,16 +170,19 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<textarea>`, nil)
+		err := p.SetContent(`<textarea>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("textarea")
 		require.NoError(t, err)
-		p.Focus("textarea", nil)
+		require.NoError(t, p.Focus("textarea", nil))
 
-		kb.Down("Shift")
-		kb.Type("oPqR", nil)
-		kb.Up("Shift")
+		require.NoError(t, kb.Down("Shift"))
+		require.NoError(t, kb.Type("oPqR", nil))
+		require.NoError(t, kb.Up("Shift"))
 
-		assert.Equal(t, "oPqR", el.InputValue(nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "oPqR", v)
 	})
 
 	t.Run("newline", func(t *testing.T) {
@@ -172,16 +192,19 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<textarea>`, nil)
+		err := p.SetContent(`<textarea>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("textarea")
 		require.NoError(t, err)
-		p.Focus("textarea", nil)
+		require.NoError(t, p.Focus("textarea", nil))
 
-		kb.Type("Hello", nil)
-		kb.Press("Enter", nil)
-		kb.Press("Enter", nil)
-		kb.Type("World!", nil)
-		assert.Equal(t, "Hello\n\nWorld!", el.InputValue(nil))
+		require.NoError(t, kb.Type("Hello", nil))
+		require.NoError(t, kb.Press("Enter", nil))
+		require.NoError(t, kb.Press("Enter", nil))
+		require.NoError(t, kb.Type("World!", nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "Hello\n\nWorld!", v)
 	})
 
 	// Replicates the test from https://playwright.dev/docs/api/class-keyboard
@@ -192,25 +215,30 @@ func TestKeyboardPress(t *testing.T) {
 		p := tb.NewPage(nil)
 		kb := p.GetKeyboard()
 
-		p.SetContent(`<input>`, nil)
+		err := p.SetContent(`<input>`, nil)
+		require.NoError(t, err)
 		el, err := p.Query("input")
 		require.NoError(t, err)
-		p.Focus("input", nil)
+		require.NoError(t, p.Focus("input", nil))
 
-		kb.Type("Hello World!", nil)
-		require.Equal(t, "Hello World!", el.InputValue(nil))
+		require.NoError(t, kb.Type("Hello World!", nil))
+		v, err := el.InputValue(nil)
+		require.NoError(t, err)
+		require.Equal(t, "Hello World!", v)
 
-		kb.Press("ArrowLeft", nil)
+		require.NoError(t, kb.Press("ArrowLeft", nil))
 		// Should hold the key until Up() is called.
-		kb.Down("Shift")
+		require.NoError(t, kb.Down("Shift"))
 		for i := 0; i < len(" World"); i++ {
-			kb.Press("ArrowLeft", nil)
+			require.NoError(t, kb.Press("ArrowLeft", nil))
 		}
 		// Should release the key but the selection should remain active.
-		kb.Up("Shift")
+		require.NoError(t, kb.Up("Shift"))
 		// Should delete the selection.
-		kb.Press("Backspace", nil)
+		require.NoError(t, kb.Press("Backspace", nil))
 
-		assert.Equal(t, "Hello!", el.InputValue(nil))
+		require.NoError(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, "Hello World!", v)
 	})
 }

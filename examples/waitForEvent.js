@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -14,7 +14,7 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext()
+  const context = await browser.newContext()
 
   // We want to wait for two page creations before carrying on.
   var counter = 0
@@ -26,14 +26,14 @@ export default async function() {
   } })
   
   // Now we create two pages.
-  const page = context.newPage()
-  const page2 = context.newPage()
+  const page = await context.newPage();
+  const page2 = await context.newPage();
 
   // We await for the page creation events to be processed and the predicate
   // to pass.
   await promise
   console.log('predicate passed')
 
-  page.close()
-  page2.close()
+  await page.close()
+  await page2.close();
 };

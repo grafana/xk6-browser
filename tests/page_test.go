@@ -14,13 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/common"
-	"github.com/grafana/xk6-browser/k6ext/k6test"
 )
 
 type emulateMediaOpts struct {
@@ -77,7 +75,8 @@ func TestNestedFrames(t *testing.T) {
 	err = button1Handle.Click(common.NewElementHandleClickOptions(button1Handle.Timeout()))
 	assert.Nil(t, err)
 
-	v := frame2.Evaluate(`() => window.buttonClicked`)
+	v, err := frame2.Evaluate(`() => window.buttonClicked`)
+	require.NoError(t, err)
 	bv := asBool(t, v)
 	assert.True(t, bv, "button hasn't been clicked")
 }
@@ -88,19 +87,23 @@ func TestPageEmulateMedia(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.EmulateMedia(tb.toGojaValue(emulateMediaOpts{
+	err := p.EmulateMedia(tb.toSobekValue(emulateMediaOpts{
 		Media:         "print",
 		ColorScheme:   "dark",
 		ReducedMotion: "reduce",
 	}))
+	require.NoError(t, err)
 
-	result := p.Evaluate(`() => matchMedia('print').matches`)
+	result, err := p.Evaluate(`() => matchMedia('print').matches`)
+	require.NoError(t, err)
 	assert.IsTypef(t, true, result, "expected media 'print'")
 
-	result = p.Evaluate(`() => matchMedia('(prefers-color-scheme: dark)').matches`)
+	result, err = p.Evaluate(`() => matchMedia('(prefers-color-scheme: dark)').matches`)
+	require.NoError(t, err)
 	assert.IsTypef(t, true, result, "expected color scheme 'dark'")
 
-	result = p.Evaluate(`() => matchMedia('(prefers-reduced-motion: reduce)').matches`)
+	result, err = p.Evaluate(`() => matchMedia('(prefers-reduced-motion: reduce)').matches`)
+	require.NoError(t, err)
 	assert.IsTypef(t, true, result, "expected reduced motion setting to be 'reduce'")
 }
 
@@ -111,9 +114,12 @@ func TestPageContent(t *testing.T) {
 	p := tb.NewPage(nil)
 
 	content := `<!DOCTYPE html><html><head></head><body><h1>Hello</h1></body></html>`
-	p.SetContent(content, nil)
+	err := p.SetContent(content, nil)
+	require.NoError(t, err)
 
-	assert.Equal(t, content, p.Content())
+	content, err = p.Content()
+	require.NoError(t, err)
+	assert.Equal(t, content, content)
 }
 
 func TestPageEvaluate(t *testing.T) {
@@ -125,10 +131,11 @@ func TestPageEvaluate(t *testing.T) {
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
 
-		got := p.Evaluate(
+		got, err := p.Evaluate(
 			`(v) => { window.v = v; return window.v }`,
 			"test",
 		)
+		require.NoError(t, err)
 		s := asString(t, got)
 		assert.Equal(t, "test", s)
 	})
@@ -167,10 +174,9 @@ func TestPageEvaluate(t *testing.T) {
 				t.Parallel()
 
 				tb := newTestBrowser(t)
-				assertExceptionContains(t, tb.runtime(), func() {
-					p := tb.NewPage(nil)
-					p.Evaluate(tc.js)
-				}, tc.errMsg)
+				p := tb.NewPage(nil)
+				_, err := p.Evaluate(tc.js)
+				require.ErrorContains(t, err, tc.errMsg)
 			})
 		}
 	})
@@ -197,12 +203,12 @@ func TestPageEvaluateMapping(t *testing.T) {
 		{
 			name:   "arrow_func_no_return",
 			script: "() => {2}",
-			want:   goja.Null(),
+			want:   sobek.Null(),
 		},
 		{
 			name:   "full_func_no_return",
 			script: "function() {3}",
-			want:   goja.Null(),
+			want:   sobek.Null(),
 		},
 		{
 			name:   "async_func",
@@ -216,23 +222,23 @@ func TestPageEvaluateMapping(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, rt, _, cleanUp := startIteration(t)
+			vu, _, _, cleanUp := startIteration(t)
 			defer cleanUp()
 
 			// Test script as non string input
-			got, err := rt.RunString(fmt.Sprintf(`
-				const p = browser.newPage()
-				p.evaluate(%s)
-			`, tt.script))
-			assert.NoError(t, err)
-			assert.Equal(t, rt.ToValue(tt.want), got)
+			vu.SetVar(t, "p", &sobek.Object{})
+			got := vu.RunPromise(t, `
+				p = await browser.newPage()
+				return await p.evaluate(%s)
+			`, tt.script)
+			assert.Equal(t, vu.ToSobekValue(tt.want), got.Result())
 
 			// Test script as string input
-			got, err = rt.RunString(fmt.Sprintf(`
-				p.evaluate("%s")
-			`, tt.script))
-			assert.NoError(t, err)
-			assert.Equal(t, rt.ToValue(tt.want), got)
+			got = vu.RunPromise(t,
+				`return await p.evaluate("%s")`,
+				tt.script,
+			)
+			assert.Equal(t, vu.ToSobekValue(tt.want), got.Result())
 		})
 	}
 }
@@ -262,20 +268,21 @@ func TestPageEvaluateMappingError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, rt, _, cleanUp := startIteration(t)
+			vu, _, _, cleanUp := startIteration(t)
 			defer cleanUp()
 
 			// Test script as non string input
-			_, err := rt.RunString(fmt.Sprintf(`
-				const p = browser.newPage()
-				p.evaluate(%s)
-			`, tt.script))
+			vu.SetVar(t, "p", &sobek.Object{})
+			_, err := vu.RunAsync(t, `
+				p = await browser.newPage()
+				await p.evaluate(%s)
+			`, tt.script)
 			assert.ErrorContains(t, err, tt.wantErr)
 
 			// Test script as string input
-			_, err = rt.RunString(fmt.Sprintf(`
-				p.evaluate("%s")
-			`, tt.script))
+			_, err = vu.RunAsync(t, `
+				await p.evaluate("%s")
+			`, tt.script)
 			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
@@ -330,7 +337,8 @@ func TestPageGotoWaitUntilLoad(t *testing.T) {
 	}
 	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
-	results := p.Evaluate(`() => window.results`)
+	results, err := p.Evaluate(`() => window.results`)
+	require.NoError(t, err)
 	assert.EqualValues(t,
 		[]any{"DOMContentLoaded", "load"}, results,
 		`expected "load" event to have fired`,
@@ -349,7 +357,8 @@ func TestPageGotoWaitUntilDOMContentLoaded(t *testing.T) {
 	}
 	_, err := p.Goto(b.staticURL("wait_until.html"), opts)
 	require.NoError(t, err)
-	v := p.Evaluate(`() => window.results`)
+	v, err := p.Evaluate(`() => window.results`)
+	require.NoError(t, err)
 	results, ok := v.([]any)
 	if !ok {
 		t.Fatalf("expected results to be a slice, got %T", v)
@@ -368,8 +377,11 @@ func TestPageInnerHTML(t *testing.T) {
 		t.Parallel()
 
 		p := newTestBrowser(t).NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		assert.Equal(t, `<b>Test</b><ol><li><i>One</i></li></ol>`, p.InnerHTML("div", nil))
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		innerHTML, err := p.InnerHTML("div", nil)
+		require.NoError(t, err)
+		assert.Equal(t, `<b>Test</b><ol><li><i>One</i></li></ol>`, innerHTML)
 	})
 
 	t.Run("err_empty_selector", func(t *testing.T) {
@@ -379,10 +391,9 @@ func TestPageInnerHTML(t *testing.T) {
 		}()
 
 		tb := newTestBrowser(t)
-		assertExceptionContains(t, tb.runtime(), func() {
-			p := tb.NewPage(nil)
-			p.InnerHTML("", nil)
-		}, "The provided selector is empty")
+		p := tb.NewPage(nil)
+		_, err := p.InnerHTML("", nil)
+		require.ErrorContains(t, err, "The provided selector is empty")
 	})
 
 	t.Run("err_wrong_selector", func(t *testing.T) {
@@ -390,8 +401,10 @@ func TestPageInnerHTML(t *testing.T) {
 
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		require.Panics(t, func() { p.InnerHTML("p", tb.toGojaValue(jsFrameBaseOpts{Timeout: "100"})) })
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		_, err = p.InnerHTML("p", tb.toSobekValue(jsFrameBaseOpts{Timeout: "100"}))
+		require.Error(t, err)
 	})
 }
 
@@ -402,18 +415,20 @@ func TestPageInnerText(t *testing.T) {
 		t.Parallel()
 
 		p := newTestBrowser(t).NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		assert.Equal(t, "Test\nOne", p.InnerText("div", nil))
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		innerText, err := p.InnerText("div", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "Test\nOne", innerText)
 	})
 
 	t.Run("err_empty_selector", func(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		assertExceptionContains(t, tb.runtime(), func() {
-			p := tb.NewPage(nil)
-			p.InnerText("", nil)
-		}, "The provided selector is empty")
+		p := tb.NewPage(nil)
+		_, err := p.InnerText("", nil)
+		require.ErrorContains(t, err, "The provided selector is empty")
 	})
 
 	t.Run("err_wrong_selector", func(t *testing.T) {
@@ -421,8 +436,10 @@ func TestPageInnerText(t *testing.T) {
 
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		require.Panics(t, func() { p.InnerText("p", tb.toGojaValue(jsFrameBaseOpts{Timeout: "100"})) })
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		_, err = p.InnerText("p", tb.toSobekValue(jsFrameBaseOpts{Timeout: "100"}))
+		require.Error(t, err)
 	})
 }
 
@@ -433,18 +450,21 @@ func TestPageTextContent(t *testing.T) {
 		t.Parallel()
 
 		p := newTestBrowser(t).NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		assert.Equal(t, "TestOne", p.TextContent("div", nil))
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		textContent, ok, err := p.TextContent("div", nil)
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "TestOne", textContent)
 	})
 
 	t.Run("err_empty_selector", func(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		assertExceptionContains(t, tb.runtime(), func() {
-			p := tb.NewPage(nil)
-			p.TextContent("", nil)
-		}, "The provided selector is empty")
+		p := tb.NewPage(nil)
+		_, _, err := p.TextContent("", nil)
+		require.ErrorContains(t, err, "The provided selector is empty")
 	})
 
 	t.Run("err_wrong_selector", func(t *testing.T) {
@@ -452,8 +472,25 @@ func TestPageTextContent(t *testing.T) {
 
 		tb := newTestBrowser(t)
 		p := tb.NewPage(nil)
-		p.SetContent(sampleHTML, nil)
-		require.Panics(t, func() { p.TextContent("p", tb.toGojaValue(jsFrameBaseOpts{Timeout: "100"})) })
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		_, _, err = p.TextContent("p", tb.toSobekValue(jsFrameBaseOpts{
+			Timeout: "100",
+		}))
+		require.Error(t, err)
+	})
+
+	t.Run("err_wrong_selector", func(t *testing.T) {
+		t.Parallel()
+
+		tb := newTestBrowser(t)
+		p := tb.NewPage(nil)
+		err := p.SetContent(sampleHTML, nil)
+		require.NoError(t, err)
+		_, _, err = p.TextContent("p", tb.toSobekValue(jsFrameBaseOpts{
+			Timeout: "100",
+		}))
+		require.Error(t, err)
 	})
 }
 
@@ -462,19 +499,26 @@ func TestPageInputValue(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`
+	err := p.SetContent(`
 		<input value="hello1">
 		<select><option value="hello2" selected></option></select>
 		<textarea>hello3</textarea>
      	`, nil)
+	require.NoError(t, err)
 
-	got, want := p.InputValue("input", nil), "hello1"
+	inputValue, err := p.InputValue("input", nil)
+	require.NoError(t, err)
+	got, want := inputValue, "hello1"
 	assert.Equal(t, got, want)
 
-	got, want = p.InputValue("select", nil), "hello2"
+	inputValue, err = p.InputValue("select", nil)
+	require.NoError(t, err)
+	got, want = inputValue, "hello2"
 	assert.Equal(t, got, want)
 
-	got, want = p.InputValue("textarea", nil), "hello3"
+	inputValue, err = p.InputValue("textarea", nil)
+	require.NoError(t, err)
+	got, want = inputValue, "hello3"
 	assert.Equal(t, got, want)
 }
 
@@ -484,7 +528,8 @@ func TestPageInputSpecialCharacters(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`<input id="special">`, nil)
+	err := p.SetContent(`<input id="special">`, nil)
+	require.NoError(t, err)
 	el, err := p.Query("#special")
 	require.NoError(t, err)
 
@@ -496,10 +541,11 @@ func TestPageInputSpecialCharacters(t *testing.T) {
 		`¯\_(ツ)_/¯`,
 	}
 	for _, want := range wants {
-		el.Fill("", nil)
-		el.Type(want, nil)
+		require.NoError(t, el.Fill("", nil))
+		require.NoError(t, el.Type(want, nil))
 
-		got := el.InputValue(nil)
+		got, err := el.InputValue(nil)
+		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	}
 }
@@ -510,12 +556,13 @@ func TestPageFill(t *testing.T) {
 	// faster when run sequentially.
 
 	p := newTestBrowser(t).NewPage(nil)
-	p.SetContent(`
+	err := p.SetContent(`
 		<input id="text" type="text" value="something" />
 		<input id="date" type="date" value="2012-03-12"/>
 		<input id="number" type="number" value="42"/>
 		<input id="unfillable" type="radio" />
 	`, nil)
+	require.NoError(t, err)
 
 	happy := []struct{ name, selector, value string }{
 		{name: "text", selector: "#text", value: "fill me up"},
@@ -529,13 +576,17 @@ func TestPageFill(t *testing.T) {
 	}
 	for _, tt := range happy {
 		t.Run("happy/"+tt.name, func(t *testing.T) {
-			p.Fill(tt.selector, tt.value, nil)
-			require.Equal(t, tt.value, p.InputValue(tt.selector, nil))
+			err := p.Fill(tt.selector, tt.value, nil)
+			require.NoError(t, err)
+			inputValue, err := p.InputValue(tt.selector, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.value, inputValue)
 		})
 	}
 	for _, tt := range sad {
 		t.Run("sad/"+tt.name, func(t *testing.T) {
-			require.Panics(t, func() { p.Fill(tt.selector, tt.value, nil) })
+			err := p.Fill(tt.selector, tt.value, nil)
+			require.Error(t, err)
 		})
 	}
 }
@@ -545,11 +596,40 @@ func TestPageIsChecked(t *testing.T) {
 
 	p := newTestBrowser(t).NewPage(nil)
 
-	p.SetContent(`<input type="checkbox" checked>`, nil)
-	assert.True(t, p.IsChecked("input", nil), "expected checkbox to be checked")
+	err := p.SetContent(`<input type="checkbox" checked>`, nil)
+	require.NoError(t, err)
+	checked, err := p.IsChecked("input", nil)
+	require.NoError(t, err)
+	assert.True(t, checked, "expected checkbox to be checked")
 
-	p.SetContent(`<input type="checkbox">`, nil)
-	assert.False(t, p.IsChecked("input", nil), "expected checkbox to be unchecked")
+	err = p.SetContent(`<input type="checkbox">`, nil)
+	require.NoError(t, err)
+	checked, err = p.IsChecked("input", nil)
+	require.NoError(t, err)
+	assert.False(t, checked, "expected checkbox to be unchecked")
+}
+
+func TestPageSetChecked(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<input id="el" type="checkbox">`, nil)
+	require.NoError(t, err)
+	checked, err := p.IsChecked("#el", nil)
+	require.NoError(t, err)
+	assert.False(t, checked)
+
+	err = p.SetChecked("#el", true, nil)
+	require.NoError(t, err)
+	checked, err = p.IsChecked("#el", nil)
+	require.NoError(t, err)
+	assert.True(t, checked)
+
+	err = p.SetChecked("#el", false, nil)
+	require.NoError(t, err)
+	checked, err = p.IsChecked("#el", nil)
+	require.NoError(t, err)
+	assert.False(t, checked)
 }
 
 func TestPageScreenshotFullpage(t *testing.T) {
@@ -558,13 +638,15 @@ func TestPageScreenshotFullpage(t *testing.T) {
 	tb := newTestBrowser(t)
 	p := tb.NewPage(nil)
 
-	p.SetViewportSize(tb.toGojaValue(struct {
+	err := p.SetViewportSize(tb.toSobekValue(struct {
 		Width  float64 `js:"width"`
 		Height float64 `js:"height"`
 	}{
 		Width: 1280, Height: 800,
 	}))
-	p.Evaluate(`
+	require.NoError(t, err)
+
+	_, err = p.Evaluate(`
 	() => {
 		document.body.style.margin = '0';
 		document.body.style.padding = '0';
@@ -577,8 +659,8 @@ func TestPageScreenshotFullpage(t *testing.T) {
 		div.style.background = 'linear-gradient(red, blue)';
 
 		document.body.appendChild(div);
-	}
-    `)
+	}`)
+	require.NoError(t, err)
 
 	opts := common.NewPageScreenshotOptions()
 	opts.FullPage = true
@@ -604,8 +686,11 @@ func TestPageTitle(t *testing.T) {
 	t.Parallel()
 
 	p := newTestBrowser(t).NewPage(nil)
-	p.SetContent(`<html><head><title>Some title</title></head></html>`, nil)
-	assert.Equal(t, "Some title", p.Title())
+	err := p.SetContent(`<html><head><title>Some title</title></head></html>`, nil)
+	require.NoError(t, err)
+	title, err := p.Title()
+	require.NoError(t, err)
+	assert.Equal(t, "Some title", title)
 }
 
 func TestPageSetExtraHTTPHeaders(t *testing.T) {
@@ -618,7 +703,8 @@ func TestPageSetExtraHTTPHeaders(t *testing.T) {
 	headers := map[string]string{
 		"Some-Header": "Some-Value",
 	}
-	p.SetExtraHTTPHeaders(headers)
+	err := p.SetExtraHTTPHeaders(headers)
+	require.NoError(t, err)
 
 	opts := &common.FrameGotoOptions{
 		Timeout: common.DefaultTimeout,
@@ -630,8 +716,11 @@ func TestPageSetExtraHTTPHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
+	responseBody, err := resp.Body()
+	require.NoError(t, err)
+
 	var body struct{ Headers map[string][]string }
-	err = json.Unmarshal(resp.Body().Bytes(), &body)
+	err = json.Unmarshal(responseBody, &body)
 	require.NoError(t, err)
 
 	h := body.Headers["Some-Header"]
@@ -647,22 +736,18 @@ func TestPageWaitForFunction(t *testing.T) {
 	// testing the polling functionality—not the response from
 	// waitForFunction.
 	script := `
-		var page;
-		const test = async function() {
-			page = browser.newPage();
-			let resp = await page.waitForFunction(%s, %s, %s);
-			log('ok: '+resp);
-		}
-		test();
-		`
+		page = await browser.newPage();
+		let resp = await page.waitForFunction(%s, %s, %s);
+		log('ok: '+resp);`
 
 	t.Run("ok_func_raf_default", func(t *testing.T) {
 		t.Parallel()
 
-		vu, rt, log, cleanUp := startIteration(t)
+		vu, _, log, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := rt.RunString(`fn = () => {
+		vu.SetVar(t, "page", &sobek.Object{})
+		_, err := vu.RunOnEventLoop(t, `fn = () => {
 			if (typeof window._cnt == 'undefined') window._cnt = 0;
 			if (window._cnt >= 50) return true;
 			window._cnt++;
@@ -670,7 +755,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		}`)
 		require.NoError(t, err)
 
-		_, err = vu.TestRT.RunOnEventLoop(fmt.Sprintf(script, "fn", "{}", "null"))
+		_, err = vu.RunAsync(t, script, "fn", "{}", "null")
 		require.NoError(t, err)
 		assert.Contains(t, *log, "ok: null")
 	})
@@ -678,26 +763,22 @@ func TestPageWaitForFunction(t *testing.T) {
 	t.Run("ok_func_raf_default_arg", func(t *testing.T) {
 		t.Parallel()
 
-		vu, rt, log, cleanUp := startIteration(t)
+		vu, _, log, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := rt.RunString(`fn = arg => {
+		_, err := vu.RunOnEventLoop(t, `fn = arg => {
 			window._arg = arg;
 			return true;
 		}`)
 		require.NoError(t, err)
 
-		arg := "raf_arg"
-		_, err = vu.TestRT.RunOnEventLoop(fmt.Sprintf(script, "fn", "{}", fmt.Sprintf("%q", arg)))
+		_, err = vu.RunAsync(t, script, "fn", "{}", `"raf_arg"`)
 		require.NoError(t, err)
 		assert.Contains(t, *log, "ok: null")
 
-		argEval, err := rt.RunString(`page.evaluate(() => window._arg);`)
-		require.NoError(t, err)
-
-		var gotArg string
-		_ = rt.ExportTo(argEval, &gotArg)
-		assert.Equal(t, arg, gotArg)
+		p := vu.RunPromise(t, `return await page.evaluate(() => window._arg);`)
+		require.Equal(t, p.State(), sobek.PromiseStateFulfilled)
+		assert.Equal(t, "raf_arg", p.Result().String())
 	})
 
 	t.Run("ok_func_raf_default_args", func(t *testing.T) {
@@ -706,7 +787,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		vu, rt, log, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := rt.RunString(`fn = (...args) => {
+		_, err := vu.RunOnEventLoop(t, `fn = (...args) => {
 			window._args = args;
 			return true;
 		}`)
@@ -716,15 +797,14 @@ func TestPageWaitForFunction(t *testing.T) {
 		argsJS, err := json.Marshal(args)
 		require.NoError(t, err)
 
-		_, err = vu.TestRT.RunOnEventLoop(fmt.Sprintf(script, "fn", "{}", fmt.Sprintf("...%s", string(argsJS))))
+		_, err = vu.RunAsync(t, script, "fn", "{}", "..."+string(argsJS))
 		require.NoError(t, err)
 		assert.Contains(t, *log, "ok: null")
 
-		argEval, err := rt.RunString(`page.evaluate(() => window._args);`)
-		require.NoError(t, err)
-
+		p := vu.RunPromise(t, `return await page.evaluate(() => window._args);`)
+		require.Equal(t, p.State(), sobek.PromiseStateFulfilled)
 		var gotArgs []int
-		_ = rt.ExportTo(argEval, &gotArgs)
+		_ = rt.ExportTo(p.Result(), &gotArgs)
 		assert.Equal(t, args, gotArgs)
 	})
 
@@ -734,7 +814,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		vu, _, _, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := vu.TestRT.RunOnEventLoop(fmt.Sprintf(script, "false", "{ polling: 'raf', timeout: 500, }", "null"))
+		_, err := vu.RunAsync(t, script, "false", "{ polling: 'raf', timeout: 500 }", "null")
 		require.ErrorContains(t, err, "timed out after 500ms")
 	})
 
@@ -744,7 +824,7 @@ func TestPageWaitForFunction(t *testing.T) {
 		vu, _, _, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := vu.TestRT.RunOnEventLoop(fmt.Sprintf(script, "false", "{ polling: 'blah' }", "null"))
+		_, err := vu.RunAsync(t, script, "false", "{ polling: 'blah' }", "null")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(),
 			`parsing waitForFunction options: wrong polling option value:`,
@@ -754,33 +834,30 @@ func TestPageWaitForFunction(t *testing.T) {
 	t.Run("ok_expr_poll_interval", func(t *testing.T) {
 		t.Parallel()
 
-		vu, rt, log, cleanUp := startIteration(t)
+		vu, _, log, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := rt.RunString(`
-		const page = browser.newPage();
-		page.evaluate(() => {
-			setTimeout(() => {
-				const el = document.createElement('h1');
-				el.innerHTML = 'Hello';
-				document.body.appendChild(el);
-			}, 1000);
-		});`)
+		vu.SetVar(t, "page", &sobek.Object{})
+		_, err := vu.RunAsync(t, `
+			page = await browser.newPage();
+			await page.evaluate(() => {
+				setTimeout(() => {
+					const el = document.createElement('h1');
+					el.innerHTML = 'Hello';
+					document.body.appendChild(el);
+				}, 1000);
+			});`,
+		)
 		require.NoError(t, err)
 
 		script := `
-		const test = async function() {
 			let resp = await page.waitForFunction(%s, %s, %s);
 			if (resp) {
 				log('ok: '+resp.innerHTML());
 			} else {
 				log('err: '+err);
-			}
-		}
-		test();`
-
-		s := fmt.Sprintf(script, `"document.querySelector('h1')"`, "{ polling: 100, timeout: 2000, }", "null")
-		_, err = vu.TestRT.RunOnEventLoop(s)
+			}`
+		_, err = vu.RunAsync(t, script, `"document.querySelector('h1')"`, "{ polling: 100, timeout: 2000, }", "null")
 		require.NoError(t, err)
 		assert.Contains(t, *log, "ok: Hello")
 	})
@@ -788,65 +865,34 @@ func TestPageWaitForFunction(t *testing.T) {
 	t.Run("ok_func_poll_mutation", func(t *testing.T) {
 		t.Parallel()
 
-		vu, rt, log, cleanUp := startIteration(t)
+		vu, _, log, cleanUp := startIteration(t)
 		defer cleanUp()
 
-		_, err := rt.RunString(`
-		fn = () => document.querySelector('h1') !== null
+		vu.SetVar(t, "page", &sobek.Object{})
+		_, err := vu.RunAsync(t, `
+			fn = () => document.querySelector('h1') !== null
 
-		const page = browser.newPage();
-		page.evaluate(() => {
-			console.log('calling setTimeout...');
-			setTimeout(() => {
-				console.log('creating element...');
-				const el = document.createElement('h1');
-				el.innerHTML = 'Hello';
-				document.body.appendChild(el);
-			}, 1000);
-		})`)
+			page = await browser.newPage();
+			await page.evaluate(() => {
+				console.log('calling setTimeout...');
+				setTimeout(() => {
+					console.log('creating element...');
+					const el = document.createElement('h1');
+					el.innerHTML = 'Hello';
+					document.body.appendChild(el);
+				}, 1000);
+			})`,
+		)
 		require.NoError(t, err)
 
 		script := `
-		const test = async function() {
 			let resp = await page.waitForFunction(%s, %s, %s);
-			log('ok: '+resp);
-		}
-		test();`
+			log('ok: '+resp);`
 
-		s := fmt.Sprintf(script, "fn", "{ polling: 'mutation', timeout: 2000, }", "null")
-		_, err = vu.TestRT.RunOnEventLoop(s)
+		_, err = vu.RunAsync(t, script, "fn", "{ polling: 'mutation', timeout: 2000, }", "null")
 		require.NoError(t, err)
 		assert.Contains(t, *log, "ok: null")
 	})
-}
-
-// startIteration will work with the event system to start chrome and
-// (more importantly) set browser as the mapped browser instance which will
-// force all tests that work with this to go through the mapping layer.
-// This returns a cleanup function which should be deferred.
-// The opts are passed to k6test.NewVU as is without any modification.
-func startIteration(t *testing.T, opts ...any) (*k6test.VU, *goja.Runtime, *[]string, func()) {
-	t.Helper()
-
-	vu := k6test.NewVU(t, opts...)
-	rt := vu.Runtime()
-
-	mod := browser.New().NewModuleInstance(vu)
-	jsMod, ok := mod.Exports().Default.(*browser.JSModule)
-	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
-
-	// Setting the mapped browser into the vu's goja runtime.
-	require.NoError(t, rt.Set("browser", jsMod.Browser))
-
-	// Setting log, which is used by the callers to assert that certain actions
-	// have been made.
-	var log []string
-	require.NoError(t, rt.Set("log", func(s string) { log = append(log, s) }))
-
-	vu.ActivateVU()
-	vu.StartIteration(t)
-
-	return vu, rt, &log, func() { t.Helper(); vu.EndIteration(t) }
 }
 
 func TestPageWaitForLoadState(t *testing.T) {
@@ -856,10 +902,9 @@ func TestPageWaitForLoadState(t *testing.T) {
 		t.Parallel()
 
 		tb := newTestBrowser(t)
-		assertExceptionContains(t, tb.runtime(), func() {
-			p := tb.NewPage(nil)
-			p.WaitForLoadState("none", nil)
-		}, `invalid lifecycle event: "none"; must be one of: load, domcontentloaded, networkidle`)
+		p := tb.NewPage(nil)
+		err := p.WaitForLoadState("none", nil)
+		require.ErrorContains(t, err, `invalid lifecycle event: "none"; must be one of: load, domcontentloaded, networkidle`)
 	})
 }
 
@@ -884,13 +929,16 @@ func TestPagePress(t *testing.T) {
 
 	p := tb.NewPage(nil)
 
-	p.SetContent(`<input id="text1">`, nil)
+	err := p.SetContent(`<input id="text1">`, nil)
+	require.NoError(t, err)
 
-	p.Press("#text1", "Shift+KeyA", nil)
-	p.Press("#text1", "KeyB", nil)
-	p.Press("#text1", "Shift+KeyC", nil)
+	require.NoError(t, p.Press("#text1", "Shift+KeyA", nil))
+	require.NoError(t, p.Press("#text1", "KeyB", nil))
+	require.NoError(t, p.Press("#text1", "Shift+KeyC", nil))
 
-	require.Equal(t, "AbC", p.InputValue("#text1", nil))
+	inputValue, err := p.InputValue("#text1", nil)
+	require.NoError(t, err)
+	require.Equal(t, "AbC", inputValue)
 }
 
 func TestPageURL(t *testing.T) {
@@ -899,7 +947,9 @@ func TestPageURL(t *testing.T) {
 	b := newTestBrowser(t, withHTTPServer())
 
 	p := b.NewPage(nil)
-	assert.Equal(t, common.BlankPage, p.URL())
+	uri, err := p.URL()
+	require.NoError(t, err)
+	assert.Equal(t, common.BlankPage, uri)
 
 	opts := &common.FrameGotoOptions{
 		Timeout: common.DefaultTimeout,
@@ -910,7 +960,9 @@ func TestPageURL(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	assert.Regexp(t, "http://.*/get", p.URL())
+	uri, err = p.URL()
+	require.NoError(t, err)
+	assert.Regexp(t, "http://.*/get", uri)
 }
 
 func TestPageClose(t *testing.T) {
@@ -962,7 +1014,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "this is a log message", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -975,7 +1029,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "this is a debug message", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -988,7 +1044,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "this is an info message", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1001,7 +1059,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "this is an error message", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1014,7 +1074,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "this is a warning message", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1024,7 +1086,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "dir", cm.Type)
 				assert.Equal(t, "Location", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1034,7 +1098,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "dirxml", cm.Type)
 				assert.Equal(t, "Location", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1047,7 +1113,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, `[["Grafana","k6"],["Grafana","Mimir"]]`, val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1060,7 +1128,9 @@ func TestPageOn(t *testing.T) {
 				val, err := cm.Args[0].JSONValue()
 				assert.NoError(t, err)
 				assert.Equal(t, "trace example", val)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1069,7 +1139,9 @@ func TestPageOn(t *testing.T) {
 			assertFn: func(t *testing.T, cm *common.ConsoleMessage) {
 				t.Helper()
 				assert.Equal(t, "clear", cm.Type)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1079,7 +1151,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "startGroup", cm.Type)
 				assert.Equal(t, "console.group", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1089,7 +1163,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "startGroupCollapsed", cm.Type)
 				assert.Equal(t, "console.groupCollapsed", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1099,7 +1175,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "endGroup", cm.Type)
 				assert.Equal(t, "console.groupEnd", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1109,7 +1187,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "assert", cm.Type)
 				assert.Equal(t, "console.assert", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1119,7 +1199,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "count", cm.Type)
 				assert.Equal(t, "default: 1", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1129,7 +1211,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "count", cm.Type)
 				assert.Equal(t, "k6: 1", cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 		{
@@ -1139,7 +1223,9 @@ func TestPageOn(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "timeEnd", cm.Type)
 				assert.Regexp(t, `^k6: [0-9]+\.[0-9]+`, cm.Text, `expected prefix "k6: <a float>" but got %q`, cm.Text)
-				assert.True(t, cm.Page.URL() == blankPage, "url is not %s", blankPage)
+				uri, err := cm.Page.URL()
+				require.NoError(t, err)
+				assert.True(t, uri == blankPage, "url is not %s", blankPage)
 			},
 		},
 	}
@@ -1181,7 +1267,8 @@ func TestPageOn(t *testing.T) {
 			err = p.On("console", eventHandlerTwo)
 			require.NoError(t, err)
 
-			p.Evaluate(tc.consoleFn)
+			_, err = p.Evaluate(tc.consoleFn)
+			require.NoError(t, err)
 
 			select {
 			case <-done1:
@@ -1196,15 +1283,6 @@ func TestPageOn(t *testing.T) {
 			}
 		})
 	}
-}
-
-func assertExceptionContains(t *testing.T, rt *goja.Runtime, fn func(), expErrMsg string) {
-	t.Helper()
-
-	cal, _ := goja.AssertFunction(rt.ToValue(fn))
-
-	_, err := cal(goja.Undefined())
-	require.ErrorContains(t, err, expErrMsg)
 }
 
 func TestPageTimeout(t *testing.T) {
@@ -1292,7 +1370,7 @@ func TestPageWaitForSelector(t *testing.T) {
 			opts: map[string]any{
 				// set a timeout smaller than the time
 				// it takes the element to show up
-				"timeout": "50",
+				"timeout": "1",
 			},
 			selector: "#my-div",
 			errAssert: func(t *testing.T, e error) {
@@ -1319,7 +1397,7 @@ func TestPageWaitForSelector(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			_, err = page.WaitForSelector(tc.selector, tb.toGojaValue(tc.opts))
+			_, err = page.WaitForSelector(tc.selector, tb.toSobekValue(tc.opts))
 			tc.errAssert(t, err)
 		})
 	}
@@ -1419,7 +1497,8 @@ func TestPageThrottleNetwork(t *testing.T) {
 			_, err = page.WaitForSelector(selector, nil)
 			require.NoError(t, err)
 
-			resp := page.InnerText(selector, nil)
+			resp, err := page.InnerText(selector, nil)
+			require.NoError(t, err)
 			ms, err := strconv.ParseInt(resp, 10, 64)
 			require.NoError(t, err)
 			assert.GreaterOrEqual(t, ms, tc.wantMinRoundTripDuration)
@@ -1549,7 +1628,7 @@ func TestPageIsVisible(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			got, err := page.IsVisible(tc.selector, tb.toGojaValue(tc.options))
+			got, err := page.IsVisible(tc.selector, tb.toSobekValue(tc.options))
 
 			if tc.wantErr != "" {
 				assert.ErrorContains(t, err, tc.wantErr)
@@ -1620,7 +1699,7 @@ func TestPageIsHidden(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			got, err := page.IsHidden(tc.selector, tb.toGojaValue(tc.options))
+			got, err := page.IsHidden(tc.selector, tb.toSobekValue(tc.options))
 
 			if tc.wantErr != "" {
 				assert.ErrorContains(t, err, tc.wantErr)
@@ -1679,23 +1758,23 @@ func TestShadowDOMAndDocumentFragment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, rt, _, cleanUp := startIteration(t)
+			vu, _, _, cleanUp := startIteration(t)
 			defer cleanUp()
 
-			got, err := rt.RunString(fmt.Sprintf(`
-				const p = browser.newPage()
-				p.goto("%s/%s/shadow_and_doc_frag.html")
+			got := vu.RunPromise(t, `
+				const p = await browser.newPage()
+				await p.goto("%s/%s/shadow_and_doc_frag.html")
 
 				const s = p.locator('%s')
-				s.waitFor({
+				await s.waitFor({
 					timeout: 1000,
 					state: 'attached',
 				});
 
-				s.innerText();
-			`, s.URL, testBrowserStaticDir, tt.selector))
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got.String())
+				const text = await s.innerText();
+				return text;
+ 			`, s.URL, testBrowserStaticDir, tt.selector)
+			assert.Equal(t, tt.want, got.Result().String())
 		})
 	}
 }
@@ -1743,13 +1822,54 @@ func TestPageTargetBlank(t *testing.T) {
 	p2, ok := obj.(*common.Page)
 	require.True(t, ok, "return from WaitForEvent is not a Page")
 
-	p2.WaitForLoadState(common.LifecycleEventLoad.String(), nil)
+	err = p2.WaitForLoadState(common.LifecycleEventLoad.String(), nil)
+	require.NoError(t, err)
 
 	// Now there should be 2 pages.
 	pp = p.Context().Pages()
 	assert.Equal(t, 2, len(pp))
 
 	// Make sure the new page contains the correct page.
-	got := p2.InnerHTML("h1", nil)
+	got, err := p2.InnerHTML("h1", nil)
+	require.NoError(t, err)
 	assert.Equal(t, "you clicked!", got)
+}
+
+func TestPageGetAttribute(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<a id="el" href="null">Something</a>`, nil)
+	require.NoError(t, err)
+
+	got, ok, err := p.GetAttribute("#el", "href", nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "null", got)
+}
+
+func TestPageGetAttributeMissing(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<a id="el">Something</a>`, nil)
+	require.NoError(t, err)
+
+	got, ok, err := p.GetAttribute("#el", "missing", nil)
+	require.NoError(t, err)
+	require.False(t, ok)
+	assert.Equal(t, "", got)
+}
+
+func TestPageGetAttributeEmpty(t *testing.T) {
+	t.Parallel()
+
+	p := newTestBrowser(t).NewPage(nil)
+	err := p.SetContent(`<a id="el" empty>Something</a>`, nil)
+	require.NoError(t, err)
+
+	got, ok, err := p.GetAttribute("#el", "empty", nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "", got)
 }

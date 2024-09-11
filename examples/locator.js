@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -17,8 +17,8 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
   
   try {
     await page.goto("https://test.k6.io/flip_coin.php", {
@@ -55,20 +55,20 @@ export default async function() {
       page.waitForNavigation(),
       tails.click(),
     ]);
-    console.log(currentBet.innerText());
+    console.log(await currentBet.innerText());
     // the heads locator clicks on the heads button
     // by using the locator's selector.
     await Promise.all([
       page.waitForNavigation(),
       heads.click(),
     ]);
-    console.log(currentBet.innerText());
+    console.log(await currentBet.innerText());
     await Promise.all([
       page.waitForNavigation(),
       tails.click(),
     ]);
-    console.log(currentBet.innerText());
+    console.log(await currentBet.innerText());
   } finally {
-    page.close();
+    await page.close();
   }
 }

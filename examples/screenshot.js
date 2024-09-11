@@ -1,4 +1,4 @@
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -17,15 +17,15 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
   
   try {
     await page.goto('https://test.k6.io/');
-    page.screenshot({ path: 'screenshot.png' });
+    await page.screenshot({ path: 'screenshot.png' });
     // TODO: Assert this somehow. Upload as CI artifact or just an external `ls`?
     // Maybe even do a fuzzy image comparison against a preset known good screenshot?
   } finally {
-    page.close();
+    await page.close();
   }
 }

@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,18 +18,20 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
     await page.goto('https://test.k6.io/');
+
+    const titleWithCSS = await page.$('header h1.title').then(e => e.textContent());
+    const titleWithXPath = await page.$(`//header//h1[@class="title"]`).then(e => e.textContent());
+
     check(page, {
-      'Title with CSS selector':
-        p => p.$('header h1.title').textContent() == 'test.k6.io',
-      'Title with XPath selector':
-        p => p.$(`//header//h1[@class="title"]`).textContent() == 'test.k6.io',
+      'Title with CSS selector': titleWithCSS == 'test.k6.io',
+      'Title with XPath selector': titleWithXPath == 'test.k6.io',
     });
   } finally {
-    page.close();
+    await page.close();
   }
 }

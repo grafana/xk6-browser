@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -17,12 +17,12 @@ export const options = {
   }
 }
 
-export default function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+export default async function() {
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   // Inject page content
-  page.setContent(`
+  await page.setContent(`
     <div class="visible">Hello world</div>
     <div style="display:none" class="hidden"></div>
     <div class="editable" editable>Edit me</div>
@@ -33,15 +33,35 @@ export default function() {
   `);
 
   // Check state
+  let isVisible = await page.$('.visible').then(e => e.isVisible());
+  let isHidden = await page.$('.hidden').then(e => e.isHidden());
+  let isEditable = await page.$('.editable').then(e => e.isEditable());
+  let isEnabled = await page.$('.enabled').then(e => e.isEnabled());
+  let isDisabled = await page.$('.disabled').then(e => e.isDisabled());
+  let isChecked = await page.$('.checked').then(e => e.isChecked());
+  let isUnchecked = !await page.$('.unchecked').then(e => e.isChecked());
+
   check(page, {
-    'visible': p => p.$('.visible').isVisible(),
-    'hidden': p => p.$('.hidden').isHidden(),
-    'editable': p => p.$('.editable').isEditable(),
-    'enabled': p => p.$('.enabled').isEnabled(),
-    'disabled': p => p.$('.disabled').isDisabled(),
-    'checked': p => p.$('.checked').isChecked(),
-    'unchecked': p => p.$('.unchecked').isChecked() === false,
+    'visible': isVisible,
+    'hidden': isHidden,
+    'editable': isEditable,
+    'enabled': isEnabled,
+    'disabled': isDisabled,
+    'checked': isChecked,
+    'unchecked': isUnchecked,
   });
 
-  page.close();
+  // Change state and check again
+  await page.$(".unchecked").then(e => e.setChecked(true))
+  await page.$(".checked").then(e => e.setChecked(false))
+
+  let isUncheckedChecked = await page.$(".unchecked").then((e) => e.isChecked());
+  let isCheckedUnchecked = !await page.$(".checked").then((e) => e.isChecked());
+
+  check(page, {
+    isUncheckedChecked: isUncheckedChecked,
+    isCheckedUnchecked: isCheckedUnchecked,
+  });
+
+  await page.close();
 }

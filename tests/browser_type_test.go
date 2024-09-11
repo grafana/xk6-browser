@@ -38,7 +38,7 @@ func TestBrowserTypeLaunchToConnect(t *testing.T) {
 	// pointing to test browser proxy
 	vu := k6test.NewVU(t, env.ConstLookup(env.WebSocketURLs, bp.wsURL()))
 
-	// We have to call launch method through JS API in Goja
+	// We have to call launch method through JS API in sobek
 	// to take mapping layer into account, instead of calling
 	// BrowserType.Launch method directly
 	root := browser.New()
@@ -49,11 +49,10 @@ func TestBrowserTypeLaunchToConnect(t *testing.T) {
 	vu.ActivateVU()
 	vu.StartIteration(t)
 
-	rt := vu.Runtime()
-	require.NoError(t, rt.Set("browser", jsMod.Browser))
-	_, err := rt.RunString(`
-		const p = browser.newPage();
-		p.close();
+	vu.SetVar(t, "browser", jsMod.Browser)
+	_, err := vu.RunAsync(t, `
+		const p = await browser.newPage();
+		await p.close();
 	`)
 	require.NoError(t, err)
 

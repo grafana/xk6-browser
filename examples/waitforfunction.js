@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { browser } from 'k6/x/browser';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,11 +18,11 @@ export const options = {
 }
 
 export default async function() {
-  const context = browser.newContext();
-  const page = context.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
-    page.evaluate(() => {
+    await page.evaluate(() => {
       setTimeout(() => {
         const el = document.createElement('h1');
         el.innerHTML = 'Hello';
@@ -36,6 +36,6 @@ export default async function() {
     });
     check(ok, { 'waitForFunction successfully resolved': ok.innerHTML() == 'Hello' });
   } finally {
-    page.close();
+    await page.close();
   }
 }
