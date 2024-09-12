@@ -324,6 +324,7 @@ func (m *NetworkManager) initEvents() {
 		cdproto.EventNetworkResponseReceived,
 		cdproto.EventFetchRequestPaused,
 		cdproto.EventFetchAuthRequired,
+		cdproto.EventNetworkRequestWillBeSentExtraInfo,
 	}, chHandler)
 
 	go func() {
@@ -357,6 +358,8 @@ func (m *NetworkManager) handleEvents(in <-chan Event) bool {
 			m.onRequestPaused(ev)
 		case *fetch.EventAuthRequired:
 			m.onAuthRequired(ev)
+		case *network.EventRequestWillBeSentExtraInfo:
+			m.onRequestWillBeSentExtraInfo(ev)
 		}
 	}
 	return true
@@ -631,6 +634,14 @@ func (m *NetworkManager) onRequestServedFromCache(event *network.EventRequestSer
 	if ok {
 		req.setLoadedFromCache(true)
 	}
+}
+
+func (m *NetworkManager) onRequestWillBeSentExtraInfo(event *network.EventRequestWillBeSentExtraInfo) {
+	req, ok := m.requestFromID(event.RequestID)
+	if !ok {
+		return
+	}
+	req.setExtraHeaders(event.Headers)
 }
 
 func (m *NetworkManager) onResponseReceived(event *network.EventResponseReceived) {

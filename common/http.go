@@ -49,6 +49,7 @@ type Request struct {
 	url                 *url.URL
 	method              string
 	headers             map[string][]string
+	extraHeaders        map[string][]string
 	postData            string
 	resourceType        string
 	isNavigationRequest bool
@@ -120,6 +121,7 @@ func NewRequest(ctx context.Context, rp NewRequestParams) (*Request, error) {
 		offset:              ev.WallTime.Time().Sub(ev.Timestamp.Time()),
 		documentID:          documentID.String(),
 		headers:             make(map[string][]string),
+		extraHeaders:        make(map[string][]string),
 		ctx:                 ctx,
 		vu:                  k6ext.GetVU(ctx),
 	}
@@ -130,6 +132,14 @@ func NewRequest(ctx context.Context, rp NewRequestParams) (*Request, error) {
 	}
 
 	return &r, nil
+}
+
+func (r *Request) setExtraHeaders(headers network.Headers) {
+	for n, v := range headers {
+		if s, ok := v.(string); ok {
+			r.extraHeaders[n] = append(r.extraHeaders[n], s)
+		}
+	}
 }
 
 func (r *Request) getFrame() *Frame {
