@@ -206,6 +206,7 @@ func (r *Request) HeaderValue(name string) sobek.Value {
 }
 
 // Headers returns the request headers.
+// Should not include the extraHeaders.
 func (r *Request) Headers() map[string]string {
 	headers := make(map[string]string)
 	for n, v := range r.headers {
@@ -218,6 +219,11 @@ func (r *Request) Headers() map[string]string {
 func (r *Request) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
+		for _, v := range vals {
+			headers = append(headers, HTTPHeader{Name: n, Value: v})
+		}
+	}
+	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
 			headers = append(headers, HTTPHeader{Name: n, Value: v})
 		}
