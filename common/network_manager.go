@@ -324,6 +324,7 @@ func (m *NetworkManager) initEvents() {
 		cdproto.EventNetworkResponseReceived,
 		cdproto.EventFetchRequestPaused,
 		cdproto.EventFetchAuthRequired,
+		cdproto.EventNetworkResponseReceivedExtraInfo,
 		cdproto.EventNetworkRequestWillBeSentExtraInfo,
 	}, chHandler)
 
@@ -358,6 +359,8 @@ func (m *NetworkManager) handleEvents(in <-chan Event) bool {
 			m.onRequestPaused(ev)
 		case *fetch.EventAuthRequired:
 			m.onAuthRequired(ev)
+		case *network.EventResponseReceivedExtraInfo:
+			m.onResponseReceivedExtraInfo(ev)
 		case *network.EventRequestWillBeSentExtraInfo:
 			m.onRequestWillBeSentExtraInfo(ev)
 		}
@@ -634,6 +637,17 @@ func (m *NetworkManager) onRequestServedFromCache(event *network.EventRequestSer
 	if ok {
 		req.setLoadedFromCache(true)
 	}
+}
+
+func (m *NetworkManager) onResponseReceivedExtraInfo(event *network.EventResponseReceivedExtraInfo) {
+	req, ok := m.requestFromID(event.RequestID)
+	if !ok {
+		return
+	}
+
+	// The extra response headers arrive after or before the response itself.
+	// Allow the request to decide what to do with it.
+	req.setExtraResponseHeaders(event.Headers)
 }
 
 func (m *NetworkManager) onRequestWillBeSentExtraInfo(event *network.EventRequestWillBeSentExtraInfo) {

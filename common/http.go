@@ -39,24 +39,25 @@ func (s HTTPMessageSize) Total() int64 {
 
 // Request represents a browser HTTP request.
 type Request struct {
-	ctx                 context.Context
-	frame               *Frame
-	responseMu          sync.RWMutex
-	response            *Response
-	redirectChain       []*Request
-	requestID           network.RequestID
-	documentID          string
-	url                 *url.URL
-	method              string
-	headers             map[string][]string
-	extraHeaders        map[string][]string
-	postData            string
-	resourceType        string
-	isNavigationRequest bool
-	allowInterception   bool
-	interceptionID      string
-	fromMemoryCache     bool
-	errorText           string
+	ctx                  context.Context
+	frame                *Frame
+	responseMu           sync.RWMutex
+	response             *Response
+	redirectChain        []*Request
+	requestID            network.RequestID
+	documentID           string
+	url                  *url.URL
+	method               string
+	headers              map[string][]string
+	extraHeaders         map[string][]string
+	extraResponseHeaders network.Headers // These headers can arrive before the response
+	postData             string
+	resourceType         string
+	isNavigationRequest  bool
+	allowInterception    bool
+	interceptionID       string
+	fromMemoryCache      bool
+	errorText            string
 	// offset is the difference between the timestamp and wallTime fields.
 	//
 	// The cdp package (and the CDP protocol) uses the monotonic time
@@ -139,6 +140,19 @@ func (r *Request) setExtraHeaders(headers network.Headers) {
 		if s, ok := v.(string); ok {
 			r.extraHeaders[n] = append(r.extraHeaders[n], s)
 		}
+	}
+}
+
+// The extra response headers arrive after or before the response itself.
+// Allow the request to decide what to do with it.
+func (r *Request) setExtraResponseHeaders(headers network.Headers) {
+	r.responseMu.Lock()
+	defer r.responseMu.Unlock()
+
+	if r.response == nil {
+		r.extraResponseHeaders = headers
+	} else {
+		r.response.setExtraHeaders(headers)
 	}
 }
 
@@ -334,6 +348,7 @@ type Response struct {
 	bodyMu            sync.RWMutex
 	body              []byte
 	headers           map[string][]string
+	extraHeaders      map[string][]string
 	fromDiskCache     bool
 	fromServiceWorker bool
 	fromPrefetchCache bool
@@ -365,6 +380,7 @@ func NewHTTPResponse(
 		statusText:        resp.StatusText,
 		body:              nil,
 		headers:           make(map[string][]string),
+		extraHeaders:      make(map[string][]string),
 		fromDiskCache:     resp.FromDiskCache,
 		fromServiceWorker: resp.FromServiceWorker,
 		fromPrefetchCache: resp.FromPrefetchCache,
@@ -382,6 +398,9 @@ func NewHTTPResponse(
 		r.headers[n] = append(r.headers[n], s)
 	}
 
+	r.setExtraHeaders(req.extraResponseHeaders)
+	req.extraResponseHeaders = nil
+
 	if resp.SecurityDetails != nil {
 		r.securityDetails = &SecurityDetails{
 			SubjectName: resp.SecurityDetails.SubjectName,
@@ -394,6 +413,14 @@ func NewHTTPResponse(
 	}
 
 	return &r
+}
+
+func (r *Response) setExtraHeaders(headers network.Headers) {
+	for n, v := range headers {
+		if s, ok := v.(string); ok {
+			r.extraHeaders[n] = append(r.extraHeaders[n], s)
+		}
+	}
 }
 
 func (r *Response) fetchBody() error {
