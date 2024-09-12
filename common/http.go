@@ -137,6 +137,10 @@ func NewRequest(ctx context.Context, rp NewRequestParams) (*Request, error) {
 
 func (r *Request) setExtraHeaders(headers network.Headers) {
 	for n, v := range headers {
+		// If the header already exists then ignore it from the extra headers response.
+		if e := r.headers[n]; e != nil {
+			continue
+		}
 		if s, ok := v.(string); ok {
 			r.extraHeaders[n] = append(r.extraHeaders[n], s)
 		}
@@ -417,6 +421,10 @@ func NewHTTPResponse(
 
 func (r *Response) setExtraHeaders(headers network.Headers) {
 	for n, v := range headers {
+		// If the header already exists then ignore it from the extra headers response.
+		if e := r.headers[n]; e != nil {
+			continue
+		}
 		if s, ok := v.(string); ok {
 			r.extraHeaders[n] = append(r.extraHeaders[n], s)
 		}
