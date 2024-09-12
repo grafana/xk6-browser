@@ -238,12 +238,18 @@ func (r *Request) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
 		for _, v := range vals {
-			headers = append(headers, HTTPHeader{Name: n, Value: v})
+			vv := strings.Split(v, "\n")
+			for _, v := range vv {
+				headers = append(headers, HTTPHeader{Name: n, Value: v})
+			}
 		}
 	}
 	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
-			headers = append(headers, HTTPHeader{Name: n, Value: v})
+			vv := strings.Split(v, "\n")
+			for _, v := range vv {
+				headers = append(headers, HTTPHeader{Name: n, Value: v})
+			}
 		}
 	}
 	return headers
@@ -562,12 +568,18 @@ func (r *Response) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
 		for _, v := range vals {
-			headers = append(headers, HTTPHeader{Name: n, Value: v})
+			vv := strings.Split(v, "\n")
+			for _, v := range vv {
+				headers = append(headers, HTTPHeader{Name: n, Value: v})
+			}
 		}
 	}
 	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
-			headers = append(headers, HTTPHeader{Name: n, Value: v})
+			vv := strings.Split(v, "\n")
+			for _, v := range vv {
+				headers = append(headers, HTTPHeader{Name: n, Value: v})
+			}
 		}
 	}
 	return headers
