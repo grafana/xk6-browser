@@ -179,6 +179,8 @@ func (r *Request) headersSize() int64 {
 	size += 8 // httpVersion
 	for n, v := range r.headers {
 		for _, s := range v {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(s, "\n")
 			for _, s := range vv {
 				size += len(n) + len(s) + 4 // 4 = ': ' + '\r\n'
@@ -187,6 +189,8 @@ func (r *Request) headersSize() int64 {
 	}
 	for n, v := range r.extraHeaders {
 		for _, s := range v {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(s, "\n")
 			for _, s := range vv {
 				size += len(n) + len(s) + 4 // 4 = ': ' + '\r\n'
@@ -248,6 +252,8 @@ func (r *Request) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
 		for _, v := range vals {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(v, "\n")
 			for _, v := range vv {
 				headers = append(headers, HTTPHeader{Name: n, Value: v})
@@ -256,6 +262,8 @@ func (r *Request) HeadersArray() []HTTPHeader {
 	}
 	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(v, "\n")
 			for _, v := range vv {
 				headers = append(headers, HTTPHeader{Name: n, Value: v})
@@ -476,6 +484,8 @@ func (r *Response) headersSize() int64 {
 	size += len(r.statusText)
 	for n, v := range r.headers {
 		for _, s := range v {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(s, "\n")
 			for _, s := range vv {
 				size += len(n) + len(s) + 4 // 4 = ': ' + '\r\n'
@@ -484,6 +494,8 @@ func (r *Response) headersSize() int64 {
 	}
 	for n, v := range r.extraHeaders {
 		for _, s := range v {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(s, "\n")
 			for _, s := range vv {
 				size += len(n) + len(s) + 4 // 4 = ': ' + '\r\n'
@@ -588,6 +600,8 @@ func (r *Response) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
 		for _, v := range vals {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(v, "\n")
 			for _, v := range vv {
 				headers = append(headers, HTTPHeader{Name: n, Value: v})
@@ -596,6 +610,8 @@ func (r *Response) HeadersArray() []HTTPHeader {
 	}
 	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
+			// When header values have a newline, they need to be split into
+			// separate headers.
 			vv := strings.Split(v, "\n")
 			for _, v := range vv {
 				headers = append(headers, HTTPHeader{Name: n, Value: v})
