@@ -540,6 +540,7 @@ func (r *Response) FromServiceWorker() bool {
 }
 
 // Headers returns the response headers.
+// Should not include the extraHeaders.
 func (r *Response) Headers() map[string]string {
 	headers := make(map[string]string)
 	for n, v := range r.headers {
@@ -552,6 +553,11 @@ func (r *Response) Headers() map[string]string {
 func (r *Response) HeadersArray() []HTTPHeader {
 	headers := make([]HTTPHeader, 0)
 	for n, vals := range r.headers {
+		for _, v := range vals {
+			headers = append(headers, HTTPHeader{Name: n, Value: v})
+		}
+	}
+	for n, vals := range r.extraHeaders {
 		for _, v := range vals {
 			headers = append(headers, HTTPHeader{Name: n, Value: v})
 		}
