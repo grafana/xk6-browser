@@ -63,3 +63,28 @@ func TestBrowserTypeLaunchToConnect(t *testing.T) {
 	// to pid registry
 	require.Len(t, root.PidRegistry.Pids(), 0)
 }
+
+// This ensures that we get an error back when things are setup correctly.
+// The main thing this is testing though is that we don't panic. If a fatal
+// panic occurs, then it's likely to be due to the runtime not being setup
+// correctly in the cu context when it's needed (e.g. when using k6ext.Abort).
+func TestAbortDoesNotNPD(t *testing.T) {
+	t.Parallel()
+
+	// Invalid WS url should cause the test to abort
+	vu := k6test.NewVU(t, env.ConstLookup(env.WebSocketURLs, ""))
+
+	root := browser.New()
+	mod := root.NewModuleInstance(vu)
+	jsMod, ok := mod.Exports().Default.(*browser.JSModule)
+	require.Truef(t, ok, "unexpected default mod export type %T", mod.Exports().Default)
+
+	vu.ActivateVU()
+	vu.StartIteration(t)
+
+	vu.SetVar(t, "browser", jsMod.Browser)
+	_, err := vu.RunAsync(t, `
+			browser.isConnected();
+		`)
+	require.Error(t, err)
+}
