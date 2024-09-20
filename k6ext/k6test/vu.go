@@ -11,12 +11,10 @@ import (
 
 	"github.com/grafana/xk6-browser/env"
 
-	"go.k6.io/k6/event"
 	k6event "go.k6.io/k6/event"
 	k6common "go.k6.io/k6/js/common"
 	k6eventloop "go.k6.io/k6/js/eventloop"
 	k6modulestest "go.k6.io/k6/js/modulestest"
-	"go.k6.io/k6/lib"
 	k6lib "go.k6.io/k6/lib"
 	k6executor "go.k6.io/k6/lib/executor"
 	k6testutils "go.k6.io/k6/lib/testutils"
@@ -96,7 +94,7 @@ func (v *VU) EndIteration(tb testing.TB, opts ...any) {
 }
 
 // iterEvent generates an iteration event for the VU.
-func (v *VU) iterEvent(tb testing.TB, eventType event.Type, eventName string, opts ...any) {
+func (v *VU) iterEvent(tb testing.TB, eventType k6event.Type, eventName string, opts ...any) {
 	tb.Helper()
 
 	data := k6event.IterData{
@@ -236,7 +234,7 @@ func NewVU(tb testing.TB, opts ...any) *VU {
 		BufferPool: k6lib.NewBufferPool(),
 		Samples:    samples,
 		Tags: k6lib.NewVUStateTags(
-			testRT.VU.InitEnvField.Registry.RootTagSet().With("group", lib.RootGroupPath),
+			testRT.VU.InitEnvField.Registry.RootTagSet().With("group", k6lib.RootGroupPath),
 		),
 		BuiltinMetrics: k6metrics.RegisterBuiltinMetrics(k6metrics.NewRegistry()),
 		TracerProvider: tracerProvider,
