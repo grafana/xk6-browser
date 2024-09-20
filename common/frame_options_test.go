@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 
 	"github.com/stretchr/testify/assert"
@@ -17,12 +18,13 @@ func TestFrameGotoOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"timeout":   "1000",
 			"waitUntil": "networkidle",
 		})
 		gotoOpts := NewFrameGotoOptions("https://example.com/", 0)
-		err := gotoOpts.Parse(vu.Context(), opts)
+		err := gotoOpts.Parse(vuCtx, opts)
 		require.NoError(t, err)
 
 		assert.Equal(t, "https://example.com/", gotoOpts.Referer)
@@ -34,11 +36,12 @@ func TestFrameGotoOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"waitUntil": "none",
 		})
 		navOpts := NewFrameGotoOptions("", 0)
-		err := navOpts.Parse(vu.Context(), opts)
+		err := navOpts.Parse(vuCtx, opts)
 
 		assert.EqualError(t, err,
 			`parsing goto options: `+
@@ -54,11 +57,12 @@ func TestFrameSetContentOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"waitUntil": "networkidle",
 		})
 		scOpts := NewFrameSetContentOptions(30 * time.Second)
-		err := scOpts.Parse(vu.Context(), opts)
+		err := scOpts.Parse(vuCtx, opts)
 		require.NoError(t, err)
 
 		assert.Equal(t, 30*time.Second, scOpts.Timeout)
@@ -69,11 +73,12 @@ func TestFrameSetContentOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"waitUntil": "none",
 		})
 		navOpts := NewFrameSetContentOptions(0)
-		err := navOpts.Parse(vu.Context(), opts)
+		err := navOpts.Parse(vuCtx, opts)
 
 		assert.EqualError(t, err,
 			`parsing setContent options: `+
@@ -89,13 +94,14 @@ func TestFrameWaitForNavigationOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"url":       "https://example.com/",
 			"timeout":   "1000",
 			"waitUntil": "networkidle",
 		})
 		navOpts := NewFrameWaitForNavigationOptions(0)
-		err := navOpts.Parse(vu.Context(), opts)
+		err := navOpts.Parse(vuCtx, opts)
 		require.NoError(t, err)
 
 		assert.Equal(t, "https://example.com/", navOpts.URL)
@@ -107,11 +113,12 @@ func TestFrameWaitForNavigationOptionsParse(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
+		vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
 		opts := vu.ToSobekValue(map[string]any{
 			"waitUntil": "none",
 		})
 		navOpts := NewFrameWaitForNavigationOptions(0)
-		err := navOpts.Parse(vu.Context(), opts)
+		err := navOpts.Parse(vuCtx, opts)
 
 		assert.EqualError(t, err,
 			`parsing waitForNavigation options: `+

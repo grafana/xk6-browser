@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 )
 
@@ -30,7 +31,8 @@ func TestRequest(t *testing.T) {
 		WallTime:  &wt,
 	}
 	vu := k6test.NewVU(t)
-	req, err := NewRequest(vu.Context(), NewRequestParams{
+	vuCtx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
+	req, err := NewRequest(vuCtx, NewRequestParams{
 		event:          evt,
 		interceptionID: "intercept",
 	})
@@ -99,7 +101,8 @@ func TestResponse(t *testing.T) {
 	req := &Request{
 		offset: 0,
 	}
-	res := NewHTTPResponse(vu.Context(), req, &network.Response{
+	ctx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
+	res := NewHTTPResponse(ctx, req, &network.Response{
 		URL:     "https://test/post",
 		Headers: network.Headers(headers),
 	}, &ts)

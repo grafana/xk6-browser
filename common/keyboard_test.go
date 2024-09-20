@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 	"github.com/grafana/xk6-browser/keyboardlayout"
 )
@@ -82,7 +83,8 @@ func TestKeyboardPress(t *testing.T) {
 		t.Parallel()
 
 		vu := k6test.NewVU(t)
-		k := NewKeyboard(vu.Context(), nil)
+		ctx := k6ext.WithVU(vu.Context(), vu.TestRT.VU)
+		k := NewKeyboard(ctx, nil)
 		require.Error(t, k.Press("", nil))
 	})
 }

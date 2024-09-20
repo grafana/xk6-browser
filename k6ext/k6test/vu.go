@@ -10,7 +10,6 @@ import (
 	"gopkg.in/guregu/null.v3"
 
 	"github.com/grafana/xk6-browser/env"
-	"github.com/grafana/xk6-browser/k6ext"
 
 	"go.k6.io/k6/event"
 	k6event "go.k6.io/k6/event"
@@ -243,7 +242,7 @@ func NewVU(tb testing.TB, opts ...any) *VU {
 		TracerProvider: tracerProvider,
 	}
 
-	ctx := k6ext.WithVU(testRT.VU.CtxField, testRT.VU)
+	ctx := testRT.VU.CtxField
 	ctx = k6lib.WithScenarioState(ctx, &k6lib.ScenarioState{Name: "default"})
 	testRT.VU.CtxField = ctx
 
