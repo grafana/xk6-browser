@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -183,6 +184,9 @@ func (b *BrowserType) Launch(ctx, vuCtx context.Context) (_ *common.Browser, bro
 		}
 		return nil, 0, fmt.Errorf("%w", err)
 	}
+
+	fmt.Println("Chromium Version:", bp.Version())
+	fmt.Fprintln(os.Stderr, "Chromium Version:", bp.Version())
 
 	return bp, pid, nil
 }
