@@ -270,12 +270,13 @@ func TestNetworkManagerEmitRequestResponseMetricsTimingSkew(t *testing.T) {
 			k6m := k6ext.RegisterCustomMetrics(registry)
 
 			var (
-				vu = k6test.NewVU(t)
-				nm = &NetworkManager{ctx: vu.Context(), vu: vu, customMetrics: k6m}
+				vu    = k6test.NewVU(t)
+				vuCtx = k6ext.WithVU(vu.Context(), vu.TestRT.VU)
+				nm    = &NetworkManager{ctx: vuCtx, vu: vu, customMetrics: k6m}
 			)
 			vu.ActivateVU()
 
-			req, err := NewRequest(vu.Context(), NewRequestParams{
+			req, err := NewRequest(vuCtx, NewRequestParams{
 				event: &network.EventRequestWillBeSent{
 					Request:   &network.Request{},
 					Timestamp: (*cdp.MonotonicTime)(&tt.req.ts),
@@ -288,7 +289,7 @@ func TestNetworkManagerEmitRequestResponseMetricsTimingSkew(t *testing.T) {
 				assert.Equalf(t, tt.wantReq.wt, s.Time, "timing skew in %s", s.Metric.Name)
 			})
 			assert.Equalf(t, 1, n, "should emit %d request metric", 1)
-			res := NewHTTPResponse(vu.Context(), req,
+			res := NewHTTPResponse(vuCtx, req,
 				&network.Response{Timing: &network.ResourceTiming{}},
 				(*cdp.MonotonicTime)(&tt.res.ts),
 			)
