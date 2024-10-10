@@ -423,70 +423,87 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.Callable) error { //nolint:funlen
 	rt := vu.Runtime()
 
+	pageOnEvents := map[common.PageOnEventName]struct {
+		mapp func(vu moduleVU, event common.PageOnEvent) mapping
+		prep func() error
+		wait bool // should we wait for the handler to complete?
+	}{
+		common.EventPageConsoleAPICalled: {
+			mapp: mapConsoleMessage,
+			wait: false,
+		},
+		common.EventPageMetricCalled: {
+			mapp: mapMetricEvent,
+			prep: prepK6BrowserRegExChecker(rt),
+			wait: true,
+		},
+	}
+
 	return func(eventName common.PageOnEventName, handleEvent sobek.Callable) error {
-		tq := vu.taskQueueRegistry.get(vu.Context(), p.TargetID())
-
-		onEventPageConsoleAPICalled := func(event common.PageOnEvent) {
-			tq.Queue(func() error {
-				mapping := mapConsoleMessage(vu, event)
-				_, err := handleEvent(sobek.Undefined(), rt.ToValue(mapping))
-				if err != nil {
-					return fmt.Errorf("executing page.on handler: %w", err)
-				}
-				return nil
-			})
+		pageOnEvent, ok := pageOnEvents[eventName]
+		if !ok {
+			return fmt.Errorf("unknown page on event: %q", eventName)
 		}
 
-		onEventPageMetricCalled := func(event common.PageOnEvent) {
-			// The function on the taskqueue runs in its own goroutine
-			// so we need to use a channel to wait for it to complete
-			// since we're waiting for updates from the handler which
-			// will be written to the ExportedMetric.
-			done := make(chan struct{})
-			tq.Queue(func() error {
-				defer close(done)
-
-				mapping := mapMetricEvent(vu, event)
-				_, err := handleEvent(sobek.Undefined(), rt.ToValue(mapping))
-				if err != nil {
-					return fmt.Errorf("executing page.on('metric') handler: %w", err)
-				}
-
-				return nil
-			})
-			<-done
-		}
-
-		var mapHandler func(common.PageOnEvent)
-		switch eventName {
-		case common.EventPageConsoleAPICalled:
-			mapHandler = onEventPageConsoleAPICalled
-		case common.EventPageMetricCalled:
-			mapHandler = onEventPageMetricCalled
-		default:
-			return fmt.Errorf("unknown page event: %q", eventName)
-		}
-
-		if eventName == common.EventPageMetricCalled {
-			// Register a custom regex function for the metric event
-			// that will be used to check URLs against the patterns.
-			// This is needed because we want to use the JavaScript regex
-			// to comply with what users expect when using the `tag` method.
-			_, err := rt.RunString(`
-				function _k6BrowserCheckRegEx(pattern, url) {
-					let r = pattern;
-					if (typeof pattern === 'string') {
-						r = new RegExp(pattern);
-					}
-					return r.test(url);
-				}
-			`)
-			if err != nil {
-				return fmt.Errorf("evaluating regex function: %w", err)
+		// Prepare the environment for the page.on event handler if necessary.
+		if pageOnEvent.prep != nil {
+			if err := pageOnEvent.prep(); err != nil {
+				return fmt.Errorf("initiating page.on('%s'): %w", eventName, err)
 			}
 		}
 
-		return p.On(eventName, mapHandler) //nolint:wrapcheck
+		// Queue the event handler in the task queue.
+		// Wait for the handler to complete if necessary.
+		tq := vu.taskQueueRegistry.get(vu.Context(), p.TargetID())
+		queueHandler := func(event common.PageOnEvent) {
+			done := make(chan struct{})
+
+			tq.Queue(func() error {
+				defer close(done)
+
+				mapping := pageOnEvent.mapp(vu, event)
+
+				_, err := handleEvent(
+					sobek.Undefined(),
+					rt.ToValue(mapping),
+				)
+				if err != nil {
+					return fmt.Errorf("executing page.on('%s') handler: %w", eventName, err)
+				}
+
+				return nil
+			})
+
+			if pageOnEvent.wait {
+				<-done
+			}
+		}
+
+		// Run the the event handler in the task queue to ensure that
+		// the handler is executed in the event loop.
+		return p.On(eventName, queueHandler) //nolint:wrapcheck
+	}
+}
+
+// prepK6BrowserRegExChecker is a helper function to check the regex pattern
+// on Sobek runtime. Unlike Go's regexp package, Sobek's runtime checks
+// regex patterns using JavaScript's regular expression features.
+func prepK6BrowserRegExChecker(rt *sobek.Runtime) func() error {
+	return func() error {
+		_, err := rt.RunString(`
+			function _k6BrowserCheckRegEx(pattern, url) {
+				let r = pattern;
+				if (typeof pattern === 'string') {
+					r = new RegExp(pattern);
+				}
+				return r.test(url);
+			}
+		`)
+		if err != nil {
+			return fmt.Errorf("evaluating regex function: %w", err)
+		}
+
+		return nil
 	}
 }
 
