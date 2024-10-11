@@ -1,10 +1,13 @@
 package common
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -318,13 +321,44 @@ func (c *Connection) findTargetIDForLog(id target.SessionID) target.ID {
 }
 
 func (c *Connection) recvLoop() {
+	// Setting the wsBuffer as the same size as bufio.NewReader. We should look at
+	// optimizing it depending on the average website, or allow it to be
+	// configurable, but it depends on how much this affects the user.
+	wsBuffer := make([]byte, 4096)
+	// This buffer grows as the test progresses.
+	var recvBuffer []byte
+	var bufReader bufio.Reader
+
 	c.logger.Debugf("Connection:recvLoop", "wsURL:%q", c.wsURL)
 	for {
-		_, buf, err := c.conn.ReadMessage()
+		_, reader, err := c.conn.NextReader()
 		if err != nil {
 			c.handleIOError(err)
 			return
 		}
+
+		// Buffered reads from the websocket connection.
+		bufReader.Reset(reader)
+		for {
+			n, err := bufReader.Read(wsBuffer)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				c.handleIOError(err)
+				return
+			}
+			recvBuffer = append(recvBuffer, bytes.Clone(wsBuffer[:n])...)
+		}
+
+		// Clone the bytes from the recvBuffer to buf before unmarshaling
+		// the message. Without this test the unmarshaling will fail as
+		// it reuses the buf as the underlying bytes buffer.
+		buf := make([]byte, len(recvBuffer))
+		copy(buf, recvBuffer)
+
+		// Reset recvBuffer so it can be reused.
+		recvBuffer = recvBuffer[:0]
 
 		c.logger.Tracef("cdp:recv", "<- %s", buf)
 
