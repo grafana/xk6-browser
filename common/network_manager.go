@@ -179,9 +179,27 @@ func parseTTL(ttlS string) (time.Duration, error) {
 }
 
 func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
+	var req *Request
 	m.reqsMu.Lock()
-	defer m.reqsMu.Unlock()
+	req = m.reqIDToRequest[reqID]
 	delete(m.reqIDToRequest, reqID)
+	m.reqsMu.Unlock()
+
+	// We need to nil the request in response otherwise they hold onto each
+	// others reference preventing the GC from cleaning the memory up.
+	req.responseMu.Lock()
+	if req.response != nil {
+		req.response.request = nil
+	}
+	req.response = nil
+	req.responseMu.Unlock()
+
+	for _, r := range req.redirectChain {
+		if reqID != r.getID() {
+			m.deleteRequestByID(r.getID())
+		}
+	}
+	req.redirectChain = nil
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
