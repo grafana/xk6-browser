@@ -119,6 +119,10 @@ func (h *BaseJSHandle) dispose() error {
 			h.remoteObject.ObjectID, err)
 	}
 
+	h.session = nil
+	h.execCtx = nil
+	h.remoteObject = nil
+
 	return nil
 }
 

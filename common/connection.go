@@ -199,6 +199,17 @@ func (c *Connection) close(code int) error {
 			// Stop the main control loop
 			close(c.done)
 			_ = c.conn.Close()
+
+			go func() {
+				<-c.ctx.Done()
+
+				c.cancelCtx = nil
+				c.logger = nil
+				c.conn = nil
+				c.msgIDGen = nil
+				c.sessions = nil
+				c.onTargetAttachedToTarget = nil
+			}()
 		}()
 
 		c.closeAllSessions()

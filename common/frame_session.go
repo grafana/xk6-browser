@@ -236,6 +236,24 @@ func (fs *FrameSession) initEvents() {
 	}
 
 	go func() {
+		go func() {
+			<-fs.ctx.Done()
+
+			fs.session = nil
+			fs.page = nil
+			fs.parent = nil
+			fs.manager = nil
+			fs.networkManager = nil
+			fs.k6Metrics = nil
+			fs.contextIDToContext = nil
+			fs.isolatedWorlds = nil
+			fs.eventCh = nil
+			fs.childSessions = nil
+			fs.vu = nil
+			fs.logger = nil
+			fs.mainFrameSpan = nil
+		}()
+
 		fs.logger.Debugf("NewFrameSession:initEvents:go",
 			"sid:%v tid:%v", fs.session.ID(), fs.targetID)
 		defer func() {

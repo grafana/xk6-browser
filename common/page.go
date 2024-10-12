@@ -348,6 +348,29 @@ func (p *Page) initEvents() {
 		defer func() {
 			p.logger.Debugf("Page:initEvents:go:return",
 				"sid:%v tid:%v", p.session.ID(), p.targetID)
+
+			go func() {
+				<-p.ctx.Done()
+
+				p.Keyboard = nil
+				p.Mouse = nil
+				p.Touchscreen = nil
+				p.session = nil
+				p.browserCtx = nil
+				p.opener = nil
+				p.frameManager = nil
+				p.timeoutSettings = nil
+				p.emulatedSize = nil
+				p.extraHTTPHeaders = nil
+				p.eventCh = nil
+				p.eventHandlers = nil
+				p.mainFrameSession = nil
+				p.frameSessions = nil
+				p.workers = nil
+				p.routes = nil
+				p.vu = nil
+				p.logger = nil
+			}()
 		}()
 
 		for {

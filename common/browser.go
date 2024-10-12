@@ -223,6 +223,19 @@ func (b *Browser) initEvents() error { //nolint:cyclop
 			if b.vuCtxCancelFn != nil {
 				b.vuCtxCancelFn()
 			}
+
+			go func() {
+				<-b.browserCtx.Done()
+
+				b.browserProc = nil
+				b.browserOpts = nil
+				b.conn = nil
+				b.context = nil
+				b.defaultContext = nil
+				b.pages = nil
+				b.sessionIDtoTargetID = nil
+				b.logger = nil
+			}()
 		}()
 		for {
 			select {

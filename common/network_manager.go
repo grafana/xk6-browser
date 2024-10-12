@@ -190,9 +190,12 @@ func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
 	req.responseMu.Lock()
 	if req.response != nil {
 		req.response.request = nil
+		req.response.body = nil
 	}
 	req.response = nil
 	req.responseMu.Unlock()
+
+	req.postDataEntries = nil
 
 	for _, r := range req.redirectChain {
 		if reqID != r.getID() {
@@ -372,6 +375,21 @@ func (m *NetworkManager) initEvents() {
 	}, chHandler)
 
 	go func() {
+		defer func() {
+			m.logger = nil
+			m.session = nil
+			m.parent = nil
+			m.frameManager = nil
+			m.credentials = nil
+			m.resolver = nil
+			m.vu = nil
+			m.customMetrics = nil
+			m.mi = nil
+			m.reqIDToRequest = nil
+			m.attemptedAuth = nil
+			m.extraHTTPHeaders = nil
+		}()
+
 		for m.handleEvents(chHandler) {
 		}
 	}()

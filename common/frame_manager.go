@@ -66,6 +66,23 @@ func NewFrameManager(
 		id:              atomic.AddInt64(&frameManagerID, 1),
 	}
 
+	go func() {
+		<-m.ctx.Done()
+
+		for _, f := range m.frames {
+			m.removeFramesRecursively(f)
+		}
+
+		m.session = nil
+		m.page = nil
+		m.timeoutSettings = nil
+		m.mainFrame = nil
+		m.frames = nil
+		m.barriers = nil
+		m.vu = nil
+		m.logger = nil
+	}()
+
 	m.logger.Debugf("FrameManager:New", "fmid:%d", m.ID())
 
 	return m

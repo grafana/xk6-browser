@@ -120,6 +120,17 @@ func NewBrowserContext(
 		return nil, fmt.Errorf("adding web vital init script to new browser context: %w", err)
 	}
 
+	go func() {
+		<-b.ctx.Done()
+
+		b.browser = nil
+		b.opts = nil
+		b.timeoutSettings = nil
+		b.logger = nil
+		b.vu = nil
+		b.evaluateOnNewDocumentSources = nil
+	}()
+
 	return &b, nil
 }
 

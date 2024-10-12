@@ -70,6 +70,8 @@ func (s *Session) close() {
 	s.closed = true
 
 	s.emit(EventSessionClosed, nil)
+
+	s.conn = nil
 }
 
 func (s *Session) markAsCrashed() {

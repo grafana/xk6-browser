@@ -248,6 +248,19 @@ func (f *Frame) detach() error {
 		return fmt.Errorf("disposing document handle while detaching frame: %w", err)
 	}
 
+	f.page = nil
+	f.manager = nil
+	f.parentFrame = nil
+	f.childFrames = nil
+	f.vu = nil
+	f.lifecycleEvents = nil
+	f.documentHandle = nil
+	f.executionContexts = nil
+	f.inflightRequests = nil
+	f.currentDocument = nil
+	f.pendingDocument = nil
+	f.log = nil
+
 	return nil
 }
 
