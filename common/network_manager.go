@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/log"
 
 	"github.com/grafana/xk6-browser/k6ext"
@@ -185,6 +186,10 @@ func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
+	if _, ok := m.vu.InitEnv().LookupEnv(env.BrowserAbortMetricEmit); ok {
+		return
+	}
+
 	state := m.vu.State()
 
 	tags := state.Tags.GetCurrentValues().Tags
@@ -207,6 +212,10 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
+	if _, ok := m.vu.InitEnv().LookupEnv(env.BrowserAbortMetricEmit); ok {
+		return
+	}
+
 	state := m.vu.State()
 
 	// In some scenarios we might not receive a ResponseReceived CDP event, in

@@ -39,6 +39,8 @@ const (
 	// BrowserGlobalTimeout is an environment variable that can be used
 	// to set the global timeout for the browser.
 	BrowserGlobalTimeout = "K6_BROWSER_TIMEOUT"
+
+	BrowserAbortMetricEmit = "K6_BROWSER_ABORT_METRIC_EMIT"
 )
 
 // Logging and debugging.
