@@ -211,10 +211,6 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
-	if m.frameManager.page.browserCtx.browser.browserOpts.AbortMetricEmit {
-		return
-	}
-
 	state := m.vu.State()
 
 	// In some scenarios we might not receive a ResponseReceived CDP event, in
@@ -246,6 +242,10 @@ func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
 	} else {
 		m.logger.Debugf("NetworkManager:emitResponseMetrics",
 			"response is nil url:%s method:%s", req.url, req.method)
+	}
+
+	if m.frameManager.page.browserCtx.browser.browserOpts.AbortMetricEmit {
+		return
 	}
 
 	tags := state.Tags.GetCurrentValues().Tags

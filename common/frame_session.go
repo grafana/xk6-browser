@@ -326,10 +326,6 @@ func (fs *FrameSession) onEventBindingCalled(event *cdpruntime.EventBindingCalle
 func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
 	fs.logger.Debugf("FrameSession:parseAndEmitWebVitalMetric", "object:%s", object)
 
-	if fs.page.browserCtx.browser.browserOpts.AbortMetricEmit {
-		return nil
-	}
-
 	wv := struct {
 		ID             string
 		Name           string
@@ -354,6 +350,10 @@ func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
 	value, err := wv.Value.Float64()
 	if err != nil {
 		return fmt.Errorf("value couldn't be parsed %q", wv.Value)
+	}
+
+	if fs.page.browserCtx.browser.browserOpts.AbortMetricEmit {
+		return nil
 	}
 
 	state := fs.vu.State()
