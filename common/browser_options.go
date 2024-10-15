@@ -30,6 +30,8 @@ type BrowserOptions struct {
 	SlowMo  time.Duration
 	Timeout time.Duration
 
+	AbortMetricEmit bool
+
 	isRemoteBrowser bool // some options will be ignored if browser is in a remote machine
 }
 
@@ -79,6 +81,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 		env.BrowserIgnoreDefaultArgs,
 		env.LogCategoryFilter,
 		env.BrowserGlobalTimeout,
+		env.BrowserAbortMetricEmit,
 	}
 
 	for _, e := range envOpts {
@@ -106,6 +109,8 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 			bo.LogCategoryFilter = ev
 		case env.BrowserGlobalTimeout:
 			bo.Timeout, err = parseTimeOpt(e, ev)
+		case env.BrowserAbortMetricEmit:
+			bo.AbortMetricEmit, err = strconv.ParseBool(ev)
 		}
 		if err != nil {
 			return err

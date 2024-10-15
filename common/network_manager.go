@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/log"
 
 	"github.com/grafana/xk6-browser/k6ext"
@@ -186,7 +185,7 @@ func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
-	if _, ok := m.vu.InitEnv().LookupEnv(env.BrowserAbortMetricEmit); ok {
+	if m.frameManager.page.browserCtx.browser.browserOpts.AbortMetricEmit {
 		return
 	}
 
@@ -212,7 +211,7 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
-	if _, ok := m.vu.InitEnv().LookupEnv(env.BrowserAbortMetricEmit); ok {
+	if m.frameManager.page.browserCtx.browser.browserOpts.AbortMetricEmit {
 		return
 	}
 
