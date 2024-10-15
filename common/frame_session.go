@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -325,6 +326,10 @@ func (fs *FrameSession) onEventBindingCalled(event *cdpruntime.EventBindingCalle
 
 func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
 	fs.logger.Debugf("FrameSession:parseAndEmitWebVitalMetric", "object:%s", object)
+
+	if _, ok := fs.vu.InitEnv().LookupEnv(env.BrowserAbortMetricEmit); ok {
+		return nil
+	}
 
 	wv := struct {
 		ID             string
