@@ -117,7 +117,7 @@ func (s *Session) Execute(ctx context.Context, method string, params easyjson.Ma
 	id := s.msgIDGen.newID()
 
 	// Setup event handler used to block for response to message being sent.
-	ch := make(chan *cdproto.Message, 1)
+	ch := make(chan *cdproto.Message, 1) // Why is this buffered?
 	evCancelCtx, evCancelFn := context.WithCancel(ctx)
 	chEvHandler := make(chan Event)
 	go func() {

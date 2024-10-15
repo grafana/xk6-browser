@@ -328,7 +328,7 @@ func (c *Connection) recvLoop() {
 
 		c.logger.Tracef("cdp:recv", "<- %s", buf)
 
-		var msg cdproto.Message
+		var msg cdproto.Message // Why is this not a pointer?
 		c.decoder = jlexer.Lexer{Data: buf}
 		msg.UnmarshalEasyJSON(&c.decoder)
 		if err := c.decoder.Error(); err != nil {
@@ -494,7 +494,12 @@ func (c *Connection) send(ctx context.Context, msg *cdproto.Message, recvCh chan
 			c.logger.Debugf("Connection:send", "sid:%v tid:%v wsURL:%q, msg err:%v", sid, tid, c.wsURL, msg.Error)
 			return msg.Error
 		case res != nil:
-			return easyjson.Unmarshal(msg.Result, res)
+			err := easyjson.Unmarshal(msg.Result, res)
+
+			msg.Result = nil
+			msg.Params = nil
+
+			return err
 		}
 	case err := <-c.errorCh:
 		c.logger.Debugf("Connection:send:<-c.errorCh #2", "sid:%v tid:%v wsURL:%q, err:%v", msg.SessionID, tid, c.wsURL, err)
