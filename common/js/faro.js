@@ -20,8 +20,10 @@ function faroInit () {
     // Set the source of the script tag to the CDN
     script.src = 'https://unpkg.com/@grafana/faro-web-sdk@^1.0.0-beta/dist/bundle/faro-web-sdk.iife.js';
 
-    // Append the script tag to the head of the HTML document
-    document.head.appendChild(script);
+    document.addEventListener("DOMContentLoaded", function() {
+      // Append the script tag to the head of the HTML document
+      document.head.appendChild(script);
+    });
 }
 
 faroInit();
