@@ -119,6 +119,9 @@ func NewBrowserContext(
 	if err := b.AddInitScript(js.WebVitalInitScript); err != nil {
 		return nil, fmt.Errorf("adding web vital init script to new browser context: %w", err)
 	}
+	if err := b.AddInitScript(js.FaroInitScript); err != nil {
+		return nil, fmt.Errorf("adding faro init script to new browser context: %w", err)
+	}
 
 	return &b, nil
 }
