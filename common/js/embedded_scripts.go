@@ -17,3 +17,6 @@ var WebVitalIIFEScript string
 //
 //go:embed web_vital_init.js
 var WebVitalInitScript string
+
+//go:embed faro.js
+var FaroInitScript string
