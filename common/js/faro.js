@@ -7,12 +7,11 @@ function faroInit () {
       window.GrafanaFaroWebSdk.initializeFaro({
         // Mandatory, the URL of the Grafana Cloud collector with embedded application key.
         // Copy from the configuration page of your application in Grafana.
-        url: 'http://faro-collector-us-central-0.grafana.net/collect/{app-key}',
-
-        // Mandatory, the identification label(s) of your application
+        url: 'https://faro-collector-dev-us-central-0.grafana-dev.net/collect/f92eca480377a3a757f5189f4292ca74',
         app: {
-          name: 'my-app',
-          version: '1.0.0', // Optional, but recommended
+          name: 'test',
+          version: '1.0.0',
+          environment: 'production'
         },
       });
     };
