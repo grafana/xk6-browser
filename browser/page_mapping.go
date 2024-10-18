@@ -3,6 +3,7 @@ package browser
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/grafana/sobek"
@@ -418,6 +419,9 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 	return maps
 }
 
+var count = 0
+var countMu = sync.RWMutex{}
+
 // mapPageOn maps the requested page.on event to the Sobek runtime.
 // It generalizes the handling of page.on events.
 func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.Callable) error {
@@ -458,10 +462,19 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 		eventHandler := func(event common.PageOnEvent) {
 			// mapping := pageOnEvent.mapp(vu, event)
 
+			countMu.Lock()
+			count++
+			c := count
+			countMu.Unlock()
+
 			done := make(chan struct{})
+			fmt.Printf("Created done count:\"%d\"\n", c)
 
 			tq.Queue(func() error {
-				defer close(done)
+				defer func() {
+					close(done)
+					fmt.Printf("Closing done count:\"%d\" \n", c)
+				}()
 
 				// _, err := handleEvent(
 				// 	sobek.Undefined(),
@@ -475,7 +488,17 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 			})
 
 			if pageOnEvent.wait {
-				<-done
+				t := time.NewTicker(time.Second * 5)
+				for {
+					select {
+					case <-done:
+						t.Stop()
+						fmt.Printf("Done closed count:\"%d\"\n", c)
+						return
+					case <-t.C:
+						fmt.Printf("Still waiting count:\"%d\"\n", c)
+					}
+				}
 			}
 		}
 
