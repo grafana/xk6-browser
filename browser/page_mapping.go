@@ -2,6 +2,7 @@ package browser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -457,7 +458,7 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 		// Run the the event handler in the task queue to
 		// ensure that the handler is executed on the event loop.
 		tq := vu.taskQueueRegistry.get(ctx, p.TargetID())
-		eventHandler := func(event common.PageOnEvent) {
+		eventHandler := func(event common.PageOnEvent) error {
 			mapping := pageOnEvent.mapp(vu, event)
 
 			done := make(chan struct{})
@@ -480,8 +481,11 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 				select {
 				case <-done:
 				case <-ctx.Done():
+					return errors.New("iteration ended before page.on handler completed executing")
 				}
 			}
+
+			return nil
 		}
 
 		return p.On(eventName, eventHandler) //nolint:wrapcheck
