@@ -476,6 +476,8 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 					fmt.Printf("Closing done count:\"%d\" \n", c)
 				}()
 
+				fmt.Printf("calling func on queue:\"%d\" \n", c)
+
 				// _, err := handleEvent(
 				// 	sobek.Undefined(),
 				// 	rt.ToValue(mapping),
