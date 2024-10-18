@@ -456,20 +456,20 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 		// ensure that the handler is executed on the event loop.
 		tq := vu.taskQueueRegistry.get(vu.Context(), p.TargetID())
 		eventHandler := func(event common.PageOnEvent) {
-			mapping := pageOnEvent.mapp(vu, event)
+			// mapping := pageOnEvent.mapp(vu, event)
 
 			done := make(chan struct{})
 
 			tq.Queue(func() error {
 				defer close(done)
 
-				_, err := handleEvent(
-					sobek.Undefined(),
-					rt.ToValue(mapping),
-				)
-				if err != nil {
-					return fmt.Errorf("executing page.on('%s') handler: %w", eventName, err)
-				}
+				// _, err := handleEvent(
+				// 	sobek.Undefined(),
+				// 	rt.ToValue(mapping),
+				// )
+				// if err != nil {
+				// 	return fmt.Errorf("executing page.on('%s') handler: %w", eventName, err)
+				// }
 
 				return nil
 			})
