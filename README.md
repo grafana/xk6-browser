@@ -11,7 +11,8 @@
 <p align="center">
     <a href="https://github.com/grafana/k6/releases/latest">Download</a> ·
     <a href="https://grafana.com/docs/k6/latest/javascript-api/k6-browser">Documentation</a> ·
-    <a href="https://community.grafana.com/c/grafana-k6/k6-browser/79">Community Forum</a>
+    <a href="https://community.grafana.com/c/grafana-k6/k6-browser/79">Community Forum</a> ·
+    <a href="https://github.com/orgs/grafana/projects/443/views/1">Public Roadmap</a> ·
 </p>
 
 <br/>
@@ -31,7 +32,7 @@ Special acknowledgment to the authors of [Playwright](https://playwright.dev/) a
 - Aim for rough API compatibility with [Playwright](https://github.com/microsoft/playwright). The reason for this is twofold: first, we don't want users to have to learn a completely new API just to use xk6-browser, and second, it opens up the possibility of using the [Playwright RPC server](https://github.com/mxschmitt/playwright-go) as an optional backend for the k6 browser module should we decide to support that in the future.
 - Support for Chromium-compatible browsers first, and eventually Firefox and WebKit-based browsers.
 
-Please take a look at our [project roadmap](ROADMAP.md) for more details.
+Please take a look at our [project roadmap](https://github.com/orgs/grafana/projects/443/views/1) for more details.
 
 ## Get started
 
