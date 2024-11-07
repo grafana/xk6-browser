@@ -2,7 +2,7 @@
 <p align="center">A module for k6 adding browser-level APIs with rough Playwright compatibility.</p>
 
 <p align="center">
-  <a href="https://github.com/grafana/xk6-browser/releases"><img src="https://img.shields.io/github/release/grafana/xk6-browser.svg" alt="Github release"></a>
+  <a href="https://github.com/grafana/xk6-browser/releases"><img src="https://img.shields.io/github/v/release/grafana/xk6-browser.svg" alt="Github release"></a>
   <a href="https://github.com/grafana/xk6-browser/actions/workflows/test.yml"><img src="https://github.com/grafana/xk6-browser/actions/workflows/test.yml/badge.svg" alt="Build status"></a>
   <a href="https://goreportcard.com/report/github.com/grafana/xk6-browser"><img src="https://goreportcard.com/badge/github.com/grafana/xk6-browser" alt="Go Report Card"></a>
   <br>
