@@ -171,6 +171,10 @@ func (m *NetworkManager) deleteRequestByID(reqID network.RequestID) {
 }
 
 func (m *NetworkManager) emitRequestMetrics(req *Request) {
+	if !req.IsNavigationRequest() {
+		return
+	}
+
 	state := m.vu.State()
 
 	tags := state.Tags.GetCurrentValues().Tags
@@ -193,6 +197,10 @@ func (m *NetworkManager) emitRequestMetrics(req *Request) {
 }
 
 func (m *NetworkManager) emitResponseMetrics(resp *Response, req *Request) {
+	if !req.IsNavigationRequest() {
+		return
+	}
+
 	state := m.vu.State()
 
 	// In some scenarios we might not receive a ResponseReceived CDP event, in
