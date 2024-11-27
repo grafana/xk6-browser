@@ -613,6 +613,7 @@ func (b *Browser) NewContext(opts *BrowserContextOptions) (*BrowserContext, erro
 		return nil, err
 	}
 
+	opts.pyroEnabled = b.browserOpts.pyroEnabled
 	browserCtx, err := NewBrowserContext(b.vuCtx, b, browserContextID, opts, b.logger)
 	if err != nil {
 		err := fmt.Errorf("new context: %w", err)

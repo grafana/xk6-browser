@@ -45,6 +45,7 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 				if err != nil {
 					return nil, err
 				}
+				popts.TestRunID = vu.testRunID
 				bctx, err := b.NewContext(popts)
 				if err != nil {
 					return nil, err //nolint:wrapcheck

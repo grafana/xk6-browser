@@ -39,6 +39,10 @@ const (
 	// BrowserGlobalTimeout is an environment variable that can be used
 	// to set the global timeout for the browser.
 	BrowserGlobalTimeout = "K6_BROWSER_TIMEOUT"
+
+	// BrowserExpPyroscope enables the pyroscope integration. This is an
+	// experimental feature and could be changed or removed at any moment.
+	BrowserExpPyroscope = "K6_BROWSER_EXP_PYROSCOPE"
 )
 
 // Logging and debugging.

@@ -25,6 +25,9 @@ type BrowserContextOptions struct {
 	UserAgent         string            `js:"userAgent"`
 	VideosPath        string            `js:"videosPath"`
 	Viewport          Viewport          `js:"viewport"`
+
+	pyroEnabled bool
+	TestRunID   string
 }
 
 // DefaultBrowserContextOptions returns the default browser context options.
