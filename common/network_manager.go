@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/xk6-browser/k6ext"
 
 	k6modules "go.k6.io/k6/js/modules"
+	"go.k6.io/k6/lib"
 	k6lib "go.k6.io/k6/lib"
 	k6netext "go.k6.io/k6/lib/netext"
 	k6types "go.k6.io/k6/lib/types"
@@ -73,6 +74,7 @@ type NetworkManager struct {
 	offline                        bool
 	networkProfile                 NetworkProfile
 	userCacheDisabled              bool
+	pyroEnabled                    bool
 	userReqInterceptionEnabled     bool
 	protocolReqInterceptionEnabled bool
 }
@@ -111,6 +113,7 @@ func NewNetworkManager(
 		extraHTTPHeaders: make(map[string]string),
 		networkProfile:   NewNetworkProfile(),
 		mi:               mi,
+		pyroEnabled:      fm.page.browserCtx.opts.pyroEnabled,
 	}
 	m.initEvents()
 	if err := m.initDomains(); err != nil {
@@ -313,7 +316,7 @@ func (m *NetworkManager) initDomains() error {
 	actions := []Action{network.Enable()}
 
 	// Only enable the Fetch domain if necessary, as it has a performance overhead.
-	if m.userReqInterceptionEnabled {
+	if m.userReqInterceptionEnabled || m.pyroEnabled {
 		actions = append(actions,
 			network.SetCacheDisabled(true),
 			fetch.Enable().WithPatterns([]*fetch.RequestPattern{{URLPattern: "*"}}))
@@ -509,6 +512,34 @@ func (m *NetworkManager) onRequest(event *network.EventRequestWillBeSent, interc
 	m.frameManager.requestStarted(req)
 }
 
+func (m *NetworkManager) pyroHeaders(newURL string) []*fetch.HeaderEntry {
+	var sn string
+	ss := lib.GetScenarioState(m.vu.Context())
+	if ss != nil {
+		sn = ss.Name
+	}
+
+	return []*fetch.HeaderEntry{
+		&fetch.HeaderEntry{
+			Name:  "baggage",
+			Value: fmt.Sprintf("k6.test_run_id=%s, k6.scenario=%s, k6.name=%s", m.frameManager.page.browserCtx.opts.TestRunID, sn, newURL),
+		},
+	}
+}
+
+func toHeaderEntry(event *fetch.EventRequestPaused) []*fetch.HeaderEntry {
+	r := []*fetch.HeaderEntry{}
+	for k, v := range event.Request.Headers {
+		if s, ok := v.(string); ok {
+			r = append(r, &fetch.HeaderEntry{
+				Name:  k,
+				Value: s,
+			})
+		}
+	}
+	return r
+}
+
 func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //nolint:funlen
 	m.logger.Debugf("NetworkManager:onRequestPaused",
 		"sid:%s url:%v", m.session.ID(), event.Request.URL)
@@ -537,6 +568,9 @@ func (m *NetworkManager) onRequestPaused(event *fetch.EventRequestPaused) { //no
 			return
 		}
 		action := fetch.ContinueRequest(event.RequestID)
+		if m.pyroEnabled {
+			action.Headers = append(toHeaderEntry(event), m.pyroHeaders(event.Request.URL)...)
+		}
 		if err := action.Do(cdp.WithExecutor(m.ctx, m.session)); err != nil {
 			// Avoid logging as error when context is canceled.
 			// Most probably this happens when trying to continue a site's background request
