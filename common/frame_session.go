@@ -885,21 +885,14 @@ func (fs *FrameSession) onLogEntryAdded(event *cdplog.EventEntryAdded) {
 		WithField("url", event.Entry.URL).
 		WithField("browser_source", event.Entry.Source.String()).
 		WithField("line_number", event.Entry.LineNumber)
-		/* accessing the state Group while not on the eventloop is racy
-		if s := fs.vu.State(); s.Group.Path != "" {
-			l = l.WithField("group", s.Group.Path)
-		}
-		*/
-	switch event.Entry.Level {
-	case "info":
-		l.Info(event.Entry.Text)
-	case "warning":
-		l.Warn(event.Entry.Text)
-	case "error":
-		l.WithField("stacktrace", event.Entry.StackTrace).Error(event.Entry.Text)
-	default:
-		l.Debug(event.Entry.Text)
+
+	/* accessing the state Group while not on the eventloop is racy
+	if s := fs.vu.State(); s.Group.Path != "" {
+		l = l.WithField("group", s.Group.Path)
 	}
+	*/
+
+	l.Debug(event.Entry.Text)
 }
 
 func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
