@@ -80,6 +80,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 		env.BrowserIgnoreDefaultArgs,
 		env.LogCategoryFilter,
 		env.BrowserGlobalTimeout,
+		env.BrowserExpPyroscope,
 	}
 
 	for _, e := range envOpts {
