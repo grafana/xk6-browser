@@ -187,7 +187,7 @@ func valueFromRemoteObject(_ context.Context, robj *cdpruntime.RemoteObject) (an
 func parseConsoleRemoteObjectPreview(logger *log.Logger, op *cdpruntime.ObjectPreview) (string, error) {
 	obj := make(map[string]string)
 	if op.Overflow {
-		logger.Infof("parseConsoleRemoteObjectPreview", "object is too large and will be parsed partially")
+		logger.Debugf("parseConsoleRemoteObjectPreview", "object is too large and will be parsed partially")
 	}
 
 	for _, p := range op.Properties {
