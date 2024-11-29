@@ -209,7 +209,7 @@ func parseConsoleRemoteObjectPreview(logger *log.Logger, op *cdpruntime.ObjectPr
 func parseConsoleRemoteArrayPreview(logger *log.Logger, op *cdpruntime.ObjectPreview) (string, error) {
 	arr := make([]any, 0, len(op.Properties))
 	if op.Overflow {
-		logger.Infof("parseConsoleRemoteArrayPreview", "array is too large and will be parsed partially")
+		logger.Debugf("parseConsoleRemoteArrayPreview", "array is too large and will be parsed partially")
 	}
 
 	for _, p := range op.Properties {
