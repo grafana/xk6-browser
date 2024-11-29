@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/xk6-browser/log"
 
 	k6modules "go.k6.io/k6/js/modules"
-	"go.k6.io/k6/lib"
 	k6metrics "go.k6.io/k6/metrics"
 
 	"github.com/chromedp/cdproto"
@@ -1109,31 +1108,12 @@ func (fs *FrameSession) updateEmulateMedia(initial bool) error {
 	return nil
 }
 
-func (fs *FrameSession) pyroHeaders() map[string]string {
-	if !fs.page.browserCtx.opts.pyroEnabled {
-		return map[string]string{}
-	}
-
-	var sn string
-	ss := lib.GetScenarioState(fs.vu.Context())
-	if ss != nil {
-		sn = ss.Name
-	}
-
-	return map[string]string{
-		"baggage": fmt.Sprintf("k6.test_run_id=%s, k6.scenario=%s, k6.name=%s", fs.page.browserCtx.opts.TestRunID, sn, fs.manager.mainFrame.url),
-	}
-}
-
 func (fs *FrameSession) updateExtraHTTPHeaders(initial bool) error {
 	fs.logger.Debugf("NewFrameSession:updateExtraHTTPHeaders", "sid:%v tid:%v", fs.session.ID(), fs.targetID)
 
 	// Merge extra headers from browser context and page, where page specific headers ake precedence.
 	mergedHeaders := make(network.Headers)
 	for k, v := range fs.page.browserCtx.opts.ExtraHTTPHeaders {
-		mergedHeaders[k] = v
-	}
-	for k, v := range fs.pyroHeaders() {
 		mergedHeaders[k] = v
 	}
 	for k, v := range fs.page.extraHTTPHeaders {
