@@ -644,11 +644,11 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 		WithField("source", "browser").
 		WithField("browser_source", "console-api")
 
-		/* accessing the state Group while not on the eventloop is racy
-		if s := fs.vu.State(); s.Group.Path != "" {
-			l = l.WithField("group", s.Group.Path)
-		}
-		*/
+	/* accessing the state Group while not on the eventloop is racy
+	if s := fs.vu.State(); s.Group.Path != "" {
+		l = l.WithField("group", s.Group.Path)
+	}
+	*/
 
 	parsedObjects := make([]string, 0, len(event.Args))
 	for _, robj := range event.Args {
@@ -661,18 +661,9 @@ func (fs *FrameSession) onConsoleAPICalled(event *cdpruntime.EventConsoleAPICall
 
 	msg := strings.Join(parsedObjects, " ")
 
-	switch event.Type {
-	case "log", "info":
-		l.Info(msg)
-	case "warning":
-		l.Warn(msg)
-	case "error":
-		l.Error(msg)
-	default:
-		// this is where debug & other console.* apis will default to (such as
-		// console.table).
-		l.Debug(msg)
-	}
+	// this is where debug & other console.* apis will default to (such as
+	// console.table).
+	l.Debug(msg)
 }
 
 func (fs *FrameSession) onExceptionThrown(event *cdpruntime.EventExceptionThrown) {
