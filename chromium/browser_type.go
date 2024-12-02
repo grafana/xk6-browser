@@ -387,6 +387,10 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"headless":                 lopts.Headless,
 		"window-size":              fmt.Sprintf("%d,%d", 800, 600),
 	}
+	if lopts.Debug {
+		f["auto-open-devtools-for-tabs"] = true
+		lopts.Headless = false
+	}
 	if lopts.Headless {
 		f["hide-scrollbars"] = true
 		f["mute-audio"] = true

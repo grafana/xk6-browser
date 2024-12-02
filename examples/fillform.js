@@ -1,5 +1,6 @@
 import { browser } from 'k6/x/browser/async';
 import { check } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
+import { sleep } from 'k6';
 
 export const options = {
   scenarios: {
@@ -22,12 +23,19 @@ export default async function() {
   const page = await context.newPage();
 
   try {
+    sleep(5)
+
     // Goto front page, find login link and click it
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
+
+    sleep(5)
+
     await Promise.all([
       page.waitForNavigation(),
       page.locator('a[href="/my_messages.php"]').click(),
     ]);
+
+    sleep(5)
 
     // Enter login credentials and login
     await page.locator('input[name="login"]').type('admin');
