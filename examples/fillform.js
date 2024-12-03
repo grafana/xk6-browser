@@ -1,6 +1,5 @@
 import { browser } from 'k6/x/browser/async';
 import { check } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
-import { sleep } from 'k6';
 
 export const options = {
   scenarios: {
@@ -23,19 +22,11 @@ export default async function() {
   const page = await context.newPage();
 
   try {
-    sleep(5)
-
     // Goto front page, find login link and click it
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
 
-    sleep(5)
-
-    await Promise.all([
-      page.waitForNavigation(),
-      page.locator('a[href="/my_messages.php"]').click(),
-    ]);
-
-    sleep(5)
+    await page.locator('a[href="/my_messages.php"]').click()
+    await page.waitForSelector('input[name="login"]');
 
     // Enter login credentials and login
     await page.locator('input[name="login"]').type('admin');
@@ -44,11 +35,9 @@ export default async function() {
     // We expect the form submission to trigger a navigation, so to prevent a
     // race condition, setup a waiter concurrently while waiting for the click
     // to resolve.
-    await Promise.all([
-      page.waitForNavigation(),
-      page.locator('input[type="submit"]').click(),
-    ]);
-
+    await page.locator('input[type="submit"]').click(),
+    
+    await page.waitForSelector('h2');
     await check(page.locator('h2'), {
       'header': async lo => {
         return await lo.textContent() == 'Welcome, admin!'

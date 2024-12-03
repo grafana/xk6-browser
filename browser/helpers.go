@@ -3,6 +3,7 @@ package browser
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/grafana/sobek"
@@ -66,4 +67,19 @@ func sobekValueExists(v sobek.Value) bool {
 // sobekEmptyString returns true if a given value is not nil or an empty string.
 func sobekEmptyString(v sobek.Value) bool {
 	return !sobekValueExists(v) || strings.TrimSpace(v.String()) == ""
+}
+
+func getCurrentLineNumber(vu moduleVU) string {
+	rt := vu.Runtime()
+	var parent string
+	var buf [2]sobek.StackFrame
+	frames := rt.CaptureCallStack(2, buf[:0])
+	if len(frames) == 0 || frames[1].SrcName() == "file:///-" {
+		return vu.InitEnv().CWD.JoinPath("./-").String()
+	}
+	parent = frames[1].SrcName()
+	fmt.Println(frames[1].FuncName(), frames[1].Position(), frames[1].SrcName())
+	fmt.Println(frames[0].FuncName(), frames[0].Position(), frames[0].SrcName())
+
+	return parent
 }
