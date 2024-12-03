@@ -36,9 +36,9 @@ var errBrowserNotFoundInRegistry = errors.New("browser not found in registry. " 
 	"make sure to set browser type option in scenario definition in order to use the browser module")
 
 type breakpoint struct {
-	File string `json:"file"`
-	Line int    `json:"line"`
-	// Condition string `json:"condition,omitempty"`
+	File      string `json:"file"`
+	Line      int    `json:"line"`
+	Condition string `json:"condition,omitempty"`
 }
 
 type breakpointRegistry struct {
@@ -63,20 +63,12 @@ func newBreakpointRegistry(vu k6modules.VU) *breakpointRegistry {
 	}
 }
 
-func (b *breakpointRegistry) add(bp breakpoint) {
-	b.muBreakpoints.Lock()
-	defer b.muBreakpoints.Unlock()
-
-	b.breakpoints = append(b.breakpoints, bp)
-}
-
 func (b *breakpointRegistry) matches(p position) bool {
 	b.muBreakpoints.RLock()
 	defer b.muBreakpoints.RUnlock()
 
-	return slices.Contains(b.breakpoints, breakpoint{
-		File: p.Filename,
-		Line: p.Line,
+	return slices.ContainsFunc(b.breakpoints, func(bp breakpoint) bool {
+		return bp.File == p.Filename && bp.Line == p.Line
 	})
 }
 
