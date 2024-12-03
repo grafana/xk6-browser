@@ -135,7 +135,12 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"goto": func(url string, opts sobek.Value) (*sobek.Promise, error) {
-			fmt.Println(getCurrentLineNumber(vu))
+			bp := vu.breakpointRegistry
+			pos := getCurrentLineNumber(vu)
+			if bp.matches(pos) {
+				time.AfterFunc(5*time.Second, func() { bp.resume(pos) })
+				bp.pause(pos)
+			}
 
 			gopts := common.NewFrameGotoOptions(
 				p.Referrer(),
@@ -144,6 +149,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			if err := gopts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing page navigation options to %q: %w", url, err)
 			}
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				resp, err := p.Goto(url, gopts)
 				if err != nil {

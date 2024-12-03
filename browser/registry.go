@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,6 +33,62 @@ import (
 // might happen if browser type option is not set in scenario definition.
 var errBrowserNotFoundInRegistry = errors.New("browser not found in registry. " +
 	"make sure to set browser type option in scenario definition in order to use the browser module")
+
+type breakpoint struct {
+	File string `json:"file"`
+	Line int    `json:"line"`
+	// Condition string `json:"condition,omitempty"`
+}
+
+type breakpointRegistry struct {
+	muBreakpoints sync.RWMutex
+	breakpoints   []breakpoint
+	pauser        chan chan struct{}
+}
+
+func newBreakpointRegistry(vu k6modules.VU) *breakpointRegistry {
+	return &breakpointRegistry{
+		breakpoints: []breakpoint{
+			{
+				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+				Line: 26,
+			},
+		},
+		pauser: make(chan chan struct{}, 1),
+	}
+}
+
+func (b *breakpointRegistry) add(bp breakpoint) {
+	b.muBreakpoints.Lock()
+	defer b.muBreakpoints.Unlock()
+
+	b.breakpoints = append(b.breakpoints, bp)
+}
+
+func (b *breakpointRegistry) matches(p position) bool {
+	b.muBreakpoints.RLock()
+	defer b.muBreakpoints.RUnlock()
+
+	return slices.Contains(b.breakpoints, breakpoint{
+		File: p.Filename,
+		Line: p.Line,
+	})
+}
+
+// pause pauses the script execution.
+func (b *breakpointRegistry) pause(p position) {
+	c := make(chan struct{})
+	b.pauser <- c
+	fmt.Println("pausing at", p.Filename, p.Line)
+	<-c
+}
+
+// resume resumes the script execution
+func (b *breakpointRegistry) resume(p position) {
+	c := <-b.pauser
+	fmt.Println("resuming at", p.Filename, p.Line)
+	close(c)
+}
 
 // pidRegistry keeps track of the launched browser process IDs.
 type pidRegistry struct {
