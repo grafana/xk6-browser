@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"slices"
 	"strconv"
@@ -47,7 +48,7 @@ type breakpointRegistry struct {
 	pauser        chan chan struct{}
 }
 
-func newBreakpointRegistry(vu k6modules.VU) *breakpointRegistry {
+func newBreakpointRegistry(_ k6modules.VU) *breakpointRegistry {
 	return &breakpointRegistry{
 		breakpoints: []breakpoint{
 			{
@@ -70,25 +71,25 @@ func (br *breakpointRegistry) update(breakpoints []breakpoint) {
 	br.breakpoints = breakpoints
 }
 
-func (b *breakpointRegistry) matches(p position) bool {
-	b.muBreakpoints.RLock()
-	defer b.muBreakpoints.RUnlock()
+func (br *breakpointRegistry) matches(p position) bool {
+	br.muBreakpoints.RLock()
+	defer br.muBreakpoints.RUnlock()
 
-	return slices.ContainsFunc(b.breakpoints, func(bp breakpoint) bool {
+	return slices.ContainsFunc(br.breakpoints, func(bp breakpoint) bool {
 		return bp.File == p.Filename && bp.Line == p.Line
 	})
 }
 
 // pause pauses the script execution.
-func (b *breakpointRegistry) pause() {
+func (br *breakpointRegistry) pause() {
 	c := make(chan struct{})
-	b.pauser <- c
+	br.pauser <- c
 	<-c
 }
 
-// resume resumes the script execution
-func (b *breakpointRegistry) resume() {
-	c := <-b.pauser
+// resume resumes the script execution.
+func (br *breakpointRegistry) resume() {
+	c := <-br.pauser
 	close(c)
 }
 
@@ -98,18 +99,18 @@ func pauseOnBreakpoint(vu moduleVU) {
 	bp := vu.breakpointRegistry
 
 	pos := getCurrentLineNumber(vu)
-	fmt.Println("current line:", pos)
+	log.Printf("current line: %v", pos)
 
 	if !bp.matches(pos) {
 		return
 	}
 
 	time.AfterFunc(5*time.Second, func() {
-		fmt.Println("resuming at", pos.Filename, pos.Line)
+		log.Printf("resuming at %v:%v", pos.Filename, pos.Line)
 		bp.resume()
 	})
 
-	fmt.Println("pausing at", pos.Filename, pos.Line)
+	log.Printf("pausing at %v:%v", pos.Filename, pos.Line)
 	bp.pause()
 }
 
