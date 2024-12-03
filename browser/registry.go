@@ -6,14 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 	"go.opentelemetry.io/otel/attribute"
@@ -35,84 +32,6 @@ import (
 // might happen if browser type option is not set in scenario definition.
 var errBrowserNotFoundInRegistry = errors.New("browser not found in registry. " +
 	"make sure to set browser type option in scenario definition in order to use the browser module")
-
-type breakpoint struct {
-	File      string `json:"file"`
-	Line      int    `json:"line"`
-	Condition string `json:"condition,omitempty"`
-}
-
-type breakpointRegistry struct {
-	muBreakpoints sync.RWMutex
-	breakpoints   []breakpoint
-	pauser        chan chan struct{}
-}
-
-func newBreakpointRegistry(_ k6modules.VU) *breakpointRegistry {
-	return &breakpointRegistry{
-		breakpoints: []breakpoint{
-			{
-				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-				Line: 26,
-			},
-			{
-				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-				Line: 32,
-			},
-		},
-		pauser: make(chan chan struct{}, 1),
-	}
-}
-
-func (br *breakpointRegistry) update(breakpoints []breakpoint) {
-	br.muBreakpoints.Lock()
-	defer br.muBreakpoints.Unlock()
-
-	br.breakpoints = breakpoints
-}
-
-func (br *breakpointRegistry) matches(p position) bool {
-	br.muBreakpoints.RLock()
-	defer br.muBreakpoints.RUnlock()
-
-	return slices.ContainsFunc(br.breakpoints, func(bp breakpoint) bool {
-		return bp.File == p.Filename && bp.Line == p.Line
-	})
-}
-
-// pause pauses the script execution.
-func (br *breakpointRegistry) pause() {
-	c := make(chan struct{})
-	br.pauser <- c
-	<-c
-}
-
-// resume resumes the script execution.
-func (br *breakpointRegistry) resume() {
-	c := <-br.pauser
-	close(c)
-}
-
-// pauseOnBreakpoint is a helper that pauses the script execution
-// when a breakpoint is hit in the script.
-func pauseOnBreakpoint(vu moduleVU) {
-	bp := vu.breakpointRegistry
-
-	pos := getCurrentLineNumber(vu)
-	log.Printf("current line: %v", pos)
-
-	if !bp.matches(pos) {
-		return
-	}
-
-	time.AfterFunc(5*time.Second, func() {
-		log.Printf("resuming at %v:%v", pos.Filename, pos.Line)
-		bp.resume()
-	})
-
-	log.Printf("pausing at %v:%v", pos.Filename, pos.Line)
-	bp.pause()
-}
 
 // pidRegistry keeps track of the launched browser process IDs.
 type pidRegistry struct {

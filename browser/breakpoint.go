@@ -6,10 +6,92 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"slices"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	k6modules "go.k6.io/k6/js/modules"
 )
+
+type breakpoint struct {
+	File      string `json:"file"`
+	Line      int    `json:"line"`
+	Condition string `json:"condition,omitempty"`
+}
+
+type breakpointRegistry struct {
+	muBreakpoints sync.RWMutex
+	breakpoints   []breakpoint
+	pauser        chan chan struct{}
+}
+
+func newBreakpointRegistry(_ k6modules.VU) *breakpointRegistry {
+	return &breakpointRegistry{
+		breakpoints: []breakpoint{
+			{
+				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+				Line: 26,
+			},
+			{
+				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+				Line: 32,
+			},
+		},
+		pauser: make(chan chan struct{}, 1),
+	}
+}
+
+func (br *breakpointRegistry) update(breakpoints []breakpoint) {
+	br.muBreakpoints.Lock()
+	defer br.muBreakpoints.Unlock()
+
+	br.breakpoints = breakpoints
+}
+
+func (br *breakpointRegistry) matches(p position) bool {
+	br.muBreakpoints.RLock()
+	defer br.muBreakpoints.RUnlock()
+
+	return slices.ContainsFunc(br.breakpoints, func(bp breakpoint) bool {
+		return bp.File == p.Filename && bp.Line == p.Line
+	})
+}
+
+// pause pauses the script execution.
+func (br *breakpointRegistry) pause() {
+	c := make(chan struct{})
+	br.pauser <- c
+	<-c
+}
+
+// resume resumes the script execution.
+func (br *breakpointRegistry) resume() {
+	c := <-br.pauser
+	close(c)
+}
+
+// pauseOnBreakpoint is a helper that pauses the script execution
+// when a breakpoint is hit in the script.
+func pauseOnBreakpoint(vu moduleVU) {
+	bp := vu.breakpointRegistry
+
+	pos := getCurrentLineNumber(vu)
+	log.Printf("current line: %v", pos)
+
+	if !bp.matches(pos) {
+		return
+	}
+
+	time.AfterFunc(5*time.Second, func() {
+		log.Printf("resuming at %v:%v", pos.Filename, pos.Line)
+		bp.resume()
+	})
+
+	log.Printf("pausing at %v:%v", pos.Filename, pos.Line)
+	bp.pause()
+}
 
 type breakpointUpdateResumer interface {
 	update(breakpoints []breakpoint)
