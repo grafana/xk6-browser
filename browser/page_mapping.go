@@ -207,6 +207,8 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		},
 		"keyboard": mapKeyboard(vu, p.GetKeyboard()),
 		"locator": func(selector string, opts sobek.Value) *sobek.Object {
+			pauseOnBreakpoint(vu)
+
 			ml := mapLocator(vu, p.Locator(selector, opts))
 			return rt.ToValue(ml).ToObject(rt)
 		},
@@ -243,6 +245,8 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"screenshot": func(opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu)
+
 			popts := common.NewPageScreenshotOptions()
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing page screenshot options: %w", err)
@@ -385,6 +389,8 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"waitForTimeout": func(timeout int64) *sobek.Promise {
+			pauseOnBreakpoint(vu)
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				p.WaitForTimeout(timeout)
 				return nil, nil
@@ -400,6 +406,8 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		},
 	}
 	maps["$"] = func(selector string) *sobek.Promise {
+		pauseOnBreakpoint(vu)
+
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			eh, err := p.Query(selector)
 			if err != nil {
@@ -417,6 +425,8 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		})
 	}
 	maps["$$"] = func(selector string) *sobek.Promise {
+		pauseOnBreakpoint(vu)
+
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			ehs, err := p.QueryAll(selector)
 			if err != nil {
@@ -456,6 +466,8 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 	}
 
 	return func(eventName common.PageOnEventName, handleEvent sobek.Callable) error {
+		pauseOnBreakpoint(vu)
+
 		pageOnEvent, ok := pageOnEvents[eventName]
 		if !ok {
 			return fmt.Errorf("unknown page on event: %q", eventName)
