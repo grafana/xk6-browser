@@ -26,7 +26,7 @@ export default async function() {
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
 
     await page.locator('a[href="/my_messages.php"]').click()
-    await page.waitForSelector('input[name="login"]');
+    await page.waitForSelector('input[name="login"]')
 
     // Enter login credentials and login
     await page.locator('input[name="login"]').type('admin');
@@ -35,9 +35,11 @@ export default async function() {
     // We expect the form submission to trigger a navigation, so to prevent a
     // race condition, setup a waiter concurrently while waiting for the click
     // to resolve.
-    await page.locator('input[type="submit"]').click(),
-    
-    await page.waitForSelector('h2');
+    await Promise.all([
+      page.waitForNavigation(), // TODO: Removing Promise.all should work
+      page.locator('input[type="submit"]').click(),
+    ]);
+
     await check(page.locator('h2'), {
       'header': async lo => {
         return await lo.textContent() == 'Welcome, admin!'

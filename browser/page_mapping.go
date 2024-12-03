@@ -40,7 +40,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"close": func(opts sobek.Value) *sobek.Promise {
-			getCurrentLineNumber(vu)
+			fmt.Println(getCurrentLineNumber(vu))
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				// It's safe to close the taskqueue for this targetID (if one
@@ -135,7 +135,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"goto": func(url string, opts sobek.Value) (*sobek.Promise, error) {
-			getCurrentLineNumber(vu)
+			fmt.Println(getCurrentLineNumber(vu))
 
 			gopts := common.NewFrameGotoOptions(
 				p.Referrer(),
@@ -357,7 +357,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"waitForNavigation": func(opts sobek.Value) (*sobek.Promise, error) {
-			getCurrentLineNumber(vu)
+			fmt.Println(getCurrentLineNumber(vu))
 
 			popts := common.NewFrameWaitForNavigationOptions(p.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
@@ -373,7 +373,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"waitForSelector": func(selector string, opts sobek.Value) *sobek.Promise {
-			getCurrentLineNumber(vu)
+			fmt.Println(getCurrentLineNumber(vu))
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				eh, err := p.WaitForSelector(selector, opts)

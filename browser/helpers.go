@@ -3,7 +3,7 @@ package browser
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/sobek"
@@ -69,17 +69,25 @@ func sobekEmptyString(v sobek.Value) bool {
 	return !sobekValueExists(v) || strings.TrimSpace(v.String()) == ""
 }
 
-func getCurrentLineNumber(vu moduleVU) string {
+func getCurrentLineNumber(vu moduleVU) position {
 	rt := vu.Runtime()
-	var parent string
+	// var parent string
 	var buf [2]sobek.StackFrame
 	frames := rt.CaptureCallStack(2, buf[:0])
-	if len(frames) == 0 || frames[1].SrcName() == "file:///-" {
-		return vu.InitEnv().CWD.JoinPath("./-").String()
-	}
-	parent = frames[1].SrcName()
-	fmt.Println(frames[1].FuncName(), frames[1].Position(), frames[1].SrcName())
-	fmt.Println(frames[0].FuncName(), frames[0].Position(), frames[0].SrcName())
+	// if len(frames) == 0 || frames[1].SrcName() == "file:///-" {
+	// 	return vu.InitEnv().CWD.JoinPath("./-").String()
+	// }
+	return position(frames[1].Position())
+}
 
-	return parent
+type position struct {
+	Filename string // The filename where the error occurred, if any
+	Line     int    // The line number, starting at 1
+	Column   int    // The column number, starting at 1 (The character count)
+}
+
+func (p position) String() string {
+	return "Filename: " + p.Filename +
+		" Line: " + strconv.Itoa(p.Line) +
+		" Column: " + strconv.Itoa(p.Column)
 }
