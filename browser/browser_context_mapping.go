@@ -71,7 +71,7 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			})
 		},
 		"cookies": func(urls ...string) *sobek.Promise {
-			fmt.Println(getCurrentLineNumber(vu))
+			pauseOnBreakpoint(vu)
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return bc.Cookies(urls...) //nolint:wrapcheck

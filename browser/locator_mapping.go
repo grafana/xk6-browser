@@ -22,7 +22,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			}), nil
 		},
 		"click": func(opts sobek.Value) (*sobek.Promise, error) {
-			fmt.Println(getCurrentLineNumber(vu))
+			pauseOnBreakpoint(vu)
 
 			popts, err := parseFrameClickOptions(vu.Context(), opts, lo.Timeout())
 			if err != nil {
@@ -116,7 +116,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			})
 		},
 		"textContent": func(opts sobek.Value) *sobek.Promise {
-			fmt.Println(getCurrentLineNumber(vu))
+			pauseOnBreakpoint(vu)
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				s, ok, err := lo.TextContent(opts)
@@ -145,7 +145,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			})
 		},
 		"type": func(text string, opts sobek.Value) *sobek.Promise {
-			fmt.Println(getCurrentLineNumber(vu))
+			pauseOnBreakpoint(vu)
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Type(text, opts) //nolint:wrapcheck

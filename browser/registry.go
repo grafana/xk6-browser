@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 	"go.opentelemetry.io/otel/attribute"
@@ -53,6 +54,10 @@ func newBreakpointRegistry(vu k6modules.VU) *breakpointRegistry {
 				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
 				Line: 26,
 			},
+			{
+				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+				Line: 32,
+			},
 		},
 		pauser: make(chan chan struct{}, 1),
 	}
@@ -76,18 +81,37 @@ func (b *breakpointRegistry) matches(p position) bool {
 }
 
 // pause pauses the script execution.
-func (b *breakpointRegistry) pause(p position) {
+func (b *breakpointRegistry) pause() {
 	c := make(chan struct{})
 	b.pauser <- c
-	fmt.Println("pausing at", p.Filename, p.Line)
 	<-c
 }
 
 // resume resumes the script execution
-func (b *breakpointRegistry) resume(p position) {
+func (b *breakpointRegistry) resume() {
 	c := <-b.pauser
-	fmt.Println("resuming at", p.Filename, p.Line)
 	close(c)
+}
+
+// pauseOnBreakpoint is a helper that pauses the script execution
+// when a breakpoint is hit in the script.
+func pauseOnBreakpoint(vu moduleVU) {
+	bp := vu.breakpointRegistry
+
+	pos := getCurrentLineNumber(vu)
+	fmt.Println("current line:", pos)
+
+	if !bp.matches(pos) {
+		return
+	}
+
+	time.AfterFunc(5*time.Second, func() {
+		fmt.Println("resuming at", pos.Filename, pos.Line)
+		bp.resume()
+	})
+
+	fmt.Println("pausing at", pos.Filename, pos.Line)
+	bp.pause()
 }
 
 // pidRegistry keeps track of the launched browser process IDs.
