@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,16 +15,33 @@ import (
 )
 
 type breakpointTest struct {
+	mu           sync.Mutex
 	updated      []breakpoint
 	resumeCalled bool
 }
 
 func (bpt *breakpointTest) update(breakpoints []breakpoint) {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
 	bpt.updated = breakpoints
 }
 
 func (bpt *breakpointTest) resume() {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
 	bpt.resumeCalled = true
+}
+
+func (bpt *breakpointTest) all() []breakpoint {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
+	return bpt.updated
+}
+
+func (bpt *breakpointTest) isResumeCalled() bool {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
+	return bpt.resumeCalled
 }
 
 func newBreakpointClientTest(
@@ -85,12 +103,14 @@ func TestBreakpointClient(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatalf("timeout waiting for server to handle the pause message")
 	}
-	require.Len(t, breakpoints.updated, 2)
-	assert.Equal(t, "file1.js", breakpoints.updated[0].File)
-	assert.Equal(t, 10, breakpoints.updated[0].Line)
-	assert.Equal(t, "file2.js", breakpoints.updated[1].File)
-	assert.Equal(t, 20, breakpoints.updated[1].Line)
-	assert.True(t, breakpoints.resumeCalled)
+	time.Sleep(5 * time.Second) // TODO: find a better way to wait for the message to be processed
+	items := breakpoints.all()
+	require.Len(t, items, 2)
+	assert.Equal(t, "file1.js", items[0].File)
+	assert.Equal(t, 10, items[0].Line)
+	assert.Equal(t, "file2.js", items[1].File)
+	assert.Equal(t, 20, items[1].Line)
+	assert.True(t, breakpoints.isResumeCalled())
 }
 
 func TestBreakpointClient_SendPause(t *testing.T) {

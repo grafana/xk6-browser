@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/grafana/xk6-browser/env"
 )
 
@@ -107,11 +108,6 @@ func pauseOnBreakpoint(vu moduleVU) {
 	if !bp.matches(pos) {
 		return
 	}
-
-	time.AfterFunc(5*time.Second, func() {
-		log.Printf("resuming at %v:%v", pos.Filename, pos.Line)
-		bp.resume()
-	})
 
 	log.Printf("pausing at %v:%v", pos.Filename, pos.Line)
 	bp.pause()
