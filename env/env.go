@@ -63,6 +63,10 @@ const (
 	// filter the browser logs based on their category. It supports
 	// regular expressions.
 	LogCategoryFilter = "K6_BROWSER_LOG_CATEGORY_FILTER"
+
+	// BreakpointServerURL is an environment variable that can be used to
+	// set the URL of the breakpoint server.
+	BreakpointServerURL = "K6_BROWSER_BREAKPOINT_SERVER_URL"
 )
 
 // Tracing.

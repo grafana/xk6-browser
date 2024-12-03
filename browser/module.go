@@ -8,6 +8,7 @@ package browser
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -33,13 +34,14 @@ type (
 	// RootModule is the global module instance that will create module
 	// instances for each VU.
 	RootModule struct {
-		PidRegistry    *pidRegistry
-		remoteRegistry *remoteRegistry
-		initOnce       *sync.Once
-		tracesMetadata map[string]string
-		filePersister  filePersister
-		testRunID      string
-		isSync         bool // remove later
+		PidRegistry        *pidRegistry
+		remoteRegistry     *remoteRegistry
+		initOnce           *sync.Once
+		tracesMetadata     map[string]string
+		filePersister      filePersister
+		breakpointRegistry *breakpointRegistry
+		testRunID          string
+		isSync             bool // remove later
 	}
 
 	// JSModule exposes the properties available to the JS script.
@@ -63,8 +65,9 @@ var (
 // New returns a pointer to a new RootModule instance.
 func New() *RootModule {
 	return &RootModule{
-		PidRegistry: &pidRegistry{},
-		initOnce:    &sync.Once{},
+		PidRegistry:        &pidRegistry{},
+		breakpointRegistry: newBreakpointRegistry(),
+		initOnce:           &sync.Once{},
 	}
 }
 
@@ -73,9 +76,10 @@ func New() *RootModule {
 // JS API.
 func NewSync() *RootModule {
 	return &RootModule{
-		PidRegistry: &pidRegistry{},
-		initOnce:    &sync.Once{},
-		isSync:      true,
+		PidRegistry:        &pidRegistry{},
+		breakpointRegistry: newBreakpointRegistry(),
+		initOnce:           &sync.Once{},
+		isSync:             true,
 	}
 }
 
@@ -111,7 +115,7 @@ func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 					m.tracesMetadata,
 				),
 				taskQueueRegistry:  newTaskQueueRegistry(vu),
-				breakpointRegistry: newBreakpointRegistry(vu),
+				breakpointRegistry: m.breakpointRegistry,
 				filePersister:      m.filePersister,
 				testRunID:          m.testRunID,
 			}),
@@ -142,6 +146,19 @@ func (m *RootModule) initialize(vu k6modules.VU) {
 	if err != nil {
 		k6ext.Abort(vu.Context(), "parsing browser traces metadata: %v", err)
 	}
+	if uri := parseBreakpointServerURL(initEnv.LookupEnv); uri != "" {
+		client, err := dialBreakpointServer(vu.Context(), uri, m.breakpointRegistry)
+		if err != nil {
+			// TODO: Use k6ext.Abort instead of panic. But it somehow fails
+			// with a nil pointer dereference.
+			panic(fmt.Errorf("dialing breakpoint server: %w", err))
+		}
+		if err := client.updateInitialBreakpoints(); err != nil {
+			panic(fmt.Errorf("updating initial breakpoints: %w", err))
+		}
+		go client.listen()
+	}
+
 	if _, ok := initEnv.LookupEnv(env.EnableProfiling); ok {
 		go startDebugServer()
 	}

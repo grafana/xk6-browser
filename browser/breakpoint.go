@@ -7,13 +7,34 @@ import (
 	"log"
 	"net/url"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	k6modules "go.k6.io/k6/js/modules"
+	"github.com/grafana/xk6-browser/env"
 )
+
+/*
+Protocol:
+
+- get_breakpoints: Client initially requests the breakpoints from the server.
+	- Example: [{"file":"file:///Users/inanc/grafana/k6browser/main/examples/fillform.js", "line": 28}]
+- update_breakpoints: Server sends the updated breakpoints to the client.
+	- Example: [{"file":"file:///Users/inanc/grafana/k6browser/main/examples/fillform.js", "line": 32}]
+- resume: Server sends a message to the client to resume the script execution.
+	- Example: {"command":"resume"}
+
+Client:
+
+- The client pauses the script execution when a breakpoint is hit.
+- The server should send the "resume" message to the client to resume the script execution.
+- The client continuously listens for messages from the server.
+
+Example Run:
+
+- K6_BROWSER_BREAKPOINT_SERVER_URL=ws://localhost:8080/breakpoint k6 run script.js
+*/
 
 type breakpoint struct {
 	File      string `json:"file"`
@@ -27,18 +48,18 @@ type breakpointRegistry struct {
 	pauser        chan chan struct{}
 }
 
-func newBreakpointRegistry(_ k6modules.VU) *breakpointRegistry {
+func newBreakpointRegistry() *breakpointRegistry {
 	return &breakpointRegistry{
-		breakpoints: []breakpoint{
-			{
-				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-				Line: 26,
-			},
-			{
-				File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-				Line: 32,
-			},
-		},
+		// breakpoints: []breakpoint{
+		// 	{
+		// 		File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+		// 		Line: 26,
+		// 	},
+		// 	{
+		// 		File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+		// 		Line: 32,
+		// 	},
+		// },
 		pauser: make(chan chan struct{}, 1),
 	}
 }
@@ -76,6 +97,9 @@ func (br *breakpointRegistry) resume() {
 // when a breakpoint is hit in the script.
 func pauseOnBreakpoint(vu moduleVU) {
 	bp := vu.breakpointRegistry
+	if bp == nil { // breakpoints are disabled
+		return
+	}
 
 	pos := getCurrentLineNumber(vu)
 	log.Printf("current line: %v", pos)
@@ -151,7 +175,7 @@ func (bc *breakpointClient) listen() {
 
 		switch envelope.Command {
 		case "update_breakpoints":
-			bc.handleUpdateBreakpoints(envelope.Data)
+			bc.updateBreakpoints(envelope.Data)
 		case "resume":
 			bc.handleResume()
 		default:
@@ -160,7 +184,7 @@ func (bc *breakpointClient) listen() {
 	}
 }
 
-func (bc *breakpointClient) handleUpdateBreakpoints(data []byte) {
+func (bc *breakpointClient) updateBreakpoints(data []byte) {
 	var breakpoints []breakpoint
 	if err := json.Unmarshal(data, &breakpoints); err != nil {
 		log.Printf("breakpointClient: parsing breakpoints: %v", err)
@@ -173,9 +197,35 @@ func (bc *breakpointClient) handleResume() {
 	bc.registry.resume()
 }
 
+// updateInitialBreakpoints requests the initial breakpoints from the server.
+// It blocks until the server responds.
+// TODO: Add context to the function.
+func (bc *breakpointClient) updateInitialBreakpoints() error {
+	envelope := map[string]any{
+		"command": "get_breakpoints",
+	}
+	message, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("breakpointClient: marshaling get_breakpoints message: %w", err)
+	}
+	if err := bc.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+		return fmt.Errorf("breakpointClient: sending get_breakpoints message: %w", err)
+	}
+
+	// wait for the server to respond
+	if _, message, err = bc.conn.ReadMessage(); err != nil {
+		return fmt.Errorf("breakpointClient: reading get_breakpoints response: %w", err)
+	}
+	log.Println("breakpointClient: received initial breakpoints:", string(message))
+
+	bc.updateBreakpoints(message)
+
+	return nil
+}
+
 func (bc *breakpointClient) sendPause() error {
 	envelope := map[string]any{
-		"type": "pause",
+		"command": "pause",
 	}
 	message, err := json.Marshal(envelope)
 	if err != nil {
@@ -199,4 +249,9 @@ func (bc *breakpointClient) close() error {
 		return fmt.Errorf("breakpointClient: closing websocket connection: %w", err)
 	}
 	return nil
+}
+
+func parseBreakpointServerURL(envLookup env.LookupFunc) string {
+	v, _ := envLookup(env.BreakpointServerURL)
+	return strings.TrimSpace(v)
 }

@@ -105,7 +105,7 @@ func TestBreakpointClient_SendPause(t *testing.T) {
 		err = json.Unmarshal(message, &envelope)
 		require.NoError(t, err)
 
-		assert.Equal(t, "pause", envelope["type"])
+		assert.Equal(t, "pause", envelope["command"])
 	})
 
 	require.NoError(t, client.sendPause())
