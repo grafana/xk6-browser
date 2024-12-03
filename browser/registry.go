@@ -63,6 +63,13 @@ func newBreakpointRegistry(vu k6modules.VU) *breakpointRegistry {
 	}
 }
 
+func (br *breakpointRegistry) update(breakpoints []breakpoint) {
+	br.muBreakpoints.Lock()
+	defer br.muBreakpoints.Unlock()
+
+	br.breakpoints = breakpoints
+}
+
 func (b *breakpointRegistry) matches(p position) bool {
 	b.muBreakpoints.RLock()
 	defer b.muBreakpoints.RUnlock()
