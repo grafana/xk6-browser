@@ -67,6 +67,10 @@ const (
 	// BreakpointServerURL is an environment variable that can be used to
 	// set the URL of the breakpoint server.
 	BreakpointServerURL = "K6_BROWSER_BREAKPOINT_SERVER_URL"
+
+	// DevToolsEnabled when set will enable the dev tools window in chrome
+	// when the test is ran.
+	DevToolsEnabled = "K6_BROWSER_DEVTOOLS"
 )
 
 // Tracing.

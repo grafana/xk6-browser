@@ -387,7 +387,7 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"headless":                 lopts.Headless,
 		"window-size":              fmt.Sprintf("%d,%d", 800, 600),
 	}
-	if lopts.Debug {
+	if lopts.DevTools {
 		f["auto-open-devtools-for-tabs"] = true
 		lopts.Headless = false
 	}
