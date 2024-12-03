@@ -62,7 +62,7 @@ func newBreakpointClientTest(
 	}))
 
 	var breakpoints breakpointTest
-	client, err := dialBreakpointServer(context.Background(), "ws://"+srv.Listener.Addr().String(), &breakpoints)
+	client, err := dialBreakpointServer(context.Background(), "ws://"+srv.Listener.Addr().String(), &breakpoints, 1)
 	require.NoError(t, err)
 
 	t.Cleanup(srv.Close)
@@ -128,7 +128,7 @@ func TestBreakpointClient_SendPause(t *testing.T) {
 		assert.Equal(t, "pause", envelope["command"])
 	})
 
-	require.NoError(t, client.sendPause())
+	require.NoError(t, client.sendPause(breakpoint{}, 0, "page.goto"))
 	select {
 	case <-handlerDone:
 	case <-time.After(1 * time.Second):

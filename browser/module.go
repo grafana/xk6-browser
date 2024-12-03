@@ -147,15 +147,13 @@ func (m *RootModule) initialize(vu k6modules.VU) {
 		k6ext.Abort(vu.Context(), "parsing browser traces metadata: %v", err)
 	}
 	if uri := parseBreakpointServerURL(initEnv.LookupEnv); uri != "" {
-		client, err := dialBreakpointServer(vu.Context(), uri, m.breakpointRegistry)
+		client, err := dialBreakpointServer(vu.Context(), uri, m.breakpointRegistry, 5)
 		if err != nil {
 			// TODO: Use k6ext.Abort instead of panic. But it somehow fails
 			// with a nil pointer dereference.
 			panic(fmt.Errorf("dialing breakpoint server: %w", err))
 		}
-		if err := client.updateInitialBreakpoints(); err != nil {
-			panic(fmt.Errorf("updating initial breakpoints: %w", err))
-		}
+		m.breakpointRegistry.client = client
 		go client.listen()
 	}
 

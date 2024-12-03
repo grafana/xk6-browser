@@ -77,13 +77,19 @@ func getCurrentLineNumber(vu moduleVU) position {
 	// if len(frames) == 0 || frames[1].SrcName() == "file:///-" {
 	// 	return vu.InitEnv().CWD.JoinPath("./-").String()
 	// }
-	return position(frames[1].Position())
+	return position{
+		Filename: frames[1].Position().Filename,
+		Line:     frames[1].Position().Line,
+		Column:   frames[1].Position().Column,
+		FuncName: frames[1].FuncName(),
+	}
 }
 
 type position struct {
 	Filename string // The filename where the error occurred, if any
 	Line     int    // The line number, starting at 1
 	Column   int    // The column number, starting at 1 (The character count)
+	FuncName string
 }
 
 func (p position) String() string {
