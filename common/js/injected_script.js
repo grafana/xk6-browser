@@ -171,13 +171,24 @@ class RoleQueryEngine {
   // Parse filters like `name=Submit`, `level=2`, etc.
   parseFilters(filterString) {
     const filters = {};
-    const regex = /(\w+)=(\w+)/g;
+    const regex = /(\w+)=("[^"]*"|'[^']*'|\S+)/g; // Match key=value pairs with or without quotes
     let match;
+
     while ((match = regex.exec(filterString)) !== null) {
-      filters[match[1]] = match[2];
+        const key = match[1];
+        const value = match[2];
+
+        // Validate that the value is enclosed in quotes
+        if (!(value.startsWith('"') && value.endsWith('"')) && !(value.startsWith("'") && value.endsWith("'"))) {
+            throw new Error(`Invalid syntax: Value for filter '${key}' must be enclosed in quotes (e.g., name="Submit").`);
+        }
+
+        // Remove surrounding quotes for consistency
+        filters[key] = value.slice(1, -1);
     }
+
     return filters;
-  }
+}
 
   // Compute the accessible name of an element
   getAccessibleName(element) {
