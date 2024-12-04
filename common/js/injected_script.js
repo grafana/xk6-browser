@@ -157,35 +157,82 @@ class XPathQueryEngine {
 
 class RoleQueryEngine {
   queryAll(root, selector) {
-    const [role, ...nameParts] = selector.split("[name=");
-    const name = nameParts.length > 0 ? nameParts.join("[name=").slice(0, -1) : null;
+    const [role, ...filters] = selector.split("[");
+    const filterOptions = this.parseFilters(filters.join("["));
 
-    // Get all elements with the specified role
-    const matchingElements = Array.from(root.querySelectorAll(`[role="${role}"]`));
+    // Get all elements matching the role or implicit role
+    const matchingElements = Array.from(root.querySelectorAll(`[role="${role}"]`))
+      .concat(this.getImplicitRoleElements(root, role));
 
-    // Filter elements by accessible name if provided
-    if (name) {
-      return matchingElements.filter((el) => this.getAccessibleName(el) === name);
-    }
-
-    return matchingElements;
+    // Filter elements by accessible name and other filters
+    return matchingElements.filter((el) => this.matchFilters(el, filterOptions));
   }
 
-  // Utility to compute the accessible name of an element
+  // Parse filters like `name=Submit`, `level=2`, etc.
+  parseFilters(filterString) {
+    const filters = {};
+    const regex = /(\w+)=(\w+)/g;
+    let match;
+    while ((match = regex.exec(filterString)) !== null) {
+      filters[match[1]] = match[2];
+    }
+    return filters;
+  }
+
+  // Compute the accessible name of an element
   getAccessibleName(element) {
     // Prefer aria-label or aria-labelledby
     if (element.hasAttribute("aria-label")) {
       return element.getAttribute("aria-label");
     }
-
     if (element.hasAttribute("aria-labelledby")) {
       const labelId = element.getAttribute("aria-labelledby");
       const labelElement = element.ownerDocument.getElementById(labelId);
       return labelElement ? labelElement.textContent.trim() : "";
     }
-
-    // Use innerText or textContent as a fallback
+    // Use innerText as a fallback
     return element.textContent.trim();
+  }
+
+  // Get elements with implicit roles (e.g., <button> -> role="button")
+  getImplicitRoleElements(root, role) {
+    const implicitRoles = {
+      button: ["button", "input[type='button']", "input[type='submit']", "input[type='reset']"],
+      link: ["a[href]"],
+      checkbox: ["input[type='checkbox']"],
+      heading: ["h1", "h2", "h3", "h4", "h5", "h6"],
+      dialog: ["dialog"],
+      img: ["img[alt]"],
+      form: ["form"],
+      textbox: ["input[type='text']", "textarea"],
+      radio: ["input[type='radio']"],
+      // Add more implicit roles as needed
+    };
+
+    if (!implicitRoles[role]) return [];
+    return implicitRoles[role]
+      .map((selector) => Array.from(root.querySelectorAll(selector)))
+      .flat();
+  }
+
+  // Match element filters (e.g., name, level, pressed)
+  matchFilters(element, filters) {
+    if (filters.name && this.getAccessibleName(element) !== filters.name) {
+      return false;
+    }
+    if (filters.level) {
+      const headingLevel = parseInt(element.tagName.replace("H", ""), 10);
+      if (isNaN(headingLevel) || headingLevel !== parseInt(filters.level, 10)) {
+        return false;
+      }
+    }
+    if (filters.pressed) {
+      const ariaPressed = element.getAttribute("aria-pressed");
+      if (ariaPressed !== filters.pressed) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 
