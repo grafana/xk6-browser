@@ -27,9 +27,10 @@ type BrowserOptions struct {
 	LogCategoryFilter string
 	// TODO: Do not expose slowMo option by now.
 	// See https://github.com/grafana/xk6-browser/issues/857.
-	SlowMo   time.Duration
-	Timeout  time.Duration
-	DevTools bool
+	SlowMo         time.Duration
+	Timeout        time.Duration
+	DevTools       bool
+	SelectorEngine bool
 
 	isRemoteBrowser bool // some options will be ignored if browser is in a remote machine
 }
@@ -81,6 +82,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 		env.LogCategoryFilter,
 		env.BrowserGlobalTimeout,
 		env.DevToolsEnabled,
+		env.SelectorEngineEnabled,
 	}
 
 	for _, e := range envOpts {
@@ -100,6 +102,8 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 			bo.Debug, err = parseBoolOpt(e, ev)
 		case env.DevToolsEnabled:
 			bo.DevTools, err = parseBoolOpt(e, ev)
+		case env.SelectorEngineEnabled:
+			bo.SelectorEngine, err = parseBoolOpt(e, ev)
 		case env.BrowserExecutablePath:
 			bo.ExecutablePath = ev
 		case env.BrowserHeadless:

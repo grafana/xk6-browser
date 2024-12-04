@@ -71,6 +71,11 @@ const (
 	// DevToolsEnabled when set will enable the dev tools window in chrome
 	// when the test is ran.
 	DevToolsEnabled = "K6_BROWSER_DEVTOOLS"
+
+	// SelectorEngineEnabled when set will inject the selector engine into
+	// the website under test to allow the user to easily find selectors to
+	// the elements that they need for their test.
+	SelectorEngineEnabled = "K6_BROWSER_SELECTOR_ENGINE"
 )
 
 // Tracing.

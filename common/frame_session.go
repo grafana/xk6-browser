@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/xk6-browser/common/js"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -916,7 +917,7 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 		"sid:%v tid:%v fid:%v event:%s eventTime:%q",
 		fs.session.ID(), fs.targetID, event.FrameID, event.Name, event.Timestamp.Time())
 
-	_, ok := fs.manager.getFrameByID(event.FrameID)
+	f, ok := fs.manager.getFrameByID(event.FrameID)
 	if !ok {
 		return
 	}
@@ -926,6 +927,19 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventLoad)
 	case "DOMContentLoaded":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventDOMContentLoad)
+
+		if fs.page.browserCtx.browser.browserOpts.SelectorEngine {
+			addSelectorEngine := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.SelectorEngineScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding selector engine script: %v", err,
+					)
+				}
+			}
+			go addSelectorEngine()
+		}
+
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
 	}
