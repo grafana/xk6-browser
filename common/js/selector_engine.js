@@ -3,12 +3,12 @@
   function findBestSelector(element) {
     // 1. Check for `data-testid`
     if (element.hasAttribute('data-testid')) {
-        return `[data-testid="${element.getAttribute('data-testid')}"]`;
+        return `'[data-testid="${element.getAttribute('data-testid')}"]'`;
     }
 
     // 2. Check for `id`
     if (element.id) {
-        return `#${element.id}`;
+        return `'#${element.id}'`;
     }
 
     // 3. Check for role and accessible name (explicit or implicit roles)
@@ -16,15 +16,15 @@
     if (role) {
         const name = getAccessibleName(element);
         if (name) {
-            return `role=${role}[name=${name}]`;
+            return `'role=${role}[name="${name}"]'`;
         }
-        return `role=${role}`;
+        return `'role=${role}'`;
     }
 
     // 4. Check for visible text
     const text = element.textContent.trim();
     if (text) {
-        return `text="${text}"`;
+        return `'text="${text}"'`;
     }
 
     // 5. Fallback to XPath
@@ -80,7 +80,7 @@
   // Helper function to generate XPath as a fallback
   function generateXPath(element) {
       if (element.id) {
-          return `//*[@id="${element.id}"]`;
+          return `'//*[@id="${element.id}"]'`;
       }
       const siblings = Array.from(element.parentNode.children).filter(
           (el) => el.nodeName === element.nodeName
@@ -88,9 +88,9 @@
       const index = siblings.indexOf(element) + 1;
       const tagName = element.nodeName.toLowerCase();
       if (element.parentNode === document) {
-          return `/${tagName}[${index}]`;
+          return `'/${tagName}[${index}]'`;
       }
-      return `${generateXPath(element.parentNode)}/${tagName}[${index}]`;
+      return `'${generateXPath(element.parentNode)}/${tagName}[${index}]'`;
   }
 
   // Highlight and Selector Display
