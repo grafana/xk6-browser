@@ -23,10 +23,10 @@ import (
 )
 
 // Matches `name:body`, a query engine name and selector for that engine.
-var reQueryEngine *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z_0-9-+:*]+$|^role$`)
+var reQueryEngine = regexp.MustCompile(`^[a-zA-Z_0-9-+:*]+$|^role$`)
 
 // Matches start of XPath query.
-var reXPathSelector *regexp.Regexp = regexp.MustCompile(`^\(*//`)
+var reXPathSelector = regexp.MustCompile(`^\(*//`)
 
 type SelectorPart struct {
 	Name string `json:"name"`

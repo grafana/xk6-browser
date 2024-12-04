@@ -70,6 +70,8 @@ type Browser struct {
 	// version caches the browser version information.
 	version browserVersion
 
+	timeoutSettings *TimeoutSettings
+
 	logger *log.Logger
 }
 
@@ -92,6 +94,10 @@ func NewBrowser(
 	logger *log.Logger,
 ) (*Browser, error) {
 	b := newBrowser(ctx, vuCtx, vuCtxCancelFn, browserProc, browserOpts, logger)
+	b.timeoutSettings = NewTimeoutSettings(nil)
+	b.timeoutSettings.setDefaultTimeout(browserOpts.Timeout)
+	b.timeoutSettings.setDefaultNavigationTimeout(browserOpts.Timeout)
+
 	if err := b.connect(); err != nil {
 		return nil, err
 	}

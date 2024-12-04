@@ -14,6 +14,7 @@ import (
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec
 	"sync"
+	"time"
 
 	"github.com/grafana/sobek"
 
@@ -102,6 +103,12 @@ func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 		mapper = syncMapBrowserToSobek
 	}
 
+	timeout := common.DefaultTimeout
+	if m.breakpointRegistry.isActive() {
+		// set a very hacky long timeout for debugging.
+		timeout = time.Hour * 24
+	}
+
 	return &ModuleInstance{
 		mod: &JSModule{
 			Browser: mapper(moduleVU{
@@ -113,6 +120,7 @@ func (m *RootModule) NewModuleInstance(vu k6modules.VU) k6modules.Instance {
 					m.remoteRegistry,
 					m.PidRegistry,
 					m.tracesMetadata,
+					timeout,
 				),
 				taskQueueRegistry:  newTaskQueueRegistry(vu),
 				breakpointRegistry: m.breakpointRegistry,

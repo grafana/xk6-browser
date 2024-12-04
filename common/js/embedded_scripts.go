@@ -18,8 +18,9 @@ var WebVitalIIFEScript string
 //go:embed web_vital_init.js
 var WebVitalInitScript string
 
-// Embeds a script that will highlight elements and return a selector to them
-// when the mouse is hovered over the element.
+// SelectorEngineScript embeds a script that will highlight
+// elements and return a selector to them when the mouse is
+// hovered over the element.
 //
 //go:embed selector_engine.js
 var SelectorEngineScript string

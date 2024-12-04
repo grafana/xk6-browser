@@ -65,6 +65,11 @@ func newBreakpointRegistry() *breakpointRegistry {
 	}
 }
 
+// isActive is a hacky way to see whether the breakpoints are enabled or not.
+func (br *breakpointRegistry) isActive() bool {
+	return br.client != nil
+}
+
 func (br *breakpointRegistry) update(breakpoints []breakpoint) {
 	br.muBreakpoints.Lock()
 	defer br.muBreakpoints.Unlock()

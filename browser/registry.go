@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 	"go.opentelemetry.io/otel/attribute"
@@ -202,6 +203,7 @@ func newBrowserRegistry(
 	remote *remoteRegistry,
 	pids *pidRegistry,
 	tracesMetadata map[string]string,
+	timeout time.Duration,
 ) *browserRegistry {
 	bt := chromium.NewBrowserType(vu)
 	builder := func(ctx, vuCtx context.Context) (*common.Browser, error) {
@@ -212,13 +214,13 @@ func newBrowserRegistry(
 		)
 
 		if isRemoteBrowser {
-			b, err = bt.Connect(ctx, vuCtx, wsURL)
+			b, err = bt.Connect(ctx, vuCtx, wsURL, timeout)
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}
 		} else {
 			var pid int
-			b, pid, err = bt.Launch(ctx, vuCtx)
+			b, pid, err = bt.Launch(ctx, vuCtx, timeout)
 			if err != nil {
 				return nil, err //nolint:wrapcheck
 			}
