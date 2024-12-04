@@ -12,15 +12,31 @@
   document.body.appendChild(selectorOverlay);
 
   function getXPath(element) {
-      if (element.id) {
-          // If the element has an ID, use it directly
-          return `//*[@id="${element.id}"]`;
-      }
-      if (element === document.body) {
-          // Special case for <body>
-          return '/html/body';
+      if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+
+      // 1. Check for data-testid
+      if (element.hasAttribute('data-testid')) {
+          return `//*[@data-testid="${element.getAttribute('data-testid')}"]`;
       }
 
+      // 2. Check for id
+      if (element.id) {
+          return `//*[@id="${element.id}"]`;
+      }
+
+      // 3. Check for unique text content
+      const tagName = element.nodeName.toLowerCase();
+      if (['button', 'a', 'span', 'div'].includes(tagName) && element.textContent.trim()) {
+          const text = element.textContent.trim();
+          return `//${tagName}[text()="${text}"]`;
+      }
+
+      // 4. Check for unique href attribute
+      if (element.hasAttribute('href')) {
+          return `//${tagName}[@href="${element.getAttribute('href')}"]`;
+      }
+
+      // 5. Fallback to sibling index
       let index = 1;
       let sibling = element.previousElementSibling;
       while (sibling) {
@@ -30,7 +46,6 @@
           sibling = sibling.previousElementSibling;
       }
 
-      const tagName = element.nodeName.toLowerCase();
       return `${getXPath(element.parentNode)}/${tagName}[${index}]`;
   }
 

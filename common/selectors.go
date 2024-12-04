@@ -23,7 +23,7 @@ import (
 )
 
 // Matches `name:body`, a query engine name and selector for that engine.
-var reQueryEngine *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z_0-9-+:*]+$`)
+var reQueryEngine *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z_0-9-+:*]+$|^role$`)
 
 // Matches start of XPath query.
 var reXPathSelector *regexp.Regexp = regexp.MustCompile(`^\(*//`)
@@ -86,6 +86,10 @@ func (s *Selector) parse() error {
 			// If selector starts with '..', consider xpath as well.
 			name = "xpath"
 			body = part
+		} else if strings.HasPrefix(part, "role=") {
+			// Handle Role selectors
+			name = "role"
+			body = strings.TrimPrefix(part, "role=")
 		} else {
 			name = "css"
 			body = part

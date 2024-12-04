@@ -155,6 +155,41 @@ class XPathQueryEngine {
   }
 }
 
+class RoleQueryEngine {
+  queryAll(root, selector) {
+    const [role, ...nameParts] = selector.split("[name=");
+    const name = nameParts.length > 0 ? nameParts.join("[name=").slice(0, -1) : null;
+
+    // Get all elements with the specified role
+    const matchingElements = Array.from(root.querySelectorAll(`[role="${role}"]`));
+
+    // Filter elements by accessible name if provided
+    if (name) {
+      return matchingElements.filter((el) => this.getAccessibleName(el) === name);
+    }
+
+    return matchingElements;
+  }
+
+  // Utility to compute the accessible name of an element
+  getAccessibleName(element) {
+    // Prefer aria-label or aria-labelledby
+    if (element.hasAttribute("aria-label")) {
+      return element.getAttribute("aria-label");
+    }
+
+    if (element.hasAttribute("aria-labelledby")) {
+      const labelId = element.getAttribute("aria-labelledby");
+      const labelElement = element.ownerDocument.getElementById(labelId);
+      return labelElement ? labelElement.textContent.trim() : "";
+    }
+
+    // Use innerText or textContent as a fallback
+    return element.textContent.trim();
+  }
+}
+
+
 // convertToDocument will convert a DocumentFragment into a Document. It does
 // this by creating a new Document and copying the elements from the
 // DocumentFragment to the Document.
@@ -200,6 +235,7 @@ class InjectedScript {
       css: new CSSQueryEngine(),
       text: new TextQueryEngine(),
       xpath: new XPathQueryEngine(),
+      role: new RoleQueryEngine(),
     };
   }
 
