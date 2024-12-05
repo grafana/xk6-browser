@@ -273,6 +273,7 @@ func (bc *breakpointClient) listen() {
 			bc.handleResume()
 		case "step_over":
 			bc.registry.setStepOverMode(true)
+			bc.registry.resume(false)
 		default:
 			log.Printf("breakpointClient: unknown command: %s", envelope.Command)
 		}
