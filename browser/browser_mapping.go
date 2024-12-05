@@ -36,7 +36,7 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.IsConnected(), nil
 		},
 		"newContext": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {
@@ -73,7 +73,7 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.Version(), nil
 		},
 		"newPage": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {

@@ -69,8 +69,7 @@ func sobekEmptyString(v sobek.Value) bool {
 	return !sobekValueExists(v) || strings.TrimSpace(v.String()) == ""
 }
 
-func getCurrentLineNumber(vu moduleVU) position {
-	rt := vu.Runtime()
+func getCurrentLineNumber(rt *sobek.Runtime) position {
 	// var parent string
 	var buf [2]sobek.StackFrame
 	frames := rt.CaptureCallStack(2, buf[:0])

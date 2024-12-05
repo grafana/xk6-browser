@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/grafana/sobek"
 	"github.com/grafana/xk6-browser/env"
 )
 
@@ -53,6 +54,12 @@ type breakpointRegistry struct {
 
 	muVariables sync.RWMutex
 	variables   []map[string]debugVarFunc
+
+	// stepOverMode is used to pause the script execution
+	// on each line whether the breakpoint is hit or not.
+	//
+	// resume(true) disables the stepOverMode.
+	stepOverMode bool
 }
 
 func newBreakpointRegistry() *breakpointRegistry {
@@ -67,7 +74,8 @@ func newBreakpointRegistry() *breakpointRegistry {
 		// 	Line: 32,
 		// },
 		// },
-		pauser: make(chan chan struct{}, 1),
+		pauser:       make(chan chan struct{}, 1),
+		stepOverMode: true,
 	}
 }
 
@@ -83,9 +91,22 @@ func (br *breakpointRegistry) update(breakpoints []breakpoint) {
 	br.breakpoints = breakpoints
 }
 
+func (br *breakpointRegistry) shouldResume() bool {
+	return br.stepOverMode
+}
+
 func (br *breakpointRegistry) matches(p position) (breakpoint, bool) {
 	br.muBreakpoints.RLock()
 	defer br.muBreakpoints.RUnlock()
+
+	// stepOverMode allows pausing the script execution
+	// on the remaining lines.
+	if br.stepOverMode {
+		return breakpoint{
+			File: p.Filename,
+			Line: p.Line,
+		}, true
+	}
 
 	// We need to compare between /path/to/test-script.js and file:///path/to/test-script.js
 	for _, b := range br.breakpoints {
@@ -111,9 +132,22 @@ func (br *breakpointRegistry) pause(b breakpoint, column int, funcName string) e
 }
 
 // resume resumes the script execution.
-func (br *breakpointRegistry) resume() {
-	c := <-br.pauser
-	close(c)
+func (br *breakpointRegistry) resume(stepOut bool) {
+	log.Printf("resuming: stepOut=%v", stepOut)
+	if stepOut {
+		br.setStepOverMode(false)
+	}
+	select {
+	case c := <-br.pauser:
+		close(c)
+	default:
+		log.Printf("resuming: nothing to resume")
+	}
+}
+
+func (br *breakpointRegistry) setStepOverMode(on bool) {
+	log.Printf("stepOverMode set to %v", on)
+	br.stepOverMode = on
 }
 
 // setVar adds a variable to the registry.
@@ -149,18 +183,20 @@ func (br *breakpointRegistry) vars() []map[string]debugVarFunc {
 
 // pauseOnBreakpoint is a helper that pauses the script execution
 // when a breakpoint is hit in the script.
-func pauseOnBreakpoint(vu moduleVU) {
-	bp := vu.breakpointRegistry
+func pauseOnBreakpoint(bp *breakpointRegistry, rt *sobek.Runtime) {
 	if !bp.isActive() {
 		return
 	}
 
-	pos := getCurrentLineNumber(vu)
+	pos := getCurrentLineNumber(rt)
 	log.Printf("current line: %v", pos)
 
 	b, ok := bp.matches(pos)
 	if !ok {
 		return
+	}
+	if bp.shouldResume() {
+		bp.resume(false)
 	}
 
 	log.Printf("pausing at %v:%v", pos.Filename, pos.Line)
@@ -172,7 +208,7 @@ func pauseOnBreakpoint(vu moduleVU) {
 type breakpointUpdateResumer interface {
 	update(breakpoints []breakpoint)
 	vars() []map[string]debugVarFunc
-	resume()
+	resume(stepOut bool)
 }
 
 type breakpointClient struct {
@@ -251,10 +287,14 @@ func (bc *breakpointClient) updateBreakpoints(data []byte) {
 }
 
 func (bc *breakpointClient) handleResume() {
-	bc.registry.resume()
+	bc.registry.resume(true)
 }
 
 func (bc *breakpointClient) sendPause(b breakpoint, column int, funcName string) error {
+	if bc == nil {
+		return nil
+	}
+
 	type variable struct {
 		Name  string `json:"name"`
 		Value any    `json:"value"`

@@ -40,7 +40,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"close": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				// It's safe to close the taskqueue for this targetID (if one
@@ -135,7 +135,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"goto": func(url string, opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			gopts := common.NewFrameGotoOptions(
 				p.Referrer(),
@@ -207,7 +207,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		},
 		"keyboard": mapKeyboard(vu, p.GetKeyboard()),
 		"locator": func(selector string, opts sobek.Value) *sobek.Object {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			ml := mapLocator(vu, p.Locator(selector, opts))
 			return rt.ToValue(ml).ToObject(rt)
@@ -245,7 +245,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"screenshot": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts := common.NewPageScreenshotOptions()
 			if err := popts.Parse(vu.Context(), opts); err != nil {
@@ -362,7 +362,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"waitForNavigation": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts := common.NewFrameWaitForNavigationOptions(p.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
@@ -378,7 +378,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"waitForSelector": func(selector string, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				eh, err := p.WaitForSelector(selector, opts)
@@ -389,7 +389,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"waitForTimeout": func(timeout int64) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				p.WaitForTimeout(timeout)
@@ -406,7 +406,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		},
 	}
 	maps["$"] = func(selector string) *sobek.Promise {
-		pauseOnBreakpoint(vu)
+		pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			eh, err := p.Query(selector)
@@ -425,7 +425,7 @@ func mapPage(vu moduleVU, p *common.Page) mapping { //nolint:gocognit,cyclop
 		})
 	}
 	maps["$$"] = func(selector string) *sobek.Promise {
-		pauseOnBreakpoint(vu)
+		pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			ehs, err := p.QueryAll(selector)
@@ -466,7 +466,7 @@ func mapPageOn(vu moduleVU, p *common.Page) func(common.PageOnEventName, sobek.C
 	}
 
 	return func(eventName common.PageOnEventName, handleEvent sobek.Callable) error {
-		pauseOnBreakpoint(vu)
+		pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 		pageOnEvent, ok := pageOnEvents[eventName]
 		if !ok {

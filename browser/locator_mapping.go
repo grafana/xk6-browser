@@ -13,7 +13,7 @@ import (
 func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 	return mapping{
 		"clear": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			copts := common.NewFrameFillOptions(lo.Timeout())
 			if err := copts.Parse(vu.Context(), opts); err != nil {
@@ -24,7 +24,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			}), nil
 		},
 		"click": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts, err := parseFrameClickOptions(vu.Context(), opts, lo.Timeout())
 			if err != nil {
@@ -36,91 +36,91 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			}), nil
 		},
 		"dblclick": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Dblclick(opts) //nolint:wrapcheck
 			})
 		},
 		"setChecked": func(checked bool, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.SetChecked(checked, opts) //nolint:wrapcheck
 			})
 		},
 		"check": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Check(opts) //nolint:wrapcheck
 			})
 		},
 		"uncheck": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Uncheck(opts) //nolint:wrapcheck
 			})
 		},
 		"isChecked": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsChecked(opts) //nolint:wrapcheck
 			})
 		},
 		"isEditable": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsEditable(opts) //nolint:wrapcheck
 			})
 		},
 		"isEnabled": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsEnabled(opts) //nolint:wrapcheck
 			})
 		},
 		"isDisabled": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsDisabled(opts) //nolint:wrapcheck
 			})
 		},
 		"isVisible": func() *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsVisible() //nolint:wrapcheck
 			})
 		},
 		"isHidden": func() *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.IsHidden() //nolint:wrapcheck
 			})
 		},
 		"fill": func(value string, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Fill(value, opts) //nolint:wrapcheck
 			})
 		},
 		"focus": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Focus(opts) //nolint:wrapcheck
 			})
 		},
 		"getAttribute": func(name string, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				s, ok, err := lo.GetAttribute(name, opts)
@@ -134,21 +134,21 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			})
 		},
 		"innerHTML": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.InnerHTML(opts) //nolint:wrapcheck
 			})
 		},
 		"innerText": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.InnerText(opts) //nolint:wrapcheck
 			})
 		},
 		"textContent": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				s, ok, err := lo.TextContent(opts)
@@ -162,42 +162,42 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			})
 		},
 		"inputValue": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.InputValue(opts) //nolint:wrapcheck
 			})
 		},
 		"selectOption": func(values sobek.Value, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return lo.SelectOption(values, opts) //nolint:wrapcheck
 			})
 		},
 		"press": func(key string, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Press(key, opts) //nolint:wrapcheck
 			})
 		},
 		"type": func(text string, opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Type(text, opts) //nolint:wrapcheck
 			})
 		},
 		"hover": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.Hover(opts) //nolint:wrapcheck
 			})
 		},
 		"tap": func(opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			copts := common.NewFrameTapOptions(lo.DefaultTimeout())
 			if err := copts.Parse(vu.Context(), opts); err != nil {
@@ -208,7 +208,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			}), nil
 		},
 		"dispatchEvent": func(typ string, eventInit, opts sobek.Value) (*sobek.Promise, error) {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			popts := common.NewFrameDispatchEventOptions(lo.DefaultTimeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
@@ -219,7 +219,7 @@ func mapLocator(vu moduleVU, lo *common.Locator) mapping { //nolint:funlen
 			}), nil
 		},
 		"waitFor": func(opts sobek.Value) *sobek.Promise {
-			pauseOnBreakpoint(vu)
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, lo.WaitFor(opts) //nolint:wrapcheck

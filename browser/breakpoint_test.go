@@ -26,10 +26,11 @@ func (bpt *breakpointTest) update(breakpoints []breakpoint) {
 	bpt.updated = breakpoints
 }
 
-func (bpt *breakpointTest) resume() {
+func (bpt *breakpointTest) resume(stepOut bool) {
 	bpt.mu.Lock()
 	defer bpt.mu.Unlock()
 	bpt.resumeCalled = true
+	_ = stepOut
 }
 
 func (bpt *breakpointTest) vars() []map[string]debugVarFunc {
@@ -142,4 +143,73 @@ func TestBreakpointClient_SendPause(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatalf("timeout waiting for server to handle the pause message")
 	}
+}
+
+func TestBreakpoint_Stepover(t *testing.T) {
+	t.Run("stepover", func(t *testing.T) {
+		reg := newBreakpointRegistry()
+		reg.setStepOverMode(true)
+		bp, ok := reg.matches(position{Filename: "foo.js", Line: 1})
+		assert.True(t, ok)
+		assert.Equal(t, breakpoint{File: "foo.js", Line: 1}, bp)
+	})
+
+	t.Run("stepover_off", func(t *testing.T) {
+		reg := newBreakpointRegistry()
+		reg.setStepOverMode(false)
+		_, ok := reg.matches(position{Filename: "foo.js", Line: 1})
+		assert.False(t, ok)
+	})
+
+	t.Run("stepover_off_with_breakpoint", func(t *testing.T) {
+		reg := newBreakpointRegistry()
+		reg.setStepOverMode(false)
+		reg.update([]breakpoint{{File: "foo.js", Line: 1}})
+		bp, ok := reg.matches(position{Filename: "foo.js", Line: 1})
+		assert.True(t, ok)
+		assert.Equal(t, breakpoint{File: "foo.js", Line: 1}, bp)
+	})
+
+	t.Run("pause_stepover_on", func(t *testing.T) {
+		reg := newBreakpointRegistry()
+		reg.setStepOverMode(true)
+
+		bp := breakpoint{File: "foo.js", Line: 1}
+
+		err := make(chan error)
+		go func() {
+			err <- reg.pause(bp, 0, "bar")
+		}()
+		go func() {
+			reg.resume(false)
+		}()
+		select {
+		case err := <-err:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timeout waiting for pause to be called")
+		}
+		require.True(t, reg.stepOverMode)
+	})
+	t.Run("pause_stepover_off", func(t *testing.T) {
+		reg := newBreakpointRegistry()
+		reg.setStepOverMode(true)
+
+		bp := breakpoint{File: "foo.js", Line: 1}
+
+		err := make(chan error)
+		go func() {
+			err <- reg.pause(bp, 0, "bar")
+		}()
+		go func() {
+			reg.resume(true)
+		}()
+		select {
+		case err := <-err:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timeout waiting for pause to be called")
+		}
+		require.False(t, reg.stepOverMode)
+	})
 }
