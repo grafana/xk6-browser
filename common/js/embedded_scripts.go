@@ -24,3 +24,10 @@ var WebVitalInitScript string
 //
 //go:embed selector_engine.js
 var SelectorEngineScript string
+
+// InteractionHighlighterScript embeds a script that will
+// highlight elements that have been interacted with, e.g.
+// when an element has been clicked on.
+//
+//go:embed interaction_highlighter.js
+var InteractionHighlighterScript string

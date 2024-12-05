@@ -76,6 +76,10 @@ const (
 	// the website under test to allow the user to easily find selectors to
 	// the elements that they need for their test.
 	SelectorEngineEnabled = "K6_BROWSER_SELECTOR_ENGINE"
+
+	// ShowInteractionsEnabled when set will highlight the interactions on
+	// the page.
+	ShowInteractionsEnabled = "K6_BROWSER_SHOW_INTERACTIONS"
 )
 
 // Tracing.

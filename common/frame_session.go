@@ -939,6 +939,17 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 			}
 			go addSelectorEngine()
 		}
+		if fs.page.browserCtx.browser.browserOpts.ShowInteractions {
+			addInteractionHighlighter := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.InteractionHighlighterScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding interaction highlighter script: %v", err,
+					)
+				}
+			}
+			go addInteractionHighlighter()
+		}
 
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
