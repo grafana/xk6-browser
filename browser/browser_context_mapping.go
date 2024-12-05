@@ -18,11 +18,15 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 	rt := vu.Runtime()
 	return mapping{
 		"addCookies": func(cookies []*common.Cookie) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, bc.AddCookies(cookies) //nolint:wrapcheck
 			})
 		},
 		"addInitScript": func(script sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				if !sobekValueExists(script) {
 					return nil, nil
@@ -52,20 +56,28 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			})
 		},
 		"browser": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			// the browser is grabbed from VU.
 			return mapBrowser(vu)
 		},
 		"clearCookies": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, bc.ClearCookies() //nolint:wrapcheck
 			})
 		},
 		"clearPermissions": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, bc.ClearPermissions() //nolint:wrapcheck
 			})
 		},
 		"close": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, bc.Close() //nolint:wrapcheck
 			})
@@ -78,6 +90,8 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			})
 		},
 		"grantPermissions": func(permissions []string, opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts, err := exportTo[common.GrantPermissionsOptions](vu.Runtime(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing grant permission options: %w", err)
@@ -89,6 +103,8 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 		"setDefaultNavigationTimeout": bc.SetDefaultNavigationTimeout,
 		"setDefaultTimeout":           bc.SetDefaultTimeout,
 		"setGeolocation": func(geolocation sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			gl, err := exportTo[common.Geolocation](vu.Runtime(), geolocation)
 			if err != nil {
 				return nil, fmt.Errorf("parsing geo location: %w", err)
@@ -98,6 +114,8 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			}), nil
 		},
 		"setHTTPCredentials": func(httpCredentials sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			creds, err := exportTo[common.Credentials](rt, httpCredentials)
 			if err != nil {
 				return nil, fmt.Errorf("parsing HTTP credentials: %w", err)
@@ -107,11 +125,15 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			}), nil
 		},
 		"setOffline": func(offline bool) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, bc.SetOffline(offline) //nolint:wrapcheck
 			})
 		},
 		"waitForEvent": func(event string, optsOrPredicate sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts, err := parseWaitForEventOptions(vu.Runtime(), optsOrPredicate, bc.Timeout())
 			if err != nil {
 				return nil, fmt.Errorf("parsing wait for event options: %w", err)
@@ -162,6 +184,8 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			}), nil
 		},
 		"pages": func() *sobek.Object {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			var (
 				mpages []mapping
 				pages  = bc.Pages()
@@ -177,11 +201,30 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 			return rt.ToValue(mpages).ToObject(rt)
 		},
 		"newPage": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				page, err := bc.NewPage()
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
+				// currently the variable won't be garbage collected. perfect...
+				pageVar := func() (any, error) {
+					uri, err := page.URL()
+					if err != nil {
+						return nil, fmt.Errorf("getting page URL: %w", err)
+					}
+					return struct {
+						URL string `json:"url"`
+					}{
+						URL: uri,
+					}, nil
+				}
+				if err := vu.breakpointRegistry.setVar("page", pageVar); err != nil {
+					return nil, err
+				}
+
 				return mapPage(vu, page), nil
 			})
 		},

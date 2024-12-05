@@ -13,14 +13,20 @@ import (
 func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
 	return mapping{
 		"asElement": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapElementHandle(vu, jsh.AsElement())
 		},
 		"dispose": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, jsh.Dispose()
 			})
 		},
 		"evaluate": func(pageFunc sobek.Value, gargs ...sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			if sobekEmptyString(pageFunc) {
 				return nil, fmt.Errorf("evaluate requires a page function")
 			}
@@ -33,6 +39,8 @@ func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
 			}), nil
 		},
 		"evaluateHandle": func(pageFunc sobek.Value, gargs ...sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			if sobekEmptyString(pageFunc) {
 				return nil, fmt.Errorf("evaluateHandle requires a page function")
 			}
@@ -45,6 +53,8 @@ func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
 			}), nil
 		},
 		"getProperties": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				props, err := jsh.GetProperties()
 				if err != nil {
@@ -59,6 +69,8 @@ func mapJSHandle(vu moduleVU, jsh common.JSHandleAPI) mapping {
 			})
 		},
 		"jsonValue": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return jsh.JSONValue() //nolint:wrapcheck
 			})

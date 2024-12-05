@@ -12,15 +12,18 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 	rt := vu.Runtime()
 	maps := mapping{
 		"allHeaders": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.AllHeaders(), nil
 			})
 		},
 		"frame": func() *sobek.Object {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 			mf := mapFrame(vu, r.Frame())
 			return rt.ToValue(mf).ToObject(rt)
 		},
 		"headerValue": func(name string) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				v, ok := r.HeaderValue(name)
 				if !ok {
@@ -32,6 +35,8 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 		},
 		"headers": r.Headers,
 		"headersArray": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.HeadersArray(), nil
 			})
@@ -39,6 +44,8 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 		"isNavigationRequest": r.IsNavigationRequest,
 		"method":              r.Method,
 		"postData": func() any {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			p := r.PostData()
 			if p == "" {
 				return nil
@@ -46,6 +53,8 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 			return p
 		},
 		"postDataBuffer": func() any {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			p := r.PostDataBuffer()
 			if len(p) == 0 {
 				return nil
@@ -54,6 +63,8 @@ func mapRequest(vu moduleVU, r *common.Request) mapping {
 		},
 		"resourceType": r.ResourceType,
 		"response": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				resp := r.Response()
 				if resp == nil {

@@ -13,6 +13,8 @@ import (
 func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 	return mapping{
 		"context": func() (mapping, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err
@@ -20,6 +22,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return mapBrowserContext(vu, b.Context()), nil
 		},
 		"closeContext": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				b, err := vu.browser()
 				if err != nil {
@@ -29,6 +33,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			})
 		},
 		"isConnected": func() (bool, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return false, err
@@ -59,6 +65,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			}), nil
 		},
 		"userAgent": func() (string, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return "", err
@@ -66,6 +74,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.UserAgent(), nil
 		},
 		"version": func() (string, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return "", err
