@@ -1,7 +1,7 @@
 (() => {
     function highlightInteractedElement(element, color = 'green') {
         if (!element) return;
-        element.style.outline = `2px solid ${color}`;
+        element.style.outline = `4px solid ${color}`;
         element.style.transition = 'outline 0.3s ease-in-out';
 
         setTimeout(() => {
