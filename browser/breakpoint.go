@@ -74,8 +74,7 @@ func newBreakpointRegistry() *breakpointRegistry {
 		// 	Line: 32,
 		// },
 		// },
-		pauser:       make(chan chan struct{}, 1),
-		stepOverMode: true,
+		pauser: make(chan chan struct{}, 1),
 	}
 }
 
