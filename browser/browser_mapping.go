@@ -92,6 +92,22 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 					return nil, err
 				}
 
+				// currently the variable won't be garbage collected. perfect...
+				pageVar := func() (any, error) {
+					uri, err := page.URL()
+					if err != nil {
+						return nil, fmt.Errorf("getting page URL: %w", err)
+					}
+					return struct {
+						URL string `json:"url"`
+					}{
+						URL: uri,
+					}, nil
+				}
+				if err := vu.breakpointRegistry.setVar("page", pageVar); err != nil {
+					return nil, err
+				}
+
 				return mapPage(vu, page), nil
 			}), nil
 		},

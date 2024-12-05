@@ -1,5 +1,5 @@
-import { browser } from 'k6/x/browser/async';
 import { check } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,8 +18,7 @@ export const options = {
 }
 
 export default async function() {
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const page = await browser.newPage();
 
   try {
     // Goto front page, find login link and click it
@@ -47,7 +46,7 @@ export default async function() {
     });
 
     // Check whether we receive cookies from the logged site.
-    await check(context, {
+    await check(browser.context(), {
       'session cookie is set': async ctx => {
         const cookies = await ctx.cookies();
         return cookies.find(c => c.name == 'sid') !== undefined;

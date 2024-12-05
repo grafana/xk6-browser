@@ -32,6 +32,12 @@ func (bpt *breakpointTest) resume() {
 	bpt.resumeCalled = true
 }
 
+func (bpt *breakpointTest) vars() []map[string]debugVarFunc {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
+	return nil // TODO interface pollution
+}
+
 func (bpt *breakpointTest) all() []breakpoint {
 	bpt.mu.Lock()
 	defer bpt.mu.Unlock()

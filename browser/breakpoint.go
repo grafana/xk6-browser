@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,8 @@ Example Run:
 - K6_BROWSER_BREAKPOINT_SERVER_URL=ws://localhost:8080/breakpoint k6 run script.js
 */
 
+type debugVarFunc func() (any, error)
+
 type breakpoint struct {
 	File      string `json:"file"`
 	Line      int    `json:"line"`
@@ -47,19 +50,22 @@ type breakpointRegistry struct {
 	breakpoints   []breakpoint
 	pauser        chan chan struct{}
 	client        *breakpointClient
+
+	muVariables sync.RWMutex
+	variables   []map[string]debugVarFunc
 }
 
 func newBreakpointRegistry() *breakpointRegistry {
 	return &breakpointRegistry{
 		// breakpoints: []breakpoint{
-		// 	{
-		// 		File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-		// 		Line: 26,
-		// 	},
-		// 	{
-		// 		File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
-		// 		Line: 32,
-		// 	},
+		// {
+		// 	File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+		// 	Line: 27,
+		// },
+		// {
+		// 	File: "file:///Users/inanc/grafana/k6browser/main/examples/fillform.js",
+		// 	Line: 32,
+		// },
 		// },
 		pauser: make(chan chan struct{}, 1),
 	}
@@ -67,7 +73,7 @@ func newBreakpointRegistry() *breakpointRegistry {
 
 // isActive is a hacky way to see whether the breakpoints are enabled or not.
 func (br *breakpointRegistry) isActive() bool {
-	return br.client != nil
+	return br != nil && br.client != nil
 }
 
 func (br *breakpointRegistry) update(breakpoints []breakpoint) {
@@ -110,11 +116,42 @@ func (br *breakpointRegistry) resume() {
 	close(c)
 }
 
+// setVar adds a variable to the registry.
+// This is used to show the variable values when a breakpoint is hit.
+// It currently doesn't support stack-scoped variables.
+// We're currently hacking and mixing the responsibilities of the
+// breakpointRegistry. It's a good example how to not design software.
+func (br *breakpointRegistry) setVar(name string, value debugVarFunc) error {
+	if !br.isActive() {
+		return nil
+	}
+
+	br.muVariables.Lock()
+	defer br.muVariables.Unlock()
+
+	br.variables = append(br.variables, map[string]debugVarFunc{
+		name: value,
+	})
+
+	return nil
+}
+
+func (br *breakpointRegistry) vars() []map[string]debugVarFunc {
+	if !br.isActive() {
+		return nil
+	}
+
+	br.muVariables.RLock()
+	defer br.muVariables.RUnlock()
+
+	return slices.Clone(br.variables)
+}
+
 // pauseOnBreakpoint is a helper that pauses the script execution
 // when a breakpoint is hit in the script.
 func pauseOnBreakpoint(vu moduleVU) {
 	bp := vu.breakpointRegistry
-	if bp == nil { // breakpoints are disabled
+	if !bp.isActive() {
 		return
 	}
 
@@ -134,6 +171,7 @@ func pauseOnBreakpoint(vu moduleVU) {
 
 type breakpointUpdateResumer interface {
 	update(breakpoints []breakpoint)
+	vars() []map[string]debugVarFunc
 	resume()
 }
 
@@ -217,6 +255,10 @@ func (bc *breakpointClient) handleResume() {
 }
 
 func (bc *breakpointClient) sendPause(b breakpoint, column int, funcName string) error {
+	type variable struct {
+		Name  string `json:"name"`
+		Value any    `json:"value"`
+	}
 	envelope := map[string]interface{}{
 		"event": "pause",
 		"location": map[string]interface{}{
@@ -226,6 +268,17 @@ func (bc *breakpointClient) sendPause(b breakpoint, column int, funcName string)
 			"funcName": funcName,
 		},
 	}
+	var vars []variable
+	for _, v := range bc.registry.vars() {
+		for name, value := range v {
+			updatedVar, err := value()
+			if err != nil {
+				return fmt.Errorf("refreshing variable %q: %w", name, err)
+			}
+			vars = append(vars, variable{name, updatedVar})
+		}
+	}
+	envelope["vars"] = vars
 
 	message, err := json.Marshal(envelope)
 	if err != nil {
@@ -255,3 +308,32 @@ func parseBreakpointServerURL(envLookup env.LookupFunc) string {
 	v, _ := envLookup(env.BreakpointServerURL)
 	return strings.TrimSpace(v)
 }
+
+// func (bc *breakpointClient) sendVars() error {
+// 	for name, value := range bc.registry.vars() {
+// 		if err := bc.sendVar(name, value); err != nil {
+// 			return fmt.Errorf("sending variable %q: %w", name, err)
+// 		}
+// 	}
+// 	return nil
+// }
+
+// func (bc *breakpointClient) sendVar(name string, value any) error {
+// 	envelope := map[string]any{
+// 		"event": "add_variable",
+// 		"variable": map[string]any{
+// 			"name":  name,
+// 			"value": value,
+// 		},
+// 	}
+
+// 	message, err := json.Marshal(envelope)
+// 	if err != nil {
+// 		return fmt.Errorf("breakpointClient: marshaling add variable message: %w", err)
+// 	}
+// 	if err := bc.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+// 		return fmt.Errorf("breakpointClient: sending add variable message: %w", err)
+// 	}
+
+// 	return nil
+// }
