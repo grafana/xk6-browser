@@ -274,6 +274,10 @@ func (bc *breakpointClient) listen() {
 		case "step_over":
 			bc.registry.setStepOverMode(true)
 			bc.registry.resume(false)
+		case "terminate":
+			log.Print("terminated")
+			bc.registry.resume(false)
+			bc.close()
 		default:
 			log.Printf("breakpointClient: unknown command: %s", envelope.Command)
 		}
