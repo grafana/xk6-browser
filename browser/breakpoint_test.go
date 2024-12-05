@@ -39,6 +39,12 @@ func (bpt *breakpointTest) vars() []map[string]debugVarFunc {
 	return nil // TODO interface pollution
 }
 
+func (bpt *breakpointTest) setStepOverMode(on bool) {
+	bpt.mu.Lock()
+	defer bpt.mu.Unlock()
+	_ = on
+}
+
 func (bpt *breakpointTest) all() []breakpoint {
 	bpt.mu.Lock()
 	defer bpt.mu.Unlock()

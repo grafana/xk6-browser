@@ -208,6 +208,7 @@ type breakpointUpdateResumer interface {
 	update(breakpoints []breakpoint)
 	vars() []map[string]debugVarFunc
 	resume(stepOut bool)
+	setStepOverMode(on bool)
 }
 
 type breakpointClient struct {
@@ -270,6 +271,8 @@ func (bc *breakpointClient) listen() {
 			bc.updateBreakpoints(envelope.Data)
 		case "resume":
 			bc.handleResume()
+		case "step_over":
+			bc.registry.setStepOverMode(true)
 		default:
 			log.Printf("breakpointClient: unknown command: %s", envelope.Command)
 		}
