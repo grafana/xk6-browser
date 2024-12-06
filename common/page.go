@@ -21,6 +21,7 @@ import (
 	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/target"
 	"github.com/grafana/sobek"
+	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -37,6 +38,7 @@ const BlankPage = "about:blank"
 type PageOnEventName string
 
 const webVitalBinding = "k6browserSendWebVitalMetric"
+const interactionBinding = "k6browserInteractionOccurred"
 
 const (
 	// EventPageConsoleAPICalled represents the page.on('console') event.
@@ -235,6 +237,12 @@ type Page struct {
 	vu               k6modules.VU
 
 	logger *log.Logger
+
+	interactionCount int64
+	sp               ScreenshotPersister
+	scriptName       string
+	tq               *taskqueue.TaskQueue
+	tqSet            bool
 }
 
 // NewPage creates a new browser page context.
@@ -306,11 +314,29 @@ func NewPage(
 		return nil, fmt.Errorf("internal error while adding binding to page: %w", err)
 	}
 
+	add = runtime.AddBinding(interactionBinding)
+	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+		return nil, fmt.Errorf("internal error while adding interaction binding to page: %w", err)
+	}
+
 	if err := bctx.applyAllInitScripts(&p); err != nil {
 		return nil, fmt.Errorf("internal error while applying init scripts to page: %w", err)
 	}
 
 	return &p, nil
+}
+
+func (p *Page) SetScreenshotPersister(sp ScreenshotPersister) {
+	p.sp = sp
+}
+
+func (p *Page) SetScriptName(scriptName string) {
+	p.scriptName = scriptName
+}
+
+func (p *Page) SetTaskQueue(tq *taskqueue.TaskQueue) {
+	p.tq = tq
+	p.tqSet = true
 }
 
 func (p *Page) initEvents() {
@@ -865,7 +891,14 @@ func (p *Page) Close(_ sobek.Value) error {
 		p.logger.Warnf("Page:Close", "failed to hide page: %v", err)
 	}
 
-	add := runtime.RemoveBinding(webVitalBinding)
+	add := runtime.RemoveBinding(interactionBinding)
+	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
+		err := fmt.Errorf("internal error while removing interaction binding from page: %w", err)
+		spanRecordError(span, err)
+		return err
+	}
+
+	add = runtime.RemoveBinding(webVitalBinding)
 	if err := add.Do(cdp.WithExecutor(p.ctx, p.session)); err != nil {
 		err := fmt.Errorf("internal error while removing binding from page: %w", err)
 		spanRecordError(span, err)

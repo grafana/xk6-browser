@@ -1,5 +1,5 @@
-import { browser } from 'k6/x/browser/async';
 import { check } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
+import { browser } from 'k6/x/browser/async';
 
 export const options = {
   scenarios: {
@@ -18,16 +18,14 @@ export const options = {
 }
 
 export default async function() {
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const page = await browser.newPage();
 
   try {
     // Goto front page, find login link and click it
     await page.goto('https://test.k6.io/', { waitUntil: 'networkidle' });
-    await Promise.all([
-      page.waitForNavigation(),
-      page.locator('a[href="/my_messages.php"]').click(),
-    ]);
+
+    await page.locator('a[href="/my_messages.php"]').click()
+    await page.waitForSelector('input[name="login"]')
 
     // Enter login credentials and login
     await page.locator('input[name="login"]').type('admin');
@@ -37,7 +35,7 @@ export default async function() {
     // race condition, setup a waiter concurrently while waiting for the click
     // to resolve.
     await Promise.all([
-      page.waitForNavigation(),
+      page.waitForNavigation(), // TODO: Removing Promise.all should work
       page.locator('input[type="submit"]').click(),
     ]);
 
@@ -48,7 +46,7 @@ export default async function() {
     });
 
     // Check whether we receive cookies from the logged site.
-    await check(context, {
+    await check(browser.context(), {
       'session cookie is set': async ctx => {
         const cookies = await ctx.cookies();
         return cookies.find(c => c.name == 'sid') !== undefined;

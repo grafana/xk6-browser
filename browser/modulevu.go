@@ -18,6 +18,7 @@ type moduleVU struct {
 
 	*pidRegistry
 	*browserRegistry
+	*breakpointRegistry
 
 	*taskQueueRegistry
 

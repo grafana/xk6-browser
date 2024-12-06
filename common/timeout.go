@@ -1,6 +1,8 @@
 package common
 
-import "time"
+import (
+	"time"
+)
 
 // TimeoutSettings holds information on timeout settings.
 type TimeoutSettings struct {

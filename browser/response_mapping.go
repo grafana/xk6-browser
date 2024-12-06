@@ -14,11 +14,15 @@ func mapResponse(vu moduleVU, r *common.Response) mapping { //nolint:funlen
 	}
 	maps := mapping{
 		"allHeaders": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.AllHeaders(), nil
 			})
 		},
 		"body": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				body, err := r.Body()
 				if err != nil {
@@ -29,9 +33,13 @@ func mapResponse(vu moduleVU, r *common.Response) mapping { //nolint:funlen
 			})
 		},
 		"frame": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapFrame(vu, r.Frame())
 		},
 		"headerValue": func(name string) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				v, ok := r.HeaderValue(name)
 				if !ok {
@@ -41,36 +49,50 @@ func mapResponse(vu moduleVU, r *common.Response) mapping { //nolint:funlen
 			})
 		},
 		"headerValues": func(name string) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.HeaderValues(name), nil
 			})
 		},
 		"headers": r.Headers,
 		"headersArray": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.HeadersArray(), nil
 			})
 		},
 		"json": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.JSON() //nolint: wrapcheck
 			})
 		},
 		"ok": r.Ok,
 		"request": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapRequest(vu, r.Request())
 		},
 		"securityDetails": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.SecurityDetails(), nil
 			})
 		},
 		"serverAddr": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.ServerAddr(), nil
 			})
 		},
 		"size": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.Size(), nil
 			})
@@ -79,6 +101,8 @@ func mapResponse(vu moduleVU, r *common.Response) mapping { //nolint:funlen
 		"statusText": r.StatusText,
 		"url":        r.URL,
 		"text": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return r.Text() //nolint:wrapcheck
 			})

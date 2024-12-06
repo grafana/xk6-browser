@@ -2,6 +2,7 @@ package browser
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/grafana/sobek"
 
@@ -13,6 +14,8 @@ import (
 func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 	return mapping{
 		"context": func() (mapping, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return nil, err
@@ -20,6 +23,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return mapBrowserContext(vu, b.Context()), nil
 		},
 		"closeContext": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				b, err := vu.browser()
 				if err != nil {
@@ -29,6 +34,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			})
 		},
 		"isConnected": func() (bool, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return false, err
@@ -36,6 +43,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.IsConnected(), nil
 		},
 		"newContext": func(opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newContext options: %w", err)
@@ -57,6 +66,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			}), nil
 		},
 		"userAgent": func() (string, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return "", err
@@ -64,6 +75,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.UserAgent(), nil
 		},
 		"version": func() (string, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			b, err := vu.browser()
 			if err != nil {
 				return "", err
@@ -71,6 +84,13 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 			return b.Version(), nil
 		},
 		"newPage": func(opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
+			pos := getCurrentLineNumber(vu.Runtime())
+			fileNameWithExt := filepath.Base(pos.Filename)
+			fileExt := filepath.Ext(pos.Filename)
+			fileNameWithoutExt := fileNameWithExt[:len(fileNameWithExt)-len(fileExt)]
+
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newPage options: %w", err)
@@ -88,6 +108,26 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 					return nil, err
 				}
 
+				// currently the variable won't be garbage collected. perfect...
+				pageVar := func() (any, error) {
+					uri, err := page.URL()
+					if err != nil {
+						return nil, fmt.Errorf("getting page URL: %w", err)
+					}
+					return struct {
+						URL string `json:"url"`
+					}{
+						URL: uri,
+					}, nil
+				}
+				if err := vu.breakpointRegistry.setVar("page", pageVar); err != nil {
+					return nil, err
+				}
+
+				tq := vu.taskQueueRegistry.get(vu.Context(), page.TargetID())
+				page.SetScreenshotPersister(vu.filePersister)
+				page.SetScriptName(fileNameWithoutExt)
+				page.SetTaskQueue(tq)
 				return mapPage(vu, page), nil
 			}), nil
 		},
