@@ -88,6 +88,8 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 
 			pos := getCurrentLineNumber(vu.Runtime())
 			fileNameWithExt := filepath.Base(pos.Filename)
+			fileExt := filepath.Ext(pos.Filename)
+			fileNameWithoutExt := fileNameWithExt[:len(fileNameWithExt)-len(fileExt)]
 
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {
@@ -124,7 +126,7 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 
 				tq := vu.taskQueueRegistry.get(vu.Context(), page.TargetID())
 				page.SetScreenshotPersister(vu.filePersister)
-				page.SetScriptName(fileNameWithExt)
+				page.SetScriptName(fileNameWithoutExt)
 				page.SetTaskQueue(tq)
 				return mapPage(vu, page), nil
 			}), nil

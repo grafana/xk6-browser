@@ -42,8 +42,6 @@
         label.dataset.targetElementId = getElementUniqueId(element);
 
         document.body.appendChild(label);
-
-        window.k6browserInteractionOccurred(JSON.stringify({ interactionCount: 1 }))
     }
 
     // Generate a unique ID for each element

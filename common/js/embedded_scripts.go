@@ -31,3 +31,10 @@ var SelectorEngineScript string
 //
 //go:embed interaction_highlighter.js
 var InteractionHighlighterScript string
+
+// AutoScreenshotSignalScript embeds a script that will
+// signal when the script has loaded and when an
+// interaction on the page occurs.
+//
+//go:embed auto_screenshot.js
+var AutoScreenshotSignalScript string

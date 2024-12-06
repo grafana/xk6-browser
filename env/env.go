@@ -80,6 +80,10 @@ const (
 	// ShowInteractionsEnabled when set will highlight the interactions on
 	// the page.
 	ShowInteractionsEnabled = "K6_BROWSER_SHOW_INTERACTIONS"
+
+	// AutoScreenshotEnabled will attempt to take screenshot when the page
+	// loads and when an interaction on the page occurs.
+	AutoScreenshotEnabled = "K6_BROWSER_AUTO_SCREENSHOT"
 )
 
 // Tracing.

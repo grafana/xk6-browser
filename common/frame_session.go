@@ -325,16 +325,17 @@ func (fs *FrameSession) onEventBindingCalled(event *cdpruntime.EventBindingCalle
 			fs.logger.Errorf("FrameSession:onEventBindingCalled", "failed to emit web vital metric: %v", err)
 		}
 	} else if event.Name == interactionBinding {
-		fs.autoScreenshot(event, true)
+		fs.autoScreenshot(event)
 	}
 }
 
-func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled, isInteract bool) {
+func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled) {
 	fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called")
 	fs.page.tq.Queue(func() error {
 		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called on tq")
 		i := struct {
-			InteractionCount json.Number `json:"interactionCount"`
+			Interact bool
+			Load     bool
 		}{}
 
 		if err := json.Unmarshal([]byte(event.Payload), &i); err != nil {
@@ -342,29 +343,23 @@ func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled, isI
 			return nil
 		}
 
-		c, err := i.InteractionCount.Int64()
-		if err != nil {
-			fs.logger.Errorf("FrameSession:autoScreenshot", "interaction count couldn't be parsed: %v", err)
-			return nil
-		}
-
-		fs.page.interactionCount += c
+		fs.page.interactionCount++
 
 		o := NewPageScreenshotOptions()
-		if isInteract {
+		if i.Interact {
 			o.Path = fmt.Sprintf("%s_%d_interact.png", fs.page.scriptName, fs.page.interactionCount)
 		} else {
 			o.Path = fmt.Sprintf("%s_%d_navigate.png", fs.page.scriptName, fs.page.interactionCount)
 		}
 
 		fs.logger.Debugf("FrameSession:autoScreenshot", "auto screenshot saved to: %s", o.Path)
-		_, err = fs.page.Screenshot(o, fs.page.sp)
+		_, err := fs.page.Screenshot(o, fs.page.sp)
 		if err != nil {
 			fs.logger.Errorf("FrameSession:autoScreenshot", "failed to take auto screenshot: %v", err)
 			return nil
 		}
 
-		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called with count: %s", i.InteractionCount.String())
+		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called with count: %d", fs.page.interactionCount)
 		return nil
 	})
 }
@@ -994,19 +989,21 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 			}
 			go addInteractionHighlighter()
 		}
+		// I think we only want to add auto screenshots on the main frame.
+		if fs.isMainFrame() && fs.page.browserCtx.browser.browserOpts.AutoScreenshot {
+			addAutoScreenshotSignal := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.AutoScreenshotSignalScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding auto screenshot signal script: %v", err,
+					)
+				}
+			}
+			go addAutoScreenshotSignal()
+		}
 
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
-		if fs.isMainFrame() {
-			go func() {
-				time.Sleep(500 * time.Millisecond)
-
-				fs.autoScreenshot(&cdpruntime.EventBindingCalled{
-					Name:    interactionBinding,
-					Payload: `{ "interactionCount": 1 }`,
-				}, false)
-			}()
-		}
 	}
 }
 

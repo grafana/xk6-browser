@@ -32,6 +32,7 @@ type BrowserOptions struct {
 	DevTools         bool
 	SelectorEngine   bool
 	ShowInteractions bool
+	AutoScreenshot   bool
 
 	isRemoteBrowser bool // some options will be ignored if browser is in a remote machine
 }
@@ -85,6 +86,7 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 		env.DevToolsEnabled,
 		env.SelectorEngineEnabled,
 		env.ShowInteractionsEnabled,
+		env.AutoScreenshotEnabled,
 	}
 
 	for _, e := range envOpts {
@@ -108,6 +110,8 @@ func (bo *BrowserOptions) Parse( //nolint:cyclop
 			bo.SelectorEngine, err = parseBoolOpt(e, ev)
 		case env.ShowInteractionsEnabled:
 			bo.ShowInteractions, err = parseBoolOpt(e, ev)
+		case env.AutoScreenshotEnabled:
+			bo.AutoScreenshot, err = parseBoolOpt(e, ev)
 		case env.BrowserExecutablePath:
 			bo.ExecutablePath = ev
 		case env.BrowserHeadless:
