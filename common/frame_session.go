@@ -334,8 +334,7 @@ func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled) {
 	fs.page.tq.Queue(func() error {
 		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called on tq")
 		i := struct {
-			Interact bool
-			Load     bool
+			Event string `json:"event"`
 		}{}
 
 		if err := json.Unmarshal([]byte(event.Payload), &i); err != nil {
@@ -346,10 +345,11 @@ func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled) {
 		fs.page.interactionCount++
 
 		o := NewPageScreenshotOptions()
-		if i.Interact {
-			o.Path = fmt.Sprintf("%s_%d_interact.png", fs.page.scriptName, fs.page.interactionCount)
-		} else {
+		switch i.Event {
+		case "domcontentloaded":
 			o.Path = fmt.Sprintf("%s_%d_navigate.png", fs.page.scriptName, fs.page.interactionCount)
+		case "interact":
+			o.Path = fmt.Sprintf("%s_%d_interact.png", fs.page.scriptName, fs.page.interactionCount)
 		}
 
 		fs.logger.Debugf("FrameSession:autoScreenshot", "auto screenshot saved to: %s", o.Path)
