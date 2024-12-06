@@ -319,10 +319,54 @@ func (fs *FrameSession) onEventBindingCalled(event *cdpruntime.EventBindingCalle
 		"sid:%v tid:%v name:%s payload:%s",
 		fs.session.ID(), fs.targetID, event.Name, event.Payload)
 
-	err := fs.parseAndEmitWebVitalMetric(event.Payload)
-	if err != nil {
-		fs.logger.Errorf("FrameSession:onEventBindingCalled", "failed to emit web vital metric: %v", err)
+	if event.Name == webVitalBinding {
+		err := fs.parseAndEmitWebVitalMetric(event.Payload)
+		if err != nil {
+			fs.logger.Errorf("FrameSession:onEventBindingCalled", "failed to emit web vital metric: %v", err)
+		}
+	} else if event.Name == interactionBinding {
+		fs.autoScreenshot(event, true)
 	}
+}
+
+func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled, isInteract bool) {
+	fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called")
+	fs.page.tq.Queue(func() error {
+		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called on tq")
+		i := struct {
+			InteractionCount json.Number `json:"interactionCount"`
+		}{}
+
+		if err := json.Unmarshal([]byte(event.Payload), &i); err != nil {
+			fs.logger.Errorf("FrameSession:autoScreenshot", "interaction binding json couldn't be parsed: %v", err)
+			return nil
+		}
+
+		c, err := i.InteractionCount.Int64()
+		if err != nil {
+			fs.logger.Errorf("FrameSession:autoScreenshot", "interaction count couldn't be parsed: %v", err)
+			return nil
+		}
+
+		fs.page.interactionCount += c
+
+		o := NewPageScreenshotOptions()
+		if isInteract {
+			o.Path = fmt.Sprintf("%s_%d_interact.png", fs.page.scriptName, fs.page.interactionCount)
+		} else {
+			o.Path = fmt.Sprintf("%s_%d_navigate.png", fs.page.scriptName, fs.page.interactionCount)
+		}
+
+		fs.logger.Debugf("FrameSession:autoScreenshot", "auto screenshot saved to: %s", o.Path)
+		_, err = fs.page.Screenshot(o, fs.page.sp)
+		if err != nil {
+			fs.logger.Errorf("FrameSession:autoScreenshot", "failed to take auto screenshot: %v", err)
+			return nil
+		}
+
+		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called with count: %s", i.InteractionCount.String())
+		return nil
+	})
 }
 
 func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
@@ -953,6 +997,16 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
+		if fs.isMainFrame() {
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+
+				fs.autoScreenshot(&cdpruntime.EventBindingCalled{
+					Name:    interactionBinding,
+					Payload: `{ "interactionCount": 1 }`,
+				}, false)
+			}()
+		}
 	}
 }
 

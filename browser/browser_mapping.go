@@ -2,6 +2,7 @@ package browser
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/grafana/sobek"
 
@@ -85,6 +86,9 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 		"newPage": func(opts sobek.Value) (*sobek.Promise, error) {
 			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
+			pos := getCurrentLineNumber(vu.Runtime())
+			fileNameWithExt := filepath.Base(pos.Filename)
+
 			popts, err := parseBrowserContextOptions(vu.Runtime(), opts)
 			if err != nil {
 				return nil, fmt.Errorf("parsing browser.newPage options: %w", err)
@@ -118,6 +122,10 @@ func mapBrowser(vu moduleVU) mapping { //nolint:funlen,cyclop,gocognit
 					return nil, err
 				}
 
+				tq := vu.taskQueueRegistry.get(vu.Context(), page.TargetID())
+				page.SetScreenshotPersister(vu.filePersister)
+				page.SetScriptName(fileNameWithExt)
+				page.SetTaskQueue(tq)
 				return mapPage(vu, page), nil
 			}), nil
 		},

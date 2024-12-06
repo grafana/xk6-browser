@@ -9,7 +9,6 @@
 
         // Highlight the element with an outline
         element.style.outline = `2px solid ${color}`;
-        element.style.transition = 'outline 0.3s ease-in-out';
 
         // Create a new label showing the interaction count
         const label = document.createElement('span');
@@ -43,6 +42,8 @@
         label.dataset.targetElementId = getElementUniqueId(element);
 
         document.body.appendChild(label);
+
+        window.k6browserInteractionOccurred(JSON.stringify({ interactionCount: 1 }))
     }
 
     // Generate a unique ID for each element
