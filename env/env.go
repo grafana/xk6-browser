@@ -84,6 +84,10 @@ const (
 	// AutoScreenshotEnabled will attempt to take screenshot when the page
 	// loads and when an interaction on the page occurs.
 	AutoScreenshotEnabled = "K6_BROWSER_AUTO_SCREENSHOT"
+
+	// CaptureVideo will capture the single vu single iteration of a test
+	// and save it as a video.
+	CaptureVideo = "K6_BROWSER_CAPTURE_VIDEO"
 )
 
 // Tracing.

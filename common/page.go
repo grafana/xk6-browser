@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -243,6 +244,9 @@ type Page struct {
 	scriptName       string
 	tq               *taskqueue.TaskQueue
 	tqSet            bool
+
+	videoCaptureMu sync.RWMutex
+	videoCapture   *videocapture
 }
 
 // NewPage creates a new browser page context.
@@ -326,12 +330,119 @@ func NewPage(
 	return &p, nil
 }
 
+// CaptureVideo will start a screen cast of the current page and save it to specified file.
+func (p *Page) CaptureVideo(opts *VideoCaptureOptions) error {
+	p.videoCaptureMu.RLock()
+	defer p.videoCaptureMu.RUnlock()
+
+	if p.videoCapture != nil {
+		return fmt.Errorf("ongoing video capture")
+	}
+
+	vc, err := newVideoCapture(p.ctx, p.logger, *opts)
+	if err != nil {
+		return fmt.Errorf("creating video capture: %w", err)
+	}
+	p.videoCapture = vc
+
+	err = p.session.ExecuteWithoutExpectationOnReply(
+		p.ctx,
+		cdppage.CommandStartScreencast,
+		cdppage.StartScreencastParams{
+			Format:        "png",
+			Quality:       opts.Quality,
+			MaxWidth:      opts.MaxWidth,
+			MaxHeight:     opts.MaxHeight,
+			EveryNthFrame: opts.EveryNthFrame,
+		},
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("starting screen cast %w", err)
+	}
+
+	return nil
+}
+
+// StopVideoCapture stops any ongoing screen capture. In none is ongoing, is nop
+func (p *Page) StopVideoCapture() error {
+	p.videoCaptureMu.RLock()
+	defer p.videoCaptureMu.RUnlock()
+
+	if p.videoCapture == nil {
+		return nil
+	}
+
+	err := p.session.ExecuteWithoutExpectationOnReply(
+		context.Background(),
+		cdppage.CommandStopScreencast,
+		nil,
+		nil,
+	)
+	// don't return error to allow video to be recorded
+	if err != nil {
+		p.logger.Errorf("Page:StopVideoCapture", "sid:%v error:%v", p.sessionID(), err)
+	}
+
+	// prevent any pending frame to be sent to video capture while closing it
+	vc := p.videoCapture
+	p.videoCapture = nil
+
+	return vc.Close(p.ctx)
+}
+
+func (p *Page) onScreencastFrame(event *page.EventScreencastFrame) {
+	p.videoCaptureMu.RLock()
+	defer p.videoCaptureMu.RUnlock()
+
+	if p.videoCapture != nil {
+		err := p.session.ExecuteWithoutExpectationOnReply(
+			p.ctx,
+			cdppage.CommandScreencastFrameAck,
+			cdppage.ScreencastFrameAckParams{SessionID: event.SessionID},
+			nil,
+		)
+		if err != nil {
+			p.logger.Debugf("Page:onScreenCastFrame", "frame ack:%v", err)
+			return
+		}
+
+		frameData := make([]byte, base64.StdEncoding.DecodedLen(len(event.Data)))
+		_, err = base64.StdEncoding.Decode(frameData, []byte(event.Data))
+		if err != nil {
+			p.logger.Debugf("Page:onScreenCastFrame", "decoding frame :%v", err)
+		}
+		//content := base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer([]byte(event.Data)))
+		err = p.videoCapture.handleFrame(
+			p.ctx,
+			&VideoFrame{
+				Content:   frameData,
+				Timestamp: event.Metadata.Timestamp.Time().UnixMilli(),
+			},
+		)
+		if err != nil {
+			p.logger.Debugf("Page:onScreenCastFrame", "handling frame :%v", err)
+		}
+	}
+}
+
 func (p *Page) SetScreenshotPersister(sp ScreenshotPersister) {
 	p.sp = sp
 }
 
 func (p *Page) SetScriptName(scriptName string) {
 	p.scriptName = scriptName
+
+	if p.browserCtx.browser.browserOpts.CaptureVideo {
+		o := NewVideoCaptureOptions()
+		o.Path = fmt.Sprintf("%s_screen_recording.webm", p.scriptName)
+		p.CaptureVideo(o)
+		go func() {
+			<-p.ctx.Done()
+
+			p.StopVideoCapture()
+		}()
+	}
 }
 
 func (p *Page) SetTaskQueue(tq *taskqueue.TaskQueue) {
@@ -345,6 +456,7 @@ func (p *Page) initEvents() {
 
 	events := []string{
 		cdproto.EventRuntimeConsoleAPICalled,
+		cdproto.EventPageScreencastFrame,
 	}
 	p.session.on(p.ctx, events, p.eventCh)
 
@@ -367,8 +479,18 @@ func (p *Page) initEvents() {
 					"sid:%v tid:%v", p.session.ID(), p.targetID)
 				return
 			case event := <-p.eventCh:
-				if ev, ok := event.data.(*cdpruntime.EventConsoleAPICalled); ok {
-					p.onConsoleAPICalled(ev)
+				p.logger.Debugf("Page:initEvents:event",
+					"sid:%v tid:%v event:%s eventDataType:%T", p.session.ID(), p.targetID, event.typ, event.data)
+
+				switch event.typ {
+				case cdproto.EventPageScreencastFrame:
+					if ev, ok := event.data.(*page.EventScreencastFrame); ok {
+						p.onScreencastFrame(ev)
+					}
+				case cdproto.EventRuntimeConsoleAPICalled:
+					if ev, ok := event.data.(*cdpruntime.EventConsoleAPICalled); ok {
+						p.onConsoleAPICalled(ev)
+					}
 				}
 			}
 		}
