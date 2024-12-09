@@ -114,7 +114,23 @@ class CSSQueryEngine {
 
 class TextQueryEngine {
   queryAll(root, selector) {
-    return root.queryAll(selector);
+    // Remove the `text=` prefix if present
+    const text = selector.startsWith('text=') ? selector.slice(5) : selector;
+
+    // Query all elements within the root
+    const elements = Array.from(root.querySelectorAll('*'));
+
+    // Filter elements based on their text content
+    const e = elements.filter((element) => {
+      const elementText = element.textContent.trim();
+      return elementText.includes(text);
+    });
+
+    if (e.length > 0) {
+      return [e[0]]
+    }
+
+    return e
   }
 }
 
@@ -215,7 +231,7 @@ class RoleQueryEngine {
       dialog: ["dialog"],
       img: ["img[alt]"],
       form: ["form"],
-      textbox: ["input[type='text']", "textarea"],
+      textbox: ["input[type='text']", "input[type='email']", "input[type='password']", "textarea"],
       radio: ["input[type='radio']"],
       // Add more implicit roles as needed
     };
