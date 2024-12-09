@@ -435,7 +435,7 @@ func (p *Page) SetScriptName(scriptName string) {
 
 	if p.browserCtx.browser.browserOpts.CaptureVideo {
 		o := NewVideoCaptureOptions()
-		o.Path = fmt.Sprintf("%s_screen_recording.webm", p.scriptName)
+		o.Path = fmt.Sprintf("%s_page_%d_screen_recording.webm", p.scriptName, len(p.browserCtx.Pages()))
 		p.CaptureVideo(o)
 		go func() {
 			<-p.ctx.Done()

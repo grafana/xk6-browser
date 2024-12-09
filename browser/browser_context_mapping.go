@@ -3,6 +3,7 @@ package browser
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -134,6 +135,11 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 		"waitForEvent": func(event string, optsOrPredicate sobek.Value) (*sobek.Promise, error) {
 			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
 
+			pos := getCurrentLineNumber(vu.Runtime())
+			fileNameWithExt := filepath.Base(pos.Filename)
+			fileExt := filepath.Ext(pos.Filename)
+			fileNameWithoutExt := fileNameWithExt[:len(fileNameWithExt)-len(fileExt)]
+
 			popts, err := parseWaitForEventOptions(vu.Runtime(), optsOrPredicate, bc.Timeout())
 			if err != nil {
 				return nil, fmt.Errorf("parsing wait for event options: %w", err)
@@ -179,6 +185,11 @@ func mapBrowserContext(vu moduleVU, bc *common.BrowserContext) mapping { //nolin
 				if !ok {
 					panicIfFatalError(ctx, fmt.Errorf("response object is not a page: %w", k6error.ErrFatal))
 				}
+
+				tq := vu.taskQueueRegistry.get(vu.Context(), p.TargetID())
+				p.SetScreenshotPersister(vu.filePersister)
+				p.SetScriptName(fileNameWithoutExt)
+				p.SetTaskQueue(tq)
 
 				return mapPage(vu, p), nil
 			}), nil
