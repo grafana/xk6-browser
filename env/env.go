@@ -63,6 +63,31 @@ const (
 	// filter the browser logs based on their category. It supports
 	// regular expressions.
 	LogCategoryFilter = "K6_BROWSER_LOG_CATEGORY_FILTER"
+
+	// BreakpointServerURL is an environment variable that can be used to
+	// set the URL of the breakpoint server.
+	BreakpointServerURL = "K6_BROWSER_BREAKPOINT_SERVER_URL"
+
+	// DevToolsEnabled when set will enable the dev tools window in chrome
+	// when the test is ran.
+	DevToolsEnabled = "K6_BROWSER_DEVTOOLS"
+
+	// SelectorEngineEnabled when set will inject the selector engine into
+	// the website under test to allow the user to easily find selectors to
+	// the elements that they need for their test.
+	SelectorEngineEnabled = "K6_BROWSER_SELECTOR_ENGINE"
+
+	// ShowInteractionsEnabled when set will highlight the interactions on
+	// the page.
+	ShowInteractionsEnabled = "K6_BROWSER_SHOW_INTERACTIONS"
+
+	// AutoScreenshotEnabled will attempt to take screenshot when the page
+	// loads and when an interaction on the page occurs.
+	AutoScreenshotEnabled = "K6_BROWSER_AUTO_SCREENSHOT"
+
+	// CaptureVideo will capture the single vu single iteration of a test
+	// and save it as a video.
+	CaptureVideo = "K6_BROWSER_CAPTURE_VIDEO"
 )
 
 // Tracing.

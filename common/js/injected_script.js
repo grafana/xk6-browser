@@ -114,7 +114,23 @@ class CSSQueryEngine {
 
 class TextQueryEngine {
   queryAll(root, selector) {
-    return root.queryAll(selector);
+    // Remove the `text=` prefix if present
+    const text = selector.startsWith('text=') ? selector.slice(5) : selector;
+
+    // Query all elements within the root
+    const elements = Array.from(root.querySelectorAll('*'));
+
+    // Filter elements based on their text content
+    const e = elements.filter((element) => {
+      const elementText = element.textContent.trim();
+      return elementText.includes(text);
+    });
+
+    if (e.length > 0) {
+      return [e[0]]
+    }
+
+    return e
   }
 }
 
@@ -154,6 +170,99 @@ class XPathQueryEngine {
     return result;
   }
 }
+
+class RoleQueryEngine {
+  queryAll(root, selector) {
+    const [role, ...filters] = selector.split("[");
+    const filterOptions = this.parseFilters(filters.join("["));
+
+    // Get all elements matching the role or implicit role
+    const matchingElements = Array.from(root.querySelectorAll(`[role="${role}"]`))
+      .concat(this.getImplicitRoleElements(root, role));
+
+    // Filter elements by accessible name and other filters
+    return matchingElements.filter((el) => this.matchFilters(el, filterOptions));
+  }
+
+  // Parse filters like `name=Submit`, `level=2`, etc.
+  parseFilters(filterString) {
+    const filters = {};
+    const regex = /(\w+)=("[^"]*"|'[^']*'|\S+)/g; // Match key=value pairs with or without quotes
+    let match;
+
+    while ((match = regex.exec(filterString)) !== null) {
+        const key = match[1];
+        const value = match[2];
+
+        // Validate that the value is enclosed in quotes
+        if (!(value.startsWith('"') && value.endsWith('"')) && !(value.startsWith("'") && value.endsWith("'"))) {
+            throw new Error(`Invalid syntax: Value for filter '${key}' must be enclosed in quotes (e.g., name="Submit").`);
+        }
+
+        // Remove surrounding quotes for consistency
+        filters[key] = value.slice(1, -1);
+    }
+
+    return filters;
+}
+
+  // Compute the accessible name of an element
+  getAccessibleName(element) {
+    // Prefer aria-label or aria-labelledby
+    if (element.hasAttribute("aria-label")) {
+      return element.getAttribute("aria-label");
+    }
+    if (element.hasAttribute("aria-labelledby")) {
+      const labelId = element.getAttribute("aria-labelledby");
+      const labelElement = element.ownerDocument.getElementById(labelId);
+      return labelElement ? labelElement.textContent.trim() : "";
+    }
+    // Use innerText as a fallback
+    return element.textContent.trim();
+  }
+
+  // Get elements with implicit roles (e.g., <button> -> role="button")
+  getImplicitRoleElements(root, role) {
+    const implicitRoles = {
+      button: ["button", "input[type='button']", "input[type='submit']", "input[type='reset']"],
+      link: ["a[href]"],
+      checkbox: ["input[type='checkbox']"],
+      heading: ["h1", "h2", "h3", "h4", "h5", "h6"],
+      dialog: ["dialog"],
+      img: ["img[alt]"],
+      form: ["form"],
+      textbox: ["input[type='text']", "input[type='email']", "input[type='password']", "textarea"],
+      radio: ["input[type='radio']"],
+      // Add more implicit roles as needed
+    };
+
+    if (!implicitRoles[role]) return [];
+    return implicitRoles[role]
+      .map((selector) => Array.from(root.querySelectorAll(selector)))
+      .flat();
+  }
+
+  // Match element filters (e.g., name, level, pressed)
+  matchFilters(element, filters) {
+    if (filters.name && this.getAccessibleName(element) !== filters.name) {
+      return false;
+    }
+    if (filters.level) {
+      const headingLevel = parseInt(element.tagName.replace("H", ""), 10);
+      if (isNaN(headingLevel) || headingLevel !== parseInt(filters.level, 10)) {
+        return false;
+      }
+    }
+    if (filters.pressed) {
+      const ariaPressed = element.getAttribute("aria-pressed");
+      if (ariaPressed !== filters.pressed) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
 
 // convertToDocument will convert a DocumentFragment into a Document. It does
 // this by creating a new Document and copying the elements from the
@@ -200,6 +309,7 @@ class InjectedScript {
       css: new CSSQueryEngine(),
       text: new TextQueryEngine(),
       xpath: new XPathQueryEngine(),
+      role: new RoleQueryEngine(),
     };
   }
 

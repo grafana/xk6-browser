@@ -132,7 +132,7 @@ func NewBrowserContext(
 		opts:             opts,
 		logger:           logger,
 		vu:               k6ext.GetVU(ctx),
-		timeoutSettings:  NewTimeoutSettings(nil),
+		timeoutSettings:  NewTimeoutSettings(browser.timeoutSettings),
 	}
 
 	if len(opts.Permissions) > 0 {
