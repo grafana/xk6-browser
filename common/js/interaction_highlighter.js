@@ -1,9 +1,25 @@
 (() => {
     let interactionCount = 0; // Counter to track interaction order
 
+    const handledTargets = new Set();
+
     // Function to highlight interacted elements and add a counter
     function highlightInteractedElement(element, color = '#00FF00') {
         if (!element) return;
+
+        // Check if the event target is already handled
+        if (handledTargets.has(element)) {
+            // console.log(`Ignoring repeated ${eventType} event for`, element);
+            return; // Ignore if already handled
+        }
+
+        // Add the target to the Set
+        handledTargets.add(element);
+
+        // Optional: Remove the element from the Set after a timeout (if necessary)
+        setTimeout(() => {
+            handledTargets.delete(element);
+        }, 500); // Allow reprocessing after 500ms
 
         interactionCount++; // Increment interaction count
 
@@ -57,7 +73,12 @@
         highlightInteractedElement(element, '#00FF00');
     });
 
-    document.addEventListener('change', (event) => {
+    document.addEventListener('select', (event) => {
+        const element = event.target;
+        highlightInteractedElement(element, '#00FF00');
+    });
+
+    document.addEventListener('input', (event) => {
         const element = event.target;
         highlightInteractedElement(element, '#00FF00');
     });
