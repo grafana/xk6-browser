@@ -2,6 +2,7 @@
     let interactionCount = 0; // Counter to track interaction order
 
     const handledTargets = new Set();
+    const labelMap = new Map(); // Map to associate elements with their labels
 
     // Function to highlight interacted elements and add a counter
     function highlightInteractedElement(element, color = '#00FF00') {
@@ -9,7 +10,6 @@
 
         // Check if the event target is already handled
         if (handledTargets.has(element)) {
-            // console.log(`Ignoring repeated ${eventType} event for`, element);
             return; // Ignore if already handled
         }
 
@@ -42,23 +42,38 @@
 
         label.textContent = `${interactionCount}`;
 
+        // Get the labels already associated with the element
+        const labels = labelMap.get(element) || [];
+        const offset = labels.length * 20; // Offset each label by 20px vertically
+
         // Calculate position for the new label
         const rect = element.getBoundingClientRect();
+        label.style.top = `${rect.top + window.scrollY - 20 - offset}px`; // Place above and offset
+        label.style.left = `${rect.left + window.scrollX}px`; // Align horizontally
 
-        // Determine how many labels already exist for this element
-        const existingLabels = Array.from(document.querySelectorAll('.interaction-label'))
-            .filter((lbl) => lbl.dataset.targetElementId === getElementUniqueId(element));
-        const offset = existingLabels.length * 20; // Offset each label by 20px vertically
-
-        // Position the label above the element and offset each subsequent label
-        label.style.top = `${rect.top + window.scrollY - 20}px`; // 20px above + offset
-        label.style.left = `${rect.left + window.scrollX + offset}px`; // Align horizontally with the element
-
-        // Associate the label with the element
-        label.dataset.targetElementId = getElementUniqueId(element);
+        // Add the label to the Map
+        labels.push(label);
+        labelMap.set(element, labels);
 
         document.body.appendChild(label);
     }
+
+    // Sync label positions to stay with their elements
+    function syncLabelPositions() {
+        labelMap.forEach((labels, element) => {
+            const rect = element.getBoundingClientRect();
+            labels.forEach((label, index) => {
+                const offset = index * 20; // Offset each label by 20px vertically
+                label.style.top = `${rect.top + window.scrollY - 20 - offset}px`;
+                label.style.left = `${rect.left + window.scrollX}px`;
+            });
+        });
+
+        requestAnimationFrame(syncLabelPositions); // Continuously sync positions
+    }
+
+    // Start syncing label positions
+    syncLabelPositions();
 
     // Generate a unique ID for each element
     function getElementUniqueId(element) {
@@ -68,6 +83,7 @@
         return element.dataset.uniqueId;
     }
 
+    // Event listeners
     document.addEventListener('click', (event) => {
         const element = event.target;
         highlightInteractedElement(element, '#00FF00');
