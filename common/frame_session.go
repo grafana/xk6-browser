@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/xk6-browser/common/js"
 	"github.com/grafana/xk6-browser/k6ext"
 	"github.com/grafana/xk6-browser/log"
 
@@ -318,10 +319,49 @@ func (fs *FrameSession) onEventBindingCalled(event *cdpruntime.EventBindingCalle
 		"sid:%v tid:%v name:%s payload:%s",
 		fs.session.ID(), fs.targetID, event.Name, event.Payload)
 
-	err := fs.parseAndEmitWebVitalMetric(event.Payload)
-	if err != nil {
-		fs.logger.Errorf("FrameSession:onEventBindingCalled", "failed to emit web vital metric: %v", err)
+	if event.Name == webVitalBinding {
+		err := fs.parseAndEmitWebVitalMetric(event.Payload)
+		if err != nil {
+			fs.logger.Errorf("FrameSession:onEventBindingCalled", "failed to emit web vital metric: %v", err)
+		}
+	} else if event.Name == interactionBinding {
+		fs.autoScreenshot(event)
 	}
+}
+
+func (fs *FrameSession) autoScreenshot(event *cdpruntime.EventBindingCalled) {
+	fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called")
+	fs.page.tq.Queue(func() error {
+		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called on tq")
+		i := struct {
+			Event string `json:"event"`
+		}{}
+
+		if err := json.Unmarshal([]byte(event.Payload), &i); err != nil {
+			fs.logger.Errorf("FrameSession:autoScreenshot", "interaction binding json couldn't be parsed: %v", err)
+			return nil
+		}
+
+		fs.page.interactionCount++
+
+		o := NewPageScreenshotOptions()
+		switch i.Event {
+		case "domcontentloaded":
+			o.Path = fmt.Sprintf("%s_%d_navigate.png", fs.page.scriptName, fs.page.interactionCount)
+		case "interact":
+			o.Path = fmt.Sprintf("%s_%d_interact.png", fs.page.scriptName, fs.page.interactionCount)
+		}
+
+		fs.logger.Debugf("FrameSession:autoScreenshot", "auto screenshot saved to: %s", o.Path)
+		_, err := fs.page.Screenshot(o, fs.page.sp)
+		if err != nil {
+			fs.logger.Errorf("FrameSession:autoScreenshot", "failed to take auto screenshot: %v", err)
+			return nil
+		}
+
+		fs.logger.Debugf("FrameSession:autoScreenshot", "interaction binding called with count: %d", fs.page.interactionCount)
+		return nil
+	})
 }
 
 func (fs *FrameSession) parseAndEmitWebVitalMetric(object string) error {
@@ -900,7 +940,7 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 		"sid:%v tid:%v fid:%v event:%s eventTime:%q",
 		fs.session.ID(), fs.targetID, event.FrameID, event.Name, event.Timestamp.Time())
 
-	_, ok := fs.manager.getFrameByID(event.FrameID)
+	f, ok := fs.manager.getFrameByID(event.FrameID)
 	if !ok {
 		return
 	}
@@ -910,6 +950,42 @@ func (fs *FrameSession) onPageLifecycle(event *cdppage.EventLifecycleEvent) {
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventLoad)
 	case "DOMContentLoaded":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventDOMContentLoad)
+
+		if fs.page.browserCtx.browser.browserOpts.SelectorEngine {
+			addSelectorEngine := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.SelectorEngineScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding selector engine script: %v", err,
+					)
+				}
+			}
+			go addSelectorEngine()
+		}
+		if fs.page.browserCtx.browser.browserOpts.ShowInteractions {
+			addInteractionHighlighter := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.InteractionHighlighterScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding interaction highlighter script: %v", err,
+					)
+				}
+			}
+			go addInteractionHighlighter()
+		}
+		// I think we only want to add auto screenshots on the main frame.
+		if fs.isMainFrame() && fs.page.browserCtx.browser.browserOpts.AutoScreenshot {
+			addAutoScreenshotSignal := func() {
+				err := f.EvaluateGlobal(fs.ctx, js.AutoScreenshotSignalScript)
+				if err != nil {
+					fs.logger.Errorf(
+						"FrameSession:onPageLifecycle", "error on adding auto screenshot signal script: %v", err,
+					)
+				}
+			}
+			go addAutoScreenshotSignal()
+		}
+
 	case "networkIdle":
 		fs.manager.frameLifecycleEvent(event.FrameID, LifecycleEventNetworkIdle)
 	}

@@ -52,7 +52,7 @@ func NewBrowserType(vu k6modules.VU) *BrowserType {
 }
 
 func (b *BrowserType) init(
-	ctx context.Context, isRemoteBrowser bool,
+	ctx context.Context, isRemoteBrowser bool, timeout time.Duration,
 ) (context.Context, *common.BrowserOptions, *log.Logger, error) {
 	ctx = b.initContext(ctx)
 
@@ -67,6 +67,7 @@ func (b *BrowserType) init(
 	} else {
 		browserOpts = common.NewLocalBrowserOptions()
 	}
+	browserOpts.Timeout = timeout
 
 	opts := k6ext.GetScenarioOpts(b.vu.Context(), b.vu)
 	if err = browserOpts.Parse(ctx, logger, opts, b.envLookupper); err != nil {
@@ -103,8 +104,10 @@ func (b *BrowserType) initContext(ctx context.Context) context.Context {
 // The separation is important to allow for the iteration to end when k6 requires
 // the iteration to end (e.g. during a SIGTERM) and unblocks k6 to then fire off
 // the events which allows the connection to close.
-func (b *BrowserType) Connect(ctx, vuCtx context.Context, wsEndpoint string) (*common.Browser, error) {
-	vuCtx, browserOpts, logger, err := b.init(vuCtx, true)
+func (b *BrowserType) Connect(
+	ctx, vuCtx context.Context, wsEndpoint string, timeout time.Duration,
+) (*common.Browser, error) {
+	vuCtx, browserOpts, logger, err := b.init(vuCtx, true, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("initializing browser type: %w", err)
 	}
@@ -169,8 +172,10 @@ func (b *BrowserType) link(
 // The separation is important to allow for the iteration to end when k6 requires
 // the iteration to end (e.g. during a SIGTERM) and unblocks k6 to then fire off
 // the events which allows the chromium subprocess to shutdown.
-func (b *BrowserType) Launch(ctx, vuCtx context.Context) (_ *common.Browser, browserProcessID int, _ error) {
-	vuCtx, browserOpts, logger, err := b.init(vuCtx, false)
+func (b *BrowserType) Launch(
+	ctx, vuCtx context.Context, timeout time.Duration,
+) (_ *common.Browser, browserProcessID int, _ error) {
+	vuCtx, browserOpts, logger, err := b.init(vuCtx, false, timeout)
 	if err != nil {
 		return nil, 0, fmt.Errorf("initializing browser type: %w", err)
 	}
@@ -386,6 +391,10 @@ func prepareFlags(lopts *common.BrowserOptions, k6opts *k6lib.Options) (map[stri
 		"no-default-browser-check": true,
 		"headless":                 lopts.Headless,
 		"window-size":              fmt.Sprintf("%d,%d", 800, 600),
+	}
+	if lopts.DevTools {
+		f["auto-open-devtools-for-tabs"] = true
+		lopts.Headless = false
 	}
 	if lopts.Headless {
 		f["hide-scrollbars"] = true

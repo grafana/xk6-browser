@@ -13,6 +13,8 @@ func mapMetricEvent(vu moduleVU, event common.PageOnEvent) mapping {
 
 	return mapping{
 		"tag": func(urls common.TagMatches) error {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			callback := func(pattern, url string) (bool, error) {
 				js := fmt.Sprintf(`_k6BrowserCheckRegEx(%s, '%s')`, pattern, url)
 

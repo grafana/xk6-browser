@@ -15,11 +15,15 @@ import (
 func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 	maps := mapping{
 		"check": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Check(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"childFrames": func() []mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			var (
 				mcfs []mapping
 				cfs  = f.ChildFrames()
@@ -30,6 +34,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			return mcfs
 		},
 		"click": func(selector string, opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts, err := parseFrameClickOptions(vu.Context(), opts, f.Timeout())
 			if err != nil {
 				return nil, err
@@ -41,16 +47,22 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"content": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.Content() //nolint:wrapcheck
 			})
 		},
 		"dblclick": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Dblclick(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"dispatchEvent": func(selector, typ string, eventInit, opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts := common.NewFrameDispatchEventOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing frame dispatch event options: %w", err)
@@ -60,6 +72,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"evaluate": func(pageFunc sobek.Value, gargs ...sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			if sobekEmptyString(pageFunc) {
 				return nil, fmt.Errorf("evaluate requires a page function")
 			}
@@ -68,6 +82,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"evaluateHandle": func(pageFunc sobek.Value, gargs ...sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			if sobekEmptyString(pageFunc) {
 				return nil, fmt.Errorf("evaluateHandle requires a page function")
 			}
@@ -80,16 +96,22 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"fill": func(selector, value string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Fill(selector, value, opts) //nolint:wrapcheck
 			})
 		},
 		"focus": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Focus(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"frameElement": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				fe, err := f.FrameElement()
 				if err != nil {
@@ -99,6 +121,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"getAttribute": func(selector, name string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				s, ok, err := f.GetAttribute(selector, name, opts)
 				if err != nil {
@@ -111,6 +135,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"goto": func(url string, opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			gopts := common.NewFrameGotoOptions(
 				f.Referrer(),
 				f.NavigationTimeout(),
@@ -128,92 +154,130 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"hover": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Hover(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"innerHTML": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.InnerHTML(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"innerText": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.InnerText(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"inputValue": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.InputValue(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isChecked": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsChecked(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isDetached": f.IsDetached,
 		"isDisabled": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsDisabled(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isEditable": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsEditable(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isEnabled": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsEnabled(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isHidden": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsHidden(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"isVisible": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.IsVisible(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"locator": func(selector string, opts sobek.Value) mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapLocator(vu, f.Locator(selector, opts))
 		},
 		"name": f.Name,
 		"page": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapPage(vu, f.Page())
 		},
 		"parentFrame": func() mapping {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return mapFrame(vu, f.ParentFrame())
 		},
 		"press": func(selector, key string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Press(selector, key, opts) //nolint:wrapcheck
 			})
 		},
 		"selectOption": func(selector string, values sobek.Value, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.SelectOption(selector, values, opts) //nolint:wrapcheck
 			})
 		},
 		"setChecked": func(selector string, checked bool, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.SetChecked(selector, checked, opts) //nolint:wrapcheck
 			})
 		},
 		"setContent": func(html string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.SetContent(html, opts) //nolint:wrapcheck
 			})
 		},
 		"setInputFiles": func(selector string, files sobek.Value, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.SetInputFiles(selector, files, opts) //nolint:wrapcheck
 			})
 		},
 		"tap": func(selector string, opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts := common.NewFrameTapOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing frame tap options: %w", err)
@@ -223,6 +287,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"textContent": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				s, ok, err := f.TextContent(selector, opts)
 				if err != nil {
@@ -235,22 +301,30 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"title": func() *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return f.Title()
 			})
 		},
 		"type": func(selector, text string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Type(selector, text, opts) //nolint:wrapcheck
 			})
 		},
 		"uncheck": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.Uncheck(selector, opts) //nolint:wrapcheck
 			})
 		},
 		"url": f.URL,
 		"waitForFunction": func(pageFunc, opts sobek.Value, args ...sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			js, popts, pargs, err := parseWaitForFunctionArgs(
 				vu.Context(), f.Timeout(), pageFunc, opts, args...,
 			)
@@ -263,11 +337,15 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"waitForLoadState": func(state string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				return nil, f.WaitForLoadState(state, opts) //nolint:wrapcheck
 			})
 		},
 		"waitForNavigation": func(opts sobek.Value) (*sobek.Promise, error) {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			popts := common.NewFrameWaitForNavigationOptions(f.Timeout())
 			if err := popts.Parse(vu.Context(), opts); err != nil {
 				return nil, fmt.Errorf("parsing frame wait for navigation options: %w", err)
@@ -282,6 +360,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			}), nil
 		},
 		"waitForSelector": func(selector string, opts sobek.Value) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				eh, err := f.WaitForSelector(selector, opts)
 				if err != nil {
@@ -291,6 +371,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 			})
 		},
 		"waitForTimeout": func(timeout int64) *sobek.Promise {
+			pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 			return k6ext.Promise(vu.Context(), func() (any, error) {
 				f.WaitForTimeout(timeout)
 				return nil, nil
@@ -298,6 +380,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		},
 	}
 	maps["$"] = func(selector string) *sobek.Promise {
+		pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			eh, err := f.Query(selector, common.StrictModeOff)
 			if err != nil {
@@ -315,6 +399,8 @@ func mapFrame(vu moduleVU, f *common.Frame) mapping { //nolint:gocognit,cyclop
 		})
 	}
 	maps["$$"] = func(selector string) *sobek.Promise {
+		pauseOnBreakpoint(vu.breakpointRegistry, vu.Runtime())
+
 		return k6ext.Promise(vu.Context(), func() (any, error) {
 			ehs, err := f.QueryAll(selector)
 			if err != nil {

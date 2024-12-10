@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/xk6-browser/browser"
 	"github.com/grafana/xk6-browser/chromium"
+	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 )
@@ -22,7 +23,7 @@ func TestBrowserTypeConnect(t *testing.T) {
 	bt := chromium.NewBrowserType(vu)
 	vu.ActivateVU()
 
-	b, err := bt.Connect(context.Background(), context.Background(), tb.wsURL)
+	b, err := bt.Connect(context.Background(), context.Background(), tb.wsURL, common.DefaultTimeout)
 	require.NoError(t, err)
 	_, err = b.NewPage(nil)
 	require.NoError(t, err)

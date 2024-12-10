@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/xk6-browser/common"
 	"github.com/grafana/xk6-browser/env"
 	"github.com/grafana/xk6-browser/k6ext/k6test"
 
@@ -205,7 +206,9 @@ func TestBrowserRegistry(t *testing.T) {
 
 		var (
 			vu              = k6test.NewVU(t)
-			browserRegistry = newBrowserRegistry(context.Background(), vu, remoteRegistry, &pidRegistry{}, nil)
+			browserRegistry = newBrowserRegistry(
+				context.Background(), vu, remoteRegistry, &pidRegistry{}, nil, common.DefaultTimeout,
+			)
 		)
 
 		vu.ActivateVU()
@@ -238,7 +241,9 @@ func TestBrowserRegistry(t *testing.T) {
 
 		var (
 			vu              = k6test.NewVU(t)
-			browserRegistry = newBrowserRegistry(context.Background(), vu, remoteRegistry, &pidRegistry{}, nil)
+			browserRegistry = newBrowserRegistry(
+				context.Background(), vu, remoteRegistry, &pidRegistry{}, nil, common.DefaultTimeout,
+			)
 		)
 
 		vu.ActivateVU()
@@ -268,7 +273,9 @@ func TestBrowserRegistry(t *testing.T) {
 
 		var (
 			vu              = k6test.NewVU(t)
-			browserRegistry = newBrowserRegistry(context.Background(), vu, remoteRegistry, &pidRegistry{}, nil)
+			browserRegistry = newBrowserRegistry(
+				context.Background(), vu, remoteRegistry, &pidRegistry{}, nil, common.DefaultTimeout,
+			)
 		)
 
 		vu.ActivateVU()
@@ -290,7 +297,9 @@ func TestBrowserRegistry(t *testing.T) {
 		vu := k6test.NewVU(t)
 		var cancel context.CancelFunc
 		vu.CtxField, cancel = context.WithCancel(vu.CtxField)
-		browserRegistry := newBrowserRegistry(context.Background(), vu, remoteRegistry, &pidRegistry{}, nil)
+		browserRegistry := newBrowserRegistry(
+			context.Background(), vu, remoteRegistry, &pidRegistry{}, nil, common.DefaultTimeout,
+		)
 
 		vu.ActivateVU()
 
