@@ -424,6 +424,51 @@ func (c *Connection) recvLoop() {
 				return
 			}
 
+		// In some cases the error response will only have the id and error,
+		// but no sessionId. In these cases we can't guarantee the origin of
+		// the request and so where the msg should be redirected to. To ensure
+		// the msg gets to the correct handler (which is potentially blocking
+		// a test iteration) we need to send it to all sessions and the
+		// connection's event loop.
+		case msg.ID != 0 && msg.Error != nil && msg.SessionID == "":
+			c.logger.Infof(
+				"Connection:recvLoop:msg.ID:msg.Error: lost error message",
+				"msg:%v", msg,
+			)
+			func() {
+				c.sessionsMu.RLock()
+				defer c.sessionsMu.RUnlock()
+
+				for _, s := range c.sessions {
+					select {
+					case s.readCh <- &msg:
+						c.logger.Infof(
+							"Connection:recvLoop:msg.ID:msg.Error: sent to session",
+							"sid:%v tid:%v msg:%v", s.id, s.targetID, msg,
+						)
+					case code := <-c.closeCh:
+						c.logger.Debugf(
+							"Connection:recvLoop:msg.ID:msg.Error:<-c.closeCh",
+							"sid:%v tid:%v crashed:%t",
+							s.id, s.targetID, s.crashed,
+						)
+						_ = c.close(code)
+					case <-c.done:
+						c.logger.Debugf(
+							"Connection:recvLoop:msg.ID:msg.Error:<-c.done",
+							"sid:%v tid:%v crashed:%t",
+							s.id, s.targetID, s.crashed,
+						)
+						return
+					}
+				}
+			}()
+			c.emit("", &msg)
+			c.logger.Infof(
+				"Connection:recvLoop:msg.ID:msg.Error: sent to connection",
+				"msg:%v", msg,
+			)
+
 		case msg.Method != "":
 			c.logger.Debugf("Connection:recvLoop:msg.Method:emit", "sid:%v method:%q", msg.SessionID, msg.Method)
 			ev, err := cdproto.UnmarshalMessage(&msg)
