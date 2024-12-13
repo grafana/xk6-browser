@@ -1,3 +1,6 @@
+> [!WARNING]
+> The [code of the `k6-browser` module has been merged](https://github.com/grafana/k6/pull/4056) to the [grafana/k6](https://github.com/grafana/k6) repository. Please contribute and [open issues there](https://github.com/grafana/k6/issues). This repository is no longer maintained.
+
 <h3 align="center">Browser automation and end-to-end web testing for k6</h3>
 <p align="center">A module for k6 adding browser-level APIs with rough Playwright compatibility.</p>
 
