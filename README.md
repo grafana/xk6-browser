@@ -1,3 +1,6 @@
+> [!WARNING]
+> Starting from k6 version v0.56, this codebase has been merged and is now part of the [main k6 repository](https://github.com/grafana/k6). Please contribute and [open issues there](https://github.com/grafana/k6/issues). This repository is no longer maintained.
+
 <h3 align="center">Browser automation and end-to-end web testing for k6</h3>
 <p align="center">A module for k6 adding browser-level APIs with rough Playwright compatibility.</p>
 
