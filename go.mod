@@ -8,7 +8,7 @@ require (
 	github.com/grafana/sobek v0.0.0-20241024150027-d91f02b05e9b
 	github.com/mailru/easyjson v0.7.7
 	github.com/mccutchen/go-httpbin v1.1.2-0.20190116014521-c5cb2f4802fa
-	github.com/mstoykov/k6-taskqueue-lib v0.1.2
+	github.com/mstoykov/k6-taskqueue-lib v0.1.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	go.k6.io/k6 v0.55.0
